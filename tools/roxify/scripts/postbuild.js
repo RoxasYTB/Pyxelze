@@ -57,6 +57,12 @@ try {
     console.log('Copied roxify dist into dist/roxify/dist');
   }
 
+  const roxifyPkg = path.join(root, 'node_modules', 'roxify', 'package.json');
+  if (fs.existsSync(roxifyPkg)) {
+    fs.copyFileSync(roxifyPkg, path.join(dist, 'roxify', 'package.json'));
+    console.log('Copied roxify package.json into dist/roxify');
+  }
+
   try {
     const cliWrapperPath = path.join(dist, 'roxify', 'dist', 'cli_wrapper.js');
     const wrapperContent = `import('./cli.js').then(mod => {
@@ -102,6 +108,36 @@ try {
       console.log('Copied dependency', dep, 'to dist/node_modules');
     }
   }
+
+  try {
+    const zstdRelease = path.join(
+      dist,
+      'node_modules',
+      '@mongodb-js',
+      'zstd',
+      'build',
+      'Release',
+      'zstd.node',
+    );
+    const zstdDebugDir = path.join(
+      dist,
+      'node_modules',
+      '@mongodb-js',
+      'zstd',
+      'build',
+      'Debug',
+    );
+    if (
+      fs.existsSync(zstdRelease) &&
+      !fs.existsSync(path.join(zstdDebugDir, 'zstd.node'))
+    ) {
+      fs.mkdirSync(zstdDebugDir, { recursive: true });
+      fs.copyFileSync(zstdRelease, path.join(zstdDebugDir, 'zstd.node'));
+      console.log(
+        'Copied zstd Release binary into build/Debug to satisfy require(../build/Debug/zstd.node)',
+      );
+    }
+  } catch (e) {}
 
   const bundleSrc = path.join(root, 'build', 'rox-bundle.cjs');
   if (fs.existsSync(bundleSrc)) {
