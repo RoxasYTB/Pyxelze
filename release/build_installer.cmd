@@ -1,7 +1,11 @@
 @echo off
 setlocal
-if not exist "%~dp0\..\tools\roxify\dist" (
-  echo ERROR: tools\roxify\dist not found. Run `npm run build:exe` in tools\roxify first.
+if not exist "%~dp0\..\production" (
+  echo ERROR: production folder not found. Run build_production.cmd first.
+  exit /b 1
+)
+if not exist "%~dp0\..\production\Pyxelze.exe" (
+  echo ERROR: Pyxelze.exe not found in production. Run build_production.cmd first.
   exit /b 1
 )
 if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" (

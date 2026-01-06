@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\Pyxelze.csproj": {}
+    "d:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\Pyxelze.csproj": {}
   },
   "projects": {
-    "D:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\Pyxelze.csproj": {
+    "d:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\Pyxelze.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\Pyxelze.csproj",
+        "projectUniqueName": "d:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\Pyxelze.csproj",
         "projectName": "Pyxelze",
-        "projectPath": "D:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\Pyxelze.csproj",
+        "projectPath": "d:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\Pyxelze.csproj",
         "packagesPath": "C:\\Users\\yohan\\.nuget\\packages\\",
-        "outputPath": "D:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\obj\\",
+        "outputPath": "d:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\yohan\\AppData\\Roaming\\NuGet\\NuGet.Config"

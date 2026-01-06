@@ -1,10 +1,11 @@
 [Setup]
-AppName=Pyxelze - Rox CLI
+AppName=Pyxelze
 AppVersion=1.0.0
-DefaultDirName={localappdata}\Programs\Pyxelze\rox
+DefaultDirName={localappdata}\Programs\Pyxelze
 DefaultGroupName=Pyxelze
 OutputDir=.
-OutputBaseFilename=Pyxelze-Rox-Setup
+OutputBaseFilename=Pyxelze-Setup
+SetupIconFile={#ProjectPath}\appIcon.ico
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=lowest
@@ -13,10 +14,11 @@ PrivilegesRequired=lowest
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "{#ProjectPath}\tools\roxify\dist\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "{#ProjectPath}\production\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Rox (CLI)"; Filename: "{app}\rox.cmd"
+Name: "{autoprograms}\Pyxelze"; Filename: "{app}\Pyxelze.exe"
+Name: "{autodesktop}\Pyxelze"; Filename: "{app}\Pyxelze.exe"; Tasks: desktopicon
 
-[Run]
-Filename: "{app}\install-rox.cmd"; Flags: shellexec postinstall runascurrentuser
+[Tasks]
+Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional icons:"; Flags: unchecked
