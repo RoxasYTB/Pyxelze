@@ -1,0 +1,36 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v7.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v7.0": {
+      "dnd_test/1.0.0": {
+        "dependencies": {
+          "Pyxelze": "1.0.0"
+        },
+        "runtime": {
+          "dnd_test.dll": {}
+        }
+      },
+      "Pyxelze/1.0.0": {
+        "runtime": {
+          "Pyxelze.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "dnd_test/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Pyxelze/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
