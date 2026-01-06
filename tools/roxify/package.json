@@ -17,6 +17,8 @@
   "pkg": {
     "assets": [
       "node_modules/roxify/**/*",
+      "build/**/*",
+      "node_modules/@mongodb-js/zstd/build/**/*",
       "node_modules/sharp/vendor/**/*",
       "node_modules/sharp/build/Release/**/*"
     ]

@@ -25,5 +25,5 @@ if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" (
 )
 
 echo Building installer using release folder: %RELEASE_DIR%
-%ISCC% /DReleaseDir="%RELEASE_DIR%" "%~dp0\installer.iss"
+%ISCC% /DProjectPath="%RELEASE_DIR%\.." /DReleaseDir="%RELEASE_DIR%" "%~dp0\installer.iss"
 endlocal
