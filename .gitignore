@@ -1,1 +1,11 @@
-node_modules
+bin/
+obj/
+production/
+publish_final/
+logs/
+*.exe
+release/*.exe
+release/Pyxelze-Setup.exe
+tools/roxify/dist/
+tools/roxify/node_modules/
+node_modules/
