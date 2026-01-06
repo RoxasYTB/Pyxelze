@@ -1,22 +1,27 @@
 [Setup]
-AppName=Pyxelze - Rox CLI
+AppName=Pyxelze
 AppVersion=1.0.0
-DefaultDirName={localappdata}\Programs\Pyxelze\rox
+DefaultDirName={autopf}\Pyxelze
 DefaultGroupName=Pyxelze
 OutputDir=.
-OutputBaseFilename=Pyxelze-Rox-Setup
+OutputBaseFilename=Pyxelze-Setup
 Compression=lzma
 SolidCompression=yes
+ArchitecturesInstallIn64BitMode=x64
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 
 [Files]
-; ReleaseDir is provided via ISCC /DReleaseDir="path"
-Source: "{#ReleaseDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Rox (CLI)"; Filename: "{app}\rox.cmd"
+Name: "{group}\Pyxelze"; Filename: "{app}\Pyxelze.exe"
+Name: "{commondesktop}\Pyxelze"; Filename: "{app}\Pyxelze.exe"; Tasks: desktopicon
+
+[Tasks]
+Name: "desktopicon"; Description: "Créer une icône sur le bureau"; GroupDescription: "Icônes additionnelles:"
 
 [Run]
-Filename: "{app}\install-rox.cmd"; Flags: shellexec postinstall runascurrentuser
+Filename: "{app}\Pyxelze.exe"; Description: "Lancer Pyxelze"; Flags: nowait postinstall skipifsilent
