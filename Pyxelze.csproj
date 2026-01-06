@@ -34,8 +34,14 @@
                   ContinueOnError="true" />
             <Exec Command="npm run build:exe" WorkingDirectory="$(ProjectDir)tools\roxify"
                   ContinueOnError="true" />
-            <Copy SourceFiles="$(ProjectDir)tools\roxify\dist\rox.exe"
-                  DestinationFolder="$(OutDir)tools"
-                  Condition="Exists('$(ProjectDir)tools\roxify\dist\rox.exe')" />
+            <!-- Copy the entire roxify dist into the project's output so users without Node can use
+            the CLI -->
+            <ItemGroup>
+                  <RoxifyDistFiles Include="$(ProjectDir)tools\roxify\dist\**\*.*"
+                        Condition="Exists('$(ProjectDir)tools\roxify\dist')" />
+            </ItemGroup>
+            <Copy SourceFiles="@(RoxifyDistFiles)"
+                  Condition="Exists('$(ProjectDir)tools\roxify\dist')"
+                  DestinationFiles="@(RoxifyDistFiles->'$(OutDir)tools\roxify\%(RecursiveDir)%(Filename)%(Extension)')" />
       </Target>
 </Project>
