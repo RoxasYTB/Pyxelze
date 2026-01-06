@@ -89,7 +89,12 @@ jobs:
       - name: Build installer (Inno Setup)
         run: |
           cd tools\installer
-          build_installer.cmd "%{ { github.workspace } }\release"
+          call build_installer.cmd
+
+      - name: Smoke-install and verify installer
+        run: |
+          powershell -Command "Start-Process -FilePath 'tools/installer/Pyxelze-Rox-Setup.exe' -ArgumentList '/VERYSILENT','/DIR="$env:TEMP\\rox_test"' -Wait -NoNewWindow"
+          powershell -Command "& (Join-Path $env:TEMP 'rox_test\rox.cmd') --version"
 
       - name: Upload release folder
         uses: actions/upload-artifact@v4
@@ -102,3 +107,32 @@ jobs:
         with:
           name: rox-installer
           path: tools/installer/Pyxelze-Rox-Setup.exe
+      - name: Create draft GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: roxify-${{ github.run_number }}-${{ github.sha }}
+          release_name: 'roxify build ${{ github.run_number }}'
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Zip release folder
+        run: |
+          powershell -Command "Compress-Archive -Path 'release/roxify/*' -DestinationPath 'release/roxify.zip' -Force"
+
+      - name: Upload release assets
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/roxify.zip
+          asset_name: roxify-release.zip
+          asset_content_type: application/zip
+      - name: Upload installer to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: tools/installer/Pyxelze-Rox-Setup.exe
+          asset_name: Pyxelze-Rox-Setup.exe
+          asset_content_type: application/x-msdownload

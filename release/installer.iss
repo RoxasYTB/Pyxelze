@@ -7,6 +7,7 @@ OutputDir=.
 OutputBaseFilename=Pyxelze-Rox-Setup
 Compression=lzma
 SolidCompression=yes
+PrivilegesRequired=lowest
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
