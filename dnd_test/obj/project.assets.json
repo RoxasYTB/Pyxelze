@@ -1,0 +1,95 @@
+{
+  "version": 3,
+  "targets": {
+    "net7.0-windows7.0": {
+      "Pyxelze/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v7.0",
+        "compile": {
+          "bin/placeholder/Pyxelze.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Pyxelze.dll": {}
+        },
+        "frameworkReferences": [
+          "Microsoft.WindowsDesktop.App.WindowsForms"
+        ]
+      }
+    }
+  },
+  "libraries": {
+    "Pyxelze/1.0.0": {
+      "type": "project",
+      "path": "../Pyxelze.csproj",
+      "msbuildProject": "../Pyxelze.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net7.0-windows7.0": [
+      "Pyxelze >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\yohan\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "D:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\dnd_test\\dnd_test.csproj",
+      "projectName": "dnd_test",
+      "projectPath": "D:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\dnd_test\\dnd_test.csproj",
+      "packagesPath": "C:\\Users\\yohan\\.nuget\\packages\\",
+      "outputPath": "D:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\dnd_test\\obj\\",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "C:\\Users\\yohan\\AppData\\Roaming\\NuGet\\NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net7.0-windows"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net7.0-windows7.0": {
+          "targetAlias": "net7.0-windows",
+          "projectReferences": {
+            "D:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\Pyxelze.csproj": {
+              "projectPath": "D:\\Users\\yohan\\Bureau\\Pyxelze-Light\\Pyxelze\\Pyxelze.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      }
+    },
+    "frameworks": {
+      "net7.0-windows7.0": {
+        "targetAlias": "net7.0-windows",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          },
+          "Microsoft.WindowsDesktop.App.WindowsForms": {
+            "privateAssets": "none"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.410\\RuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}
