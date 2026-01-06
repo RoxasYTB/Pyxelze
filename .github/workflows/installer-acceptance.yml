@@ -1,0 +1,24 @@
+name: Installer acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  acceptance:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install Inno Setup (choco)
+        run: choco install innosetup -y
+      - name: Build installer
+        run: |
+          call release\build_installer.cmd
+      - name: Run installer acceptance test
+        run: |
+          node tools\roxify\test\install_acceptance_test.js

@@ -28,21 +28,12 @@ process.on('unhandledRejection', (reason) => {
 
 (async () => {
   try {
-    console.error('rox wrapper argv (before):', process.argv.slice(2));
-
-    try {
-      if (
-        process.argv.length > 1 &&
+    let args = process.argv.slice(2);
+    const isPkgSnapshot =
+      typeof process.pkg !== 'undefined' ||
+      (process.argv.length > 1 &&
         typeof process.argv[1] === 'string' &&
-        process.argv[1].toLowerCase().includes('\\snapshot\\')
-      ) {
-        console.error('Detected pkg snapshot arg in argv[1], removing it');
-        process.argv.splice(1, 1);
-      }
-    } catch (e) {}
-    console.error('rox wrapper argv (after):', process.argv.slice(2));
-    console.error('cwd:', process.cwd());
-    console.error('execPath:', process.execPath);
+        process.argv[1].toLowerCase().includes('\\snapshot\\'));
     let mod;
 
     try {
@@ -52,23 +43,40 @@ process.on('unhandledRejection', (reason) => {
 
       const localBundle = path.join(exeDir, 'build', 'rox-bundle.cjs');
       if (fs.existsSync(localBundle)) {
-        console.error(
-          'Found local rox bundle at',
-          localBundle,
-          '— requiring it',
-        );
         try {
           const cli = require(localBundle);
           if (typeof cli === 'function') {
-            const r = cli(process.argv.slice(2));
+            const r = cli(args);
             if (r && typeof r.then === 'function') await r;
             return;
           }
         } catch (e) {
-          console.error(
-            'Error while requiring local bundle:',
-            e && e.stack ? e.stack : e,
-          );
+          try {
+            const msg = e && e.message ? e.message : '';
+            const stack = e && e.stack ? e.stack : '';
+            if (
+              msg.includes('.node') ||
+              stack.includes('.node') ||
+              msg.includes('Cannot find module') ||
+              (e && e.code === 'MODULE_NOT_FOUND')
+            ) {
+              const { spawnSync } = require('child_process');
+              const nodeExec = path.join(exeDir, 'node.exe');
+              const runner = fs.existsSync(nodeExec)
+                ? nodeExec
+                : process.execPath;
+              const child = spawnSync(runner, [localBundle, ...args], {
+                stdio: 'inherit',
+              });
+              process.exitCode = child.status || (child.signal && 1);
+              return;
+            }
+          } catch (spawnErr) {
+            console.error(
+              'Fallback spawn of local bundle failed:',
+              spawnErr && spawnErr.stack ? spawnErr.stack : spawnErr,
+            );
+          }
         }
       }
 
@@ -79,66 +87,93 @@ process.on('unhandledRejection', (reason) => {
         'cli_wrapper.js',
       );
       if (fs.existsSync(localWrapper)) {
-        console.error(
-          'Found external roxify CLI wrapper at',
-          localWrapper,
-          '— importing it instead of snapshot',
-        );
         try {
+          if (isPkgSnapshot) {
+            const { spawnSync } = require('child_process');
+            const nodeExec = path.join(exeDir, 'node.exe');
+            const runner = fs.existsSync(nodeExec)
+              ? nodeExec
+              : process.execPath;
+            const child = spawnSync(runner, [localWrapper, ...args], {
+              stdio: 'inherit',
+            });
+            process.exitCode = child.status || (child.signal && 1);
+            return;
+          }
           await import(pathToFileURL(localWrapper).href);
           return;
         } catch (e) {
-          console.error(
-            'Error importing cli_wrapper:',
-            e && e.stack ? e.stack : e,
-          );
+          if (process.env.ROXIFY_DEBUG) {
+            console.error(
+              'Error importing cli_wrapper:',
+              e && e.stack ? e.stack : e,
+            );
+          }
           try {
             const { spawnSync } = require('child_process');
-            const child = spawnSync(
-              process.execPath,
-              [localWrapper, ...process.argv.slice(2)],
-              { stdio: 'inherit' },
-            );
+            const nodeExec = path.join(exeDir, 'node.exe');
+            const runner = fs.existsSync(nodeExec)
+              ? nodeExec
+              : process.execPath;
+            const child = spawnSync(runner, [localWrapper, ...args], {
+              stdio: 'inherit',
+            });
             process.exitCode = child.status || (child.signal && 1);
             return;
           } catch (spawnErr) {
-            console.error(
-              'Fallback spawn failed:',
-              spawnErr && spawnErr.stack ? spawnErr.stack : spawnErr,
-            );
+            if (process.env.ROXIFY_DEBUG) {
+              console.error(
+                'Fallback spawn failed:',
+                spawnErr && spawnErr.stack ? spawnErr.stack : spawnErr,
+              );
+            }
           }
         }
       }
 
       const localCli = path.join(exeDir, 'roxify', 'dist', 'cli.js');
       if (fs.existsSync(localCli)) {
-        console.error(
-          'Found external roxify CLI at',
-          localCli,
-          '— importing it instead of snapshot',
-        );
-        const cliModule = await import(pathToFileURL(localCli).href);
-        const cli =
-          cliModule && cliModule.default ? cliModule.default : cliModule;
-        if (typeof cli === 'function') {
-          const r = cli(process.argv.slice(2));
-          if (r && typeof r.then === 'function') await r;
-          return;
-        }
         try {
-          const { spawnSync } = require('child_process');
-          const child = spawnSync(
-            process.execPath,
-            [localCli, ...process.argv.slice(2)],
-            { stdio: 'inherit' },
-          );
-          process.exitCode = child.status || (child.signal && 1);
-          return;
+          if (isPkgSnapshot) {
+            const { spawnSync } = require('child_process');
+            const nodeExec = path.join(exeDir, 'node.exe');
+            const runner = fs.existsSync(nodeExec)
+              ? nodeExec
+              : process.execPath;
+            const child = spawnSync(runner, [localCli, ...args], {
+              stdio: 'inherit',
+            });
+            process.exitCode = child.status || (child.signal && 1);
+            return;
+          }
+          const cliModule = await import(pathToFileURL(localCli).href);
+          const cli =
+            cliModule && cliModule.default ? cliModule.default : cliModule;
+          if (typeof cli === 'function') {
+            const r = cli(args);
+            if (r && typeof r.then === 'function') await r;
+            return;
+          }
         } catch (spawnErr) {
-          console.error(
-            'Fallback spawn of local CLI failed:',
-            spawnErr && spawnErr.stack ? spawnErr.stack : spawnErr,
-          );
+          try {
+            const { spawnSync } = require('child_process');
+            const nodeExec = path.join(exeDir, 'node.exe');
+            const runner = fs.existsSync(nodeExec)
+              ? nodeExec
+              : process.execPath;
+            const child = spawnSync(runner, [localCli, ...args], {
+              stdio: 'inherit',
+            });
+            process.exitCode = child.status || (child.signal && 1);
+            return;
+          } catch (e) {
+            if (process.env.ROXIFY_DEBUG) {
+              console.error(
+                'Fallback spawn of local CLI failed:',
+                e && e.stack ? e : e,
+              );
+            }
+          }
         }
       }
     } catch (e) {}
@@ -199,7 +234,7 @@ process.on('unhandledRejection', (reason) => {
       const cli =
         cliModule && cliModule.default ? cliModule.default : cliModule;
       if (typeof cli === 'function') {
-        const r = cli(process.argv.slice(2));
+        const r = cli(args);
         if (r && typeof r.then === 'function') await r;
         return;
       }
