@@ -224,15 +224,7 @@ namespace Pyxelze
 
             try
             {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c rox list \"{path}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
+                var psi = RoxRunner.CreateRoxProcess($"list \"{path}\"");
 
                 using (var p = Process.Start(psi))
                 {
@@ -360,15 +352,7 @@ readme.txt (100 bytes)
             {
                 try
                 {
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName = "cmd.exe",
-                        Arguments = $"/c rox decode \"{currentArchive}\" \"{archiveExtractedRoot}\"",
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true
-                    };
+                    var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{archiveExtractedRoot}\"");
 
                     using (var p = Process.Start(psi))
                     {
@@ -739,15 +723,7 @@ readme.txt (100 bytes)
             try
             {
                 Log("ExtractFileSingle start: {0} -> {1}", internalPath, outputPath);
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c rox decode \"{currentArchive}\" \"{Path.GetDirectoryName(outputPath)}\" --files \"{internalPath}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
+                var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{Path.GetDirectoryName(outputPath)}\" --files \"{internalPath}\"");
 
                 using (var p = Process.Start(psi))
                 {

@@ -53,3 +53,52 @@ jobs:
         with:
           name: rox-cli-windows
           path: tools/roxify/dist
+
+  make_release:
+    runs-on: windows-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install deps
+        run: |
+          cd tools/roxify
+          npm ci
+
+      - name: Build rox and copy release
+        run: |
+          cd tools/roxify
+          npm run build:exe
+          cd ${{ github.workspace }}
+          .\make_release.cmd
+
+      - name: Print failure.log if present
+        if: always()
+        run: powershell -Command "if (Test-Path 'release\roxify\failure.log') { Write-Host '=== failure.log ==='; Get-Content 'release\roxify\failure.log'; Write-Host '=== end failure.log ===' } else { Write-Host 'no failure.log' }"
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+        shell: cmd
+
+      - name: Build installer (Inno Setup)
+        run: |
+          cd tools\installer
+          build_installer.cmd "%{ { github.workspace } }\release"
+
+      - name: Upload release folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: rox-cli-release
+          path: release/roxify
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: rox-installer
+          path: tools/installer/Pyxelze-Rox-Setup.exe

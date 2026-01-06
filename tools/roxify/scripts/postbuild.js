@@ -144,7 +144,42 @@ try {
     const bundleDest = path.join(dist, 'build');
     copyDir(path.dirname(bundleSrc), bundleDest);
     console.log('Copied bundle to dist/build');
+    try {
+      const zstdInNodeModules = path.join(
+        dist,
+        'node_modules',
+        '@mongodb-js',
+        'zstd',
+        'build',
+        'Release',
+        'zstd.node',
+      );
+      const buildReleaseDir = path.join(dist, 'build', 'Release');
+      const buildDebugDir = path.join(dist, 'build', 'Debug');
+      if (fs.existsSync(zstdInNodeModules)) {
+        fs.mkdirSync(buildReleaseDir, { recursive: true });
+        fs.copyFileSync(
+          zstdInNodeModules,
+          path.join(buildReleaseDir, 'zstd.node'),
+        );
+        fs.mkdirSync(buildDebugDir, { recursive: true });
+        fs.copyFileSync(
+          zstdInNodeModules,
+          path.join(buildDebugDir, 'zstd.node'),
+        );
+        console.log('Copied zstd into dist/build/Release and dist/build/Debug');
+      }
+    } catch (e) {}
   }
+
+  try {
+    const srcNodeModules = path.join(root, 'node_modules');
+    const destNodeModules = path.join(dist, 'node_modules');
+    if (fs.existsSync(srcNodeModules)) {
+      copyDir(srcNodeModules, destNodeModules);
+      console.log('Copied full node_modules into dist/node_modules');
+    }
+  } catch (e) {}
 } catch (err) {
   console.error(
     'postbuild copy error:',
