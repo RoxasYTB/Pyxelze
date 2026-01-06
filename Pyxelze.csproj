@@ -44,4 +44,30 @@
                   Condition="Exists('$(ProjectDir)tools\roxify\dist')"
                   DestinationFiles="@(RoxifyDistFiles->'$(OutDir)tools\roxify\%(RecursiveDir)%(Filename)%(Extension)')" />
       </Target>
+      <Target Name="PublishRoxify" BeforeTargets="Publish">
+            <!-- Ensure the production release folder exists and is up-to-date -->
+            <Exec Command="call &quot;$(ProjectDir)make_release.cmd&quot;"
+                  WorkingDirectory="$(ProjectDir)" ContinueOnError="false" />
+
+            <!-- Copy rox.exe to the root of the publish directory so it's directly accessible -->
+            <PropertyGroup>
+                  <RoxExeSource>$(ProjectDir)release\roxify\rox.exe</RoxExeSource>
+                  <RoxExeDest>$(PublishDir)rox.exe</RoxExeDest>
+            </PropertyGroup>
+
+            <Message Importance="high"
+                  Text="Including rox.exe in publish: $(RoxExeSource) -> $(RoxExeDest)" />
+
+            <Copy SourceFiles="$(RoxExeSource)" DestinationFiles="$(RoxExeDest)"
+                  Condition="Exists('$(RoxExeSource)') And '$(PublishDir)' != ''" />
+
+            <!-- Also include the whole release folder under the published app for completeness -->
+            <ItemGroup>
+                  <RoxifyReleaseFiles Include="$(ProjectDir)release\roxify\**\*.*"
+                        Condition="Exists('$(ProjectDir)release\roxify')" />
+            </ItemGroup>
+            <Copy SourceFiles="@(RoxifyReleaseFiles)"
+                  DestinationFiles="@(RoxifyReleaseFiles->'$(PublishDir)roxify\%(RecursiveDir)%(Filename)%(Extension)')"
+                  Condition="Exists('$(ProjectDir)release\roxify') And '$(PublishDir)' != ''" />
+      </Target>
 </Project>
