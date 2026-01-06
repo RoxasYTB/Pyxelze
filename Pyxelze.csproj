@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+      <PropertyGroup>
+            <OutputType>WinExe</OutputType>
+            <TargetFramework>net7.0-windows</TargetFramework>
+            <UseWindowsForms>true</UseWindowsForms>
+            <ImplicitUsings>enable</ImplicitUsings>
+            <Nullable>enable</Nullable>
+            <ApplicationIcon>appIcon.ico</ApplicationIcon>
+            <!-- Disable SDK-generated assembly attributes to avoid duplicate attribute issues -->
+            <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+            <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
+            <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
+            <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
+            <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
+            <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
+            <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
+            <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
+            <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+
+      </PropertyGroup>
+
+      <ItemGroup>
+            <None Update="appIcon.ico">
+                  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            </None>
+      </ItemGroup>
+      <ItemGroup>
+            <!-- Exclude test project sources from main project wildcard includes -->
+            <Compile Remove="dnd_test\**\*.cs" />
+      </ItemGroup>
+      <Target Name="BuildRoxifyCli" BeforeTargets="BeforeBuild">
+            <Exec Command="where node" IgnoreExitCode="true" />
+            <Exec Command="npm ci" WorkingDirectory="$(ProjectDir)tools\roxify"
+                  ContinueOnError="true" />
+            <Exec Command="npm run build:exe" WorkingDirectory="$(ProjectDir)tools\roxify"
+                  ContinueOnError="true" />
+            <Copy SourceFiles="$(ProjectDir)tools\roxify\dist\rox.exe"
+                  DestinationFolder="$(OutDir)tools"
+                  Condition="Exists('$(ProjectDir)tools\roxify\dist\rox.exe')" />
+      </Target>
+</Project>

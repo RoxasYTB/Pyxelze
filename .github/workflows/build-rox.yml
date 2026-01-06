@@ -1,0 +1,45 @@
+name: Build rox CLI (Windows)
+
+on:
+  push:
+    paths:
+      - 'tools/roxify/**'
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install deps
+        run: |
+          cd tools/roxify
+          npm ci
+
+      - name: Build rox.exe
+        run: |
+          cd tools/roxify
+          npm run build:exe
+
+      - name: Smoke test
+        run: |
+          cd tools/roxify/dist
+          .\rox.exe --version
+
+      - name: Print failure log if present
+        if: always()
+        run: |
+          powershell -Command "if (Test-Path 'tools/roxify/dist/failure.log') { Write-Host '=== failure.log ==='; Get-Content 'tools/roxify/dist/failure.log'; Write-Host '=== end failure.log ===' } else { Write-Host 'no failure.log' }"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rox-cli-windows
+          path: tools/roxify/dist
