@@ -41,21 +41,44 @@ if (!fs.existsSync(nodeExe)) fail('node.exe missing from install dir');
 if (!fs.existsSync(installRox))
   fail('install-rox.cmd missing from install dir');
 
-console.log('Installed files present. Running help check...');
-const help = spawnSync(roxExe, ['--help'], {
-  env: Object.assign({}, process.env, { PATH: '' }),
-  encoding: 'utf8',
-  windowsHide: true,
-});
-if (help.status !== 0) {
-  console.error('rox --help exited non-zero', help.status, help.signal);
-  console.error('stdout:', help.stdout);
-  console.error('stderr:', help.stderr);
-  fail('rox --help failed');
-}
-if (!help.stdout || help.stdout.length < 10) {
-  console.error('stdout too small:', help.stdout);
-  fail('rox --help produced no/too small output');
+console.log('Installed files present.');
+const testArchive = process.env.ROX_TEST_ARCHIVE;
+if (testArchive) {
+  console.log('Running list check for archive:', testArchive);
+  const res = spawnSync(roxCmd, ['list', testArchive], {
+    env: Object.assign({}, process.env, { PATH: '' }),
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (res.status !== 0) {
+    console.error('rox list exited non-zero', res.status, res.signal);
+    console.error('stdout:', res.stdout);
+    console.error('stderr:', res.stderr);
+    fail('rox list failed');
+  }
+  if (!res.stdout || !res.stdout.includes('Files in')) {
+    console.error('unexpected stdout for list:', res.stdout);
+    fail('rox list produced unexpected output');
+  }
+  console.log('List check passed');
+} else {
+  console.log('Running help check...');
+  const help = spawnSync(roxExe, ['--help'], {
+    env: Object.assign({}, process.env, { PATH: '' }),
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (help.status !== 0) {
+    console.error('rox --help exited non-zero', help.status, help.signal);
+    console.error('stdout:', help.stdout);
+    console.error('stderr:', help.stderr);
+    fail('rox --help failed');
+  }
+  if (!help.stdout || help.stdout.length < 10) {
+    console.error('stdout too small:', help.stdout);
+    fail('rox --help produced no/too small output');
+  }
+  console.log('Help check passed');
 }
 console.log('Acceptance test passed. Cleaning up...');
 try {
