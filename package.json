@@ -1,0 +1,24 @@
+{
+  "name": "rox",
+  "version": "0.0.0-local",
+  "bin": "index.js",
+  "dependencies": {
+    "roxify": "latest"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1",
+    "esbuild": "^0.18.11"
+  },
+  "scripts": {
+    "bundle:rox": "esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --external:sharp --external:@img/* --outfile=build/rox-bundle.cjs",
+    "build:exe": "npm run bundle:rox && npm run postbuild:exe && npx nexe@3.3.7 -i index.js -o dist/rox.exe --build --resource dist/** --resource build/**",
+    "postbuild:exe": "node ./scripts/postbuild.js"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/roxify/**/*",
+      "node_modules/sharp/vendor/**/*",
+      "node_modules/sharp/build/Release/**/*"
+    ]
+  }
+}
