@@ -8,7 +8,9 @@ function fail(msg) {
   process.exit(2);
 }
 
-const installer = process.env.ROX_INSTALLER || path.join(__dirname, '..', '..', '..', 'release', 'Pyxelze-Rox-Setup.exe');
+const installer =
+  process.env.ROX_INSTALLER ||
+  path.join(__dirname, '..', '..', '..', 'release', 'Pyxelze-Rox-Setup.exe');
 console.log('Using installer path:', installer);
 if (!fs.existsSync(installer)) {
   console.error('Installer not found at:', installer);
@@ -29,10 +31,12 @@ if (inst.status !== 0) {
 }
 
 const roxExe = path.join(installDir, 'rox.exe');
+const roxCmd = path.join(installDir, 'rox.cmd');
 const nodeExe = path.join(installDir, 'node.exe');
 const installRox = path.join(installDir, 'install-rox.cmd');
 
 if (!fs.existsSync(roxExe)) fail('rox.exe missing from install dir');
+if (!fs.existsSync(roxCmd)) fail('rox.cmd missing from install dir');
 if (!fs.existsSync(nodeExe)) fail('node.exe missing from install dir');
 if (!fs.existsSync(installRox))
   fail('install-rox.cmd missing from install dir');

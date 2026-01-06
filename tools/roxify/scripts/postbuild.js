@@ -64,6 +64,19 @@ try {
   }
 
   try {
+    const installerScript = path.join(root, 'install-rox.cmd');
+    if (fs.existsSync(installerScript)) {
+      fs.copyFileSync(installerScript, path.join(dist, 'install-rox.cmd'));
+      console.log('Copied install-rox.cmd into dist');
+    }
+    const roxCmdSrc = path.join(root, 'rox.cmd');
+    if (fs.existsSync(roxCmdSrc)) {
+      fs.copyFileSync(roxCmdSrc, path.join(dist, 'rox.cmd'));
+      console.log('Copied rox.cmd into dist');
+    }
+  } catch (e) {}
+
+  try {
     const cliWrapperPath = path.join(dist, 'roxify', 'dist', 'cli_wrapper.js');
     const wrapperContent = `import('./cli.js').then(mod => {
   try {
