@@ -830,9 +830,9 @@ var require_legacy = __commonJS({
 var require_shades_classic = __commonJS({
   "node_modules/cli-progress/presets/shades-classic.js"(exports, module2) {
     module2.exports = {
-      format: " {bar} {percentage}% | ETA: {eta}s | {value}/{total}",
-      barCompleteChar: "\u2588",
-      barIncompleteChar: "\u2591"
+      format: " {bar} {percentage}% | {step} | {elapsed}s",
+      barCompleteChar: "#",
+      barIncompleteChar: "-"
     };
   }
 });
@@ -841,7 +841,7 @@ var require_shades_classic = __commonJS({
 var require_shades_grey = __commonJS({
   "node_modules/cli-progress/presets/shades-grey.js"(exports, module2) {
     module2.exports = {
-      format: " \x1B[90m{bar}\x1B[0m {percentage}% | ETA: {eta}s | {value}/{total}",
+      format: " {bar} {percentage}% | {step} | {elapsed}s",
       barCompleteChar: "\u2588",
       barIncompleteChar: "\u2591"
     };
@@ -852,9 +852,7 @@ var require_shades_grey = __commonJS({
 var require_rect = __commonJS({
   "node_modules/cli-progress/presets/rect.js"(exports, module2) {
     module2.exports = {
-      format: " {bar}\u25A0 {percentage}% | ETA: {eta}s | {value}/{total}",
-      barCompleteChar: "\u25A0",
-      barIncompleteChar: " "
+      format: " {bar} {percentage}% | {step} | {elapsed}s"
     };
   }
 });

@@ -1,0 +1,248 @@
+Inno Setup 6 Command-Line Compiler
+Copyright (C) 1997-2025 Jordan Russell. All rights reserved.
+Portions Copyright (C) 2000-2025 Martijn Laan. All rights reserved.
+Portions Copyright (C) 2001-2004 Alex Yackimoff. All rights reserved.
+https://www.innosetup.com
+
+Compiler engine version: Inno Setup 6.6.1
+Non-commercial use only
+
+Preprocessing
+   Reading file: C:\Program Files (x86)\Inno Setup 6\ISPPBuiltins.iss
+Parsing [Setup] section, line 2
+Parsing [Setup] section, line 3
+Parsing [Setup] section, line 4
+Parsing [Setup] section, line 5
+Parsing [Setup] section, line 6
+Parsing [Setup] section, line 7
+Parsing [Setup] section, line 8
+Parsing [Setup] section, line 9
+Parsing [Setup] section, line 10
+Parsing [Setup] section, line 11
+Reading file (WizardImageFile)
+Reading file (WizardSmallImageFile)
+Preparing Setup program executable
+   Verification successful
+   Updating icons (Setup.e32)
+   Updating version info (Setup.e32)
+Determining language code pages
+Parsing [Languages] section, line 14
+   Reading file: C:\Program Files (x86)\Inno Setup 6\Default.isl
+   Messages in script file
+Reading default messages from Default.isl
+Parsing [Languages] section, line 14
+   Reading file: C:\Program Files (x86)\Inno Setup 6\Default.isl
+Parsing [LangOptions], [Messages], and [CustomMessages] sections
+   Messages in script file
+Reading [Code] section
+Parsing [Tasks] section, line 27
+Parsing [Icons] section, line 20
+Parsing [Icons] section, line 21
+Parsing [Files] section, line 17
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\appIcon.ico
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\exe_run.log
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\failure.log
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\install-rox.cmd
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\node.exe
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\Pyxelze.deps.json
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\Pyxelze.dll
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\Pyxelze.exe
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\Pyxelze.pdb
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\Pyxelze.runtimeconfig.json
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.cmd
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.cmd.err.txt
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.cmd.out.txt
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.err.txt
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.exe
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.out.txt
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\build\rox-bundle.cjs
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\build\Debug\zstd.node
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\build\Release\zstd.node
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\exe_run.log
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\failure.log
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\install-rox.cmd
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\node.exe
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\package.json
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.cmd
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.cmd.err.txt
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.cmd.out.txt
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.err.txt
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.exe
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.out.txt
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\build\rox-bundle.cjs
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\build\Debug\zstd.node
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\build\Release\zstd.node
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\cli.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\cli.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\cli.js.bak
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\cli_wrapper.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\index.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\index.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\minpng.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\minpng.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\pack.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\pack.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\constants.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\constants.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\crc.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\crc.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\decoder.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\decoder.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\encoder.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\encoder.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\errors.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\errors.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\helpers.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\helpers.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\inspection.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\inspection.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\optimization.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\optimization.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\reconstitution.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\reconstitution.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\types.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\types.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\zstd.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\zstd.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\package.json
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\cli.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\cli.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\cli.js.bak
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\cli_wrapper.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\index.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\index.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\minpng.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\minpng.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\pack.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\pack.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\constants.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\constants.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\crc.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\crc.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\decoder.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\decoder.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\encoder.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\encoder.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\errors.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\errors.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\helpers.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\helpers.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\inspection.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\inspection.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\optimization.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\optimization.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\reconstitution.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\reconstitution.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\types.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\types.js
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\zstd.d.ts
+   Reading version info: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\zstd.js
+Deleting Pyxelze-Setup.exe from output directory
+Creating setup files
+   Verification successful
+   Updating icons (Setup.exe)
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\appIcon.ico
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\exe_run.log
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\failure.log
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\install-rox.cmd
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\node.exe   (18.18.1.0)
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\Pyxelze.deps.json
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\Pyxelze.dll   (0.0.0.0)
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\Pyxelze.exe   (0.0.0.0)
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\Pyxelze.pdb
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\Pyxelze.runtimeconfig.json
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.cmd
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.cmd.err.txt
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.cmd.out.txt
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.err.txt
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.exe   (18.5.0.0)
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\rox.out.txt
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\build\rox-bundle.cjs
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\build\Debug\zstd.node
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\build\Release\zstd.node
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\exe_run.log
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\failure.log
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\install-rox.cmd
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\node.exe   (18.18.1.0)
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\package.json
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.cmd
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.cmd.err.txt
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.cmd.out.txt
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.err.txt
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.exe   (18.5.0.0)
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\rox.out.txt
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\build\rox-bundle.cjs
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\build\Debug\zstd.node
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\build\Release\zstd.node
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\cli.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\cli.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\cli.js.bak
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\cli_wrapper.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\index.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\index.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\minpng.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\minpng.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\pack.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\pack.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\constants.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\constants.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\crc.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\crc.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\decoder.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\decoder.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\encoder.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\encoder.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\errors.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\errors.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\helpers.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\helpers.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\inspection.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\inspection.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\optimization.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\optimization.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\reconstitution.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\reconstitution.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\types.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\types.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\zstd.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\dist\utils\zstd.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\package.json
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\cli.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\cli.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\cli.js.bak
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\cli_wrapper.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\index.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\index.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\minpng.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\minpng.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\pack.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\pack.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\constants.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\constants.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\crc.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\crc.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\decoder.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\decoder.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\encoder.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\encoder.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\errors.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\errors.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\helpers.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\helpers.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\inspection.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\inspection.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\optimization.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\optimization.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\reconstitution.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\reconstitution.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\types.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\types.js
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\zstd.d.ts
+   Compressing: d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\\..\production\roxify\roxify\dist\utils\zstd.js
+   Compressing Setup program executable
+   Updating version info (Setup.exe)
+   Updating manifest (Setup.exe)
+
+
+Successful compile (62,219 sec). Resulting Setup program filename is:
+d:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\release\Pyxelze-Setup.exe

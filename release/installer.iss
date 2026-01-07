@@ -14,7 +14,7 @@ PrivilegesRequired=lowest
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "{#ProjectPath}\production\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs
+Source: "{#ProjectPath}\production\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs; Excludes: "\node_modules,\node_modules\*,\roxify\node_modules,\roxify\node_modules\*"
 
 [Icons]
 Name: "{autoprograms}\Pyxelze"; Filename: "{app}\Pyxelze.exe"
