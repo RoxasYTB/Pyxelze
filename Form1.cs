@@ -141,10 +141,11 @@ namespace Pyxelze
             listView.ListViewItemSorter = new ListViewFileSorter(() => sortColumn, () => sortOrder);
             listView.Sorting = sortOrder;
 
-            listView.ContextMenuStrip = contextMenu;
-
             contextMenu = new ContextMenuStrip();
-            contextMenu.Items.Add("Extraire ici", null, (s, e) => ExtractSelected());
+            contextMenu.Items.Add("Ouvrir", null, (s, e) => ListView_DoubleClick(s, e));
+            contextMenu.Items.Add(new ToolStripSeparator());
+            contextMenu.Items.Add("Extraire vers...", null, (s, e) => ExtractSelected());
+            contextMenu.Items.Add("Extraire ici", null, (s, e) => ExtractToCurrentLocation());
             listView.ContextMenuStrip = contextMenu;
 
 
@@ -222,6 +223,11 @@ namespace Pyxelze
             allFiles.Clear();
             currentPath = "";
 
+            statusProgressBar.Visible = true;
+            statusLabelProgress.Visible = true;
+            statusLabelProgress.Text = "Chargement...";
+            Application.DoEvents();
+
             try
             {
                 var psi = RoxRunner.CreateRoxProcess($"list \"{path}\"");
@@ -250,6 +256,11 @@ test_oom_data/file_1.png (1024 bytes)
 images/vacances.jpg (5000 bytes)
 readme.txt (100 bytes)
 ");
+            }
+            finally
+            {
+                statusLabelProgress.Visible = false;
+                statusProgressBar.Visible = false;
             }
 
             ExtractFullArchive();
@@ -707,9 +718,42 @@ readme.txt (100 bytes)
                             }
                         }
                     }
-                    MessageBox.Show("Mise en cache terminée !");
+                    MessageBox.Show("Extraction terminée !");
                 }
             }
+        }
+
+        private void ExtractToCurrentLocation()
+        {
+            if (listView.SelectedItems.Count == 0) return;
+
+            string destPath = Path.GetDirectoryName(currentArchive) ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+            foreach (ListViewItem item in listView.SelectedItems)
+            {
+                if (item.Tag is VirtualFile vf)
+                {
+                    if (!vf.IsFolder)
+                    {
+                        string dest = Path.Combine(destPath, vf.Name);
+                        ExtractFile(vf.FullPath, dest);
+                    }
+                    else
+                    {
+                        string destFolder = Path.Combine(destPath, vf.Name);
+                        Directory.CreateDirectory(destFolder);
+                        var filesToExtract = allFiles.Where(f => !f.IsFolder && f.FullPath.StartsWith(vf.FullPath + "/")).ToList();
+                        foreach (var f in filesToExtract)
+                        {
+                            string rel = f.FullPath.Substring(vf.FullPath.Length).TrimStart('/');
+                            string dest = Path.Combine(destFolder, rel);
+                            Directory.CreateDirectory(Path.GetDirectoryName(dest) ?? destFolder);
+                            ExtractFile(f.FullPath, dest);
+                        }
+                    }
+                }
+            }
+            MessageBox.Show("Extraction terminée !");
         }
 
         public bool ExtractFileSingle(string internalPath, string outputPath)
@@ -753,7 +797,7 @@ readme.txt (100 bytes)
             {
                 string exePath = Application.ExecutablePath;
 
-                using (var key = Registry.ClassesRoot.CreateSubKey(@"*\shell\Pyxelze"))
+                using (var key = Registry.ClassesRoot.CreateSubKey(@"*\shell\PyxelzeOpen"))
                 {
                     key.SetValue("", "Ouvrir avec Pyxelze");
                     key.SetValue("Icon", exePath);
@@ -764,7 +808,29 @@ readme.txt (100 bytes)
                     }
                 }
 
-                MessageBox.Show("Intégration réussie ! Faites un clic droit sur un fichier pour voir l'option.");
+                using (var dirKey = Registry.ClassesRoot.CreateSubKey(@"Directory\shell\PyxelzeExtract"))
+                {
+                    dirKey.SetValue("", "Extraire vers dossier");
+                    dirKey.SetValue("Icon", exePath);
+
+                    using (var commandKey = dirKey.CreateSubKey("command"))
+                    {
+                        commandKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+                    }
+                }
+
+                using (var dirKey2 = Registry.ClassesRoot.CreateSubKey(@"Directory\shell\PyxelzeCompress"))
+                {
+                    dirKey2.SetValue("", "Compresser vers archive.png");
+                    dirKey2.SetValue("Icon", exePath);
+
+                    using (var commandKey = dirKey2.CreateSubKey("command"))
+                    {
+                        commandKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                    }
+                }
+
+                MessageBox.Show("Intégration réussie ! Faites un clic droit sur un fichier ou dossier pour voir les options.");
             }
             catch (UnauthorizedAccessException)
             {
