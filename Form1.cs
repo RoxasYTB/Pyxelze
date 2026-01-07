@@ -370,13 +370,20 @@ readme.txt (100 bytes)
         {
             if (string.IsNullOrEmpty(currentArchive)) return;
 
-            archiveExtractedRoot = Path.Combine(Path.GetTempPath(), "pyxelze_archive_" + Guid.NewGuid().ToString());
+            string cacheKey = Path.GetFileName(currentArchive) + "_" + new FileInfo(currentArchive).LastWriteTimeUtc.Ticks;
+            archiveExtractedRoot = Path.Combine(Path.GetTempPath(), "pyxelze_cache_" + cacheKey.GetHashCode().ToString("X8"));
+
+            if (Directory.Exists(archiveExtractedRoot))
+            {
+                statusLabelProgress.Visible = true;
+                statusLabelProgress.Text = "Cache déjà présent";
+                Task.Delay(1000).ContinueWith(_ => this.Invoke((Action)(() => statusLabelProgress.Visible = false)));
+                return;
+            }
+
             Directory.CreateDirectory(archiveExtractedRoot);
 
-            statusProgressBar.Visible = true;
             statusLabelProgress.Visible = true;
-            statusProgressBar.Value = 0;
-            statusProgressBar.Maximum = 100;
             statusLabelProgress.Text = "Mise en cache en cours...";
             Application.DoEvents();
 
@@ -401,7 +408,6 @@ readme.txt (100 bytes)
                                 statusLabelProgress.Text = "Erreur mise en cache";
                                 Log("Mise en cache failed: {0}", p.StandardError.ReadToEnd());
                             }
-                            statusProgressBar.Visible = false;
                             Task.Delay(2000).ContinueWith(_ => this.Invoke((Action)(() => statusLabelProgress.Visible = false)));
                         }));
                     }
@@ -411,7 +417,6 @@ readme.txt (100 bytes)
                     this.Invoke((Action)(() =>
                     {
                         statusLabelProgress.Text = "Erreur: " + ex.Message;
-                        statusProgressBar.Visible = false;
                         Log("ExtractFullArchive exception: {0}", ex.Message);
                     }));
                 }
@@ -821,33 +826,50 @@ readme.txt (100 bytes)
                 // Try to create keys directly
                 try
                 {
-                    using (var key = Registry.ClassesRoot.CreateSubKey(@"*\\shell\\PyxelzeOpen"))
+                    using (var key = Registry.ClassesRoot.CreateSubKey(@"*\\shell\\Pyxelze"))
                     {
-                        key.SetValue("", "Ouvrir avec Pyxelze");
+                        key.SetValue("", "Pyxelze");
                         key.SetValue("Icon", exePath);
-                        using (var commandKey = key.CreateSubKey("command"))
+                        key.SetValue("SubCommands", "");
+                        using (var shellKey = key.CreateSubKey(@"shell"))
                         {
-                            commandKey.SetValue("", $"\"{exePath}\" \"%1\"");
+                            using (var openKey = shellKey.CreateSubKey("open"))
+                            {
+                                openKey.SetValue("", "Ouvrir l'archive");
+                                openKey.SetValue("Icon", exePath);
+                                using (var cmdKey = openKey.CreateSubKey("command"))
+                                {
+                                    cmdKey.SetValue("", $"\"{exePath}\" \"%1\"");
+                                }
+                            }
+                            using (var decodeKey = shellKey.CreateSubKey("decode"))
+                            {
+                                decodeKey.SetValue("", "Décoder l'archive ROX");
+                                decodeKey.SetValue("Icon", exePath);
+                                using (var cmdKey = decodeKey.CreateSubKey("command"))
+                                {
+                                    cmdKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+                                }
+                            }
                         }
                     }
 
-                    using (var dirKey = Registry.ClassesRoot.CreateSubKey(@"Directory\\shell\\PyxelzeExtract"))
+                    using (var dirKey = Registry.ClassesRoot.CreateSubKey(@"Directory\\shell\\Pyxelze"))
                     {
-                        dirKey.SetValue("", "Extraire vers dossier");
+                        dirKey.SetValue("", "Pyxelze");
                         dirKey.SetValue("Icon", exePath);
-                        using (var commandKey = dirKey.CreateSubKey("command"))
+                        dirKey.SetValue("SubCommands", "");
+                        using (var shellKey = dirKey.CreateSubKey(@"shell"))
                         {
-                            commandKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
-                        }
-                    }
-
-                    using (var dirKey2 = Registry.ClassesRoot.CreateSubKey(@"Directory\\shell\\PyxelzeCompress"))
-                    {
-                        dirKey2.SetValue("", "Compresser vers archive.png");
-                        dirKey2.SetValue("Icon", exePath);
-                        using (var commandKey = dirKey2.CreateSubKey("command"))
-                        {
-                            commandKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                            using (var encodeKey = shellKey.CreateSubKey("encode"))
+                            {
+                                encodeKey.SetValue("", "Encoder en archive ROX");
+                                encodeKey.SetValue("Icon", exePath);
+                                using (var cmdKey = encodeKey.CreateSubKey("command"))
+                                {
+                                    cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                                }
+                            }
                         }
                     }
 
@@ -884,9 +906,8 @@ readme.txt (100 bytes)
                 // Try direct deletion
                 try
                 {
-                    Registry.ClassesRoot.DeleteSubKeyTree(@"*\\shell\\PyxelzeOpen", false);
-                    Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\\shell\\PyxelzeExtract", false);
-                    Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\\shell\\PyxelzeCompress", false);
+                    Registry.ClassesRoot.DeleteSubKeyTree(@"*\\shell\\Pyxelze", false);
+                    Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\\shell\\Pyxelze", false);
                     MessageBox.Show("Intégration supprimée.");
                     return;
                 }
@@ -915,9 +936,8 @@ readme.txt (100 bytes)
         {
             try
             {
-                using (var k1 = Registry.ClassesRoot.OpenSubKey(@"*\\shell\\PyxelzeOpen")) if (k1 != null) return true;
-                using (var k2 = Registry.ClassesRoot.OpenSubKey(@"Directory\\shell\\PyxelzeExtract")) if (k2 != null) return true;
-                using (var k3 = Registry.ClassesRoot.OpenSubKey(@"Directory\\shell\\PyxelzeCompress")) if (k3 != null) return true;
+                using (var k1 = Registry.ClassesRoot.OpenSubKey(@"*\\shell\\Pyxelze")) if (k1 != null) return true;
+                using (var k2 = Registry.ClassesRoot.OpenSubKey(@"Directory\\shell\\Pyxelze")) if (k2 != null) return true;
             }
             catch { }
             return false;

@@ -54,33 +54,50 @@ namespace Pyxelze
             {
                 string exePath = Application.ExecutablePath;
 
-                using (var key = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(@"*\\shell\\PyxelzeOpen"))
+                using (var key = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(@"*\shell\Pyxelze"))
                 {
-                    key.SetValue("", "Ouvrir avec Pyxelze");
+                    key.SetValue("", "Pyxelze");
                     key.SetValue("Icon", exePath);
-                    using (var commandKey = key.CreateSubKey("command"))
+                    key.SetValue("SubCommands", "");
+                    using (var shellKey = key.CreateSubKey(@"shell"))
                     {
-                        commandKey.SetValue("", $"\\"{exePath}\\" \\\"%1\\\"");
+                        using (var openKey = shellKey.CreateSubKey("open"))
+                        {
+                            openKey.SetValue("", "Ouvrir l'archive");
+                            openKey.SetValue("Icon", exePath);
+                            using (var cmdKey = openKey.CreateSubKey("command"))
+                            {
+                                cmdKey.SetValue("", $"\"{exePath}\" \"%1\"");
+                            }
+                        }
+                        using (var decodeKey = shellKey.CreateSubKey("decode"))
+                        {
+                            decodeKey.SetValue("", "Décoder l'archive ROX");
+                            decodeKey.SetValue("Icon", exePath);
+                            using (var cmdKey = decodeKey.CreateSubKey("command"))
+                            {
+                                cmdKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+                            }
+                        }
                     }
                 }
 
-                using (var dirKey = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(@"Directory\\shell\\PyxelzeExtract"))
+                using (var dirKey = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(@"Directory\shell\Pyxelze"))
                 {
-                    dirKey.SetValue("", "Extraire vers dossier");
+                    dirKey.SetValue("", "Pyxelze");
                     dirKey.SetValue("Icon", exePath);
-                    using (var commandKey = dirKey.CreateSubKey("command"))
+                    dirKey.SetValue("SubCommands", "");
+                    using (var shellKey = dirKey.CreateSubKey(@"shell"))
                     {
-                        commandKey.SetValue("", $"\\"{exePath}\\" extract \\\"%1\\\"");
-                    }
-                }
-
-                using (var dirKey2 = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(@"Directory\\shell\\PyxelzeCompress"))
-                {
-                    dirKey2.SetValue("", "Compresser vers archive.png");
-                    dirKey2.SetValue("Icon", exePath);
-                    using (var commandKey = dirKey2.CreateSubKey("command"))
-                    {
-                        commandKey.SetValue("", $"\\"{exePath}\\" compress \\\"%1\\\"");
+                        using (var encodeKey = shellKey.CreateSubKey("encode"))
+                        {
+                            encodeKey.SetValue("", "Encoder en archive ROX");
+                            encodeKey.SetValue("Icon", exePath);
+                            using (var cmdKey = encodeKey.CreateSubKey("command"))
+                            {
+                                cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                            }
+                        }
                     }
                 }
 
@@ -96,9 +113,8 @@ namespace Pyxelze
         {
             try
             {
-                Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree(@"*\\shell\\PyxelzeOpen", false);
-                Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\\shell\\PyxelzeExtract", false);
-                Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\\shell\\PyxelzeCompress", false);
+                Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree(@"*\shell\Pyxelze", false);
+                Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\shell\Pyxelze", false);
 
                 MessageBox.Show("Intégration au menu contextuel supprimée.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
