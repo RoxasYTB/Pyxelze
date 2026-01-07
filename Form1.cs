@@ -59,6 +59,26 @@ namespace Pyxelze
             {
                 LoadArchive(archivePath);
             }
+
+            // First-run: propose d'activer l'intégration Explorateur si elle n'est pas installée
+            try
+            {
+                using (var userKey = Registry.CurrentUser.CreateSubKey("Software\\Pyxelze"))
+                {
+                    var disabled = userKey.GetValue("IntegrationPromptDisabled");
+                    if (disabled == null || (int)disabled == 0)
+                    {
+                        bool installed = IsContextMenuInstalled();
+                        if (!installed)
+                        {
+                            var res = MessageBox.Show("Voulez-vous activer l'intégration Explorateur (clic droit) maintenant?\nOui = activer, Non = ne plus demander, Annuler = me rappeler plus tard.", "Intégration Explorateur", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                            if (res == DialogResult.Yes) RegisterShellExtension();
+                            else if (res == DialogResult.No) userKey.SetValue("IntegrationPromptDisabled", 1, RegistryValueKind.DWord);
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
         private void SetupInterface()
@@ -80,7 +100,8 @@ namespace Pyxelze
             menuStrip.Items.Add(fileMenu);
 
             var toolsMenu = new ToolStripMenuItem("Outils");
-            toolsMenu.DropDownItems.Add("Installer l'intégration Explorateur (Admin)", null, (s, e) => RegisterShellExtension());
+            toolsMenu.DropDownItems.Add("Activer intégration Explorateur (Admin)", null, (s, e) => RegisterShellExtension());
+            toolsMenu.DropDownItems.Add("Désactiver intégration Explorateur (Admin)", null, (s, e) => UnregisterShellExtension());
             toolsMenu.DropDownItems.Add("Ouvrir log DnD", null, (s, e) =>
             {
                 try
@@ -797,49 +818,109 @@ readme.txt (100 bytes)
             {
                 string exePath = Application.ExecutablePath;
 
-                using (var key = Registry.ClassesRoot.CreateSubKey(@"*\shell\PyxelzeOpen"))
+                // Try to create keys directly
+                try
                 {
-                    key.SetValue("", "Ouvrir avec Pyxelze");
-                    key.SetValue("Icon", exePath);
-
-                    using (var commandKey = key.CreateSubKey("command"))
+                    using (var key = Registry.ClassesRoot.CreateSubKey(@"*\\shell\\PyxelzeOpen"))
                     {
-                        commandKey.SetValue("", $"\"{exePath}\" \"%1\"");
+                        key.SetValue("", "Ouvrir avec Pyxelze");
+                        key.SetValue("Icon", exePath);
+                        using (var commandKey = key.CreateSubKey("command"))
+                        {
+                            commandKey.SetValue("", $"\"{exePath}\" \"%1\"");
+                        }
+                    }
+
+                    using (var dirKey = Registry.ClassesRoot.CreateSubKey(@"Directory\\shell\\PyxelzeExtract"))
+                    {
+                        dirKey.SetValue("", "Extraire vers dossier");
+                        dirKey.SetValue("Icon", exePath);
+                        using (var commandKey = dirKey.CreateSubKey("command"))
+                        {
+                            commandKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+                        }
+                    }
+
+                    using (var dirKey2 = Registry.ClassesRoot.CreateSubKey(@"Directory\\shell\\PyxelzeCompress"))
+                    {
+                        dirKey2.SetValue("", "Compresser vers archive.png");
+                        dirKey2.SetValue("Icon", exePath);
+                        using (var commandKey = dirKey2.CreateSubKey("command"))
+                        {
+                            commandKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                        }
+                    }
+
+                    MessageBox.Show("Intégration réussie ! Faites un clic droit sur un fichier ou dossier pour voir les options.");
+                    return;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    var res = MessageBox.Show("L'installation du menu contextuel nécessite des droits administrateur. Voulez-vous relancer l'application avec élévation pour installer l'intégration ?", "Élévation requise", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (res == DialogResult.Yes)
+                    {
+                        try
+                        {
+                            var psi = new ProcessStartInfo(Application.ExecutablePath, "register-contextmenu") { UseShellExecute = true, Verb = "runas" };
+                            var proc = Process.Start(psi);
+                            proc?.WaitForExit();
+                        }
+                        catch (Exception ex) { MessageBox.Show("Impossible de relancer en mode administrateur: " + ex.Message); }
                     }
                 }
 
-                using (var dirKey = Registry.ClassesRoot.CreateSubKey(@"Directory\shell\PyxelzeExtract"))
-                {
-                    dirKey.SetValue("", "Extraire vers dossier");
-                    dirKey.SetValue("Icon", exePath);
-
-                    using (var commandKey = dirKey.CreateSubKey("command"))
-                    {
-                        commandKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
-                    }
-                }
-
-                using (var dirKey2 = Registry.ClassesRoot.CreateSubKey(@"Directory\shell\PyxelzeCompress"))
-                {
-                    dirKey2.SetValue("", "Compresser vers archive.png");
-                    dirKey2.SetValue("Icon", exePath);
-
-                    using (var commandKey = dirKey2.CreateSubKey("command"))
-                    {
-                        commandKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
-                    }
-                }
-
-                MessageBox.Show("Intégration réussie ! Faites un clic droit sur un fichier ou dossier pour voir les options.");
-            }
-            catch (UnauthorizedAccessException)
-            {
-                MessageBox.Show("Veuillez lancer l'application en tant qu'administrateur pour effectuer cette action.");
+                MessageBox.Show("Impossible d'installer l'intégration.");
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Erreur: " + ex.Message);
             }
+        }
+
+        private void UnregisterShellExtension()
+        {
+            try
+            {
+                // Try direct deletion
+                try
+                {
+                    Registry.ClassesRoot.DeleteSubKeyTree(@"*\\shell\\PyxelzeOpen", false);
+                    Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\\shell\\PyxelzeExtract", false);
+                    Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\\shell\\PyxelzeCompress", false);
+                    MessageBox.Show("Intégration supprimée.");
+                    return;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    var res = MessageBox.Show("La suppression nécessite des droits administrateur. Voulez-vous relancer l'application avec élévation pour supprimer l'intégration ?", "Élévation requise", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (res == DialogResult.Yes)
+                    {
+                        try
+                        {
+                            var psi = new ProcessStartInfo(Application.ExecutablePath, "unregister-contextmenu") { UseShellExecute = true, Verb = "runas" };
+                            var proc = Process.Start(psi);
+                            proc?.WaitForExit();
+                        }
+                        catch (Exception ex) { MessageBox.Show("Impossible de relancer en mode administrateur: " + ex.Message); }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erreur: " + ex.Message);
+            }
+        }
+
+        private bool IsContextMenuInstalled()
+        {
+            try
+            {
+                using (var k1 = Registry.ClassesRoot.OpenSubKey(@"*\\shell\\PyxelzeOpen")) if (k1 != null) return true;
+                using (var k2 = Registry.ClassesRoot.OpenSubKey(@"Directory\\shell\\PyxelzeExtract")) if (k2 != null) return true;
+                using (var k3 = Registry.ClassesRoot.OpenSubKey(@"Directory\\shell\\PyxelzeCompress")) if (k3 != null) return true;
+            }
+            catch { }
+            return false;
         }
 
         private string FormatSize(long bytes)
