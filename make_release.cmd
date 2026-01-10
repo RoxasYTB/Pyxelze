@@ -14,5 +14,7 @@ if exist "%DST_DIR%" rmdir /s /q "%DST_DIR%"
 mkdir "%DST_DIR%"
 
 xcopy /e /y "%SRC_DIR%\*" "%DST_DIR%\" >nul
+if exist "%DST_DIR%\node_modules" rmdir /s /q "%DST_DIR%\node_modules"
+if exist "%DST_DIR%\roxify" rmdir /s /q "%DST_DIR%\roxify"
 echo Release package created at %DST_DIR%
 endlocal

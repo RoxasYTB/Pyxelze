@@ -10,8 +10,8 @@
     "esbuild": "^0.18.11"
   },
   "scripts": {
-    "bundle:rox": "esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --external:sharp --external:@img/* --outfile=build/rox-bundle.cjs",
-    "build:exe": "node ./node_modules/esbuild/bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --external:sharp --external:@img/* --outfile=build/rox-bundle.cjs && node ./scripts/postbuild.js",
+    "bundle:rox": "node ./node_modules/esbuild/bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --external:@img/* --outfile=build/rox-bundle.cjs",
+    "build:exe": "node ./node_modules/esbuild/bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --external:@img/* --outfile=build/rox-bundle.cjs && node ./scripts/postbuild.js",
     "postinstall": "node ./scripts/fix-cli-progress-presets.js",
     "postbuild:exe": "node ./scripts/postbuild.js"
   },
