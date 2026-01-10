@@ -56,14 +56,15 @@ namespace Pyxelze
 
                 using (var key = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(@"*\shell\Pyxelze"))
                 {
-                    key.SetValue("", "Pyxelze");
+                    key.SetValue("", "");
+                    key.SetValue("MUIVerb", "Pyxelze");
                     key.SetValue("Icon", exePath);
-                    key.SetValue("SubCommands", "");
+                    key.SetValue("SubCommands", "open;decode");
                     using (var shellKey = key.CreateSubKey(@"shell"))
                     {
                         using (var openKey = shellKey.CreateSubKey("open"))
                         {
-                            openKey.SetValue("", "Ouvrir l'archive");
+                            openKey.SetValue("MUIVerb", "Ouvrir l'archive");
                             openKey.SetValue("Icon", exePath);
                             using (var cmdKey = openKey.CreateSubKey("command"))
                             {
@@ -72,7 +73,7 @@ namespace Pyxelze
                         }
                         using (var decodeKey = shellKey.CreateSubKey("decode"))
                         {
-                            decodeKey.SetValue("", "Décoder l'archive ROX");
+                            decodeKey.SetValue("MUIVerb", "Décoder l'archive ROX");
                             decodeKey.SetValue("Icon", exePath);
                             using (var cmdKey = decodeKey.CreateSubKey("command"))
                             {
@@ -84,14 +85,15 @@ namespace Pyxelze
 
                 using (var dirKey = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(@"Directory\shell\Pyxelze"))
                 {
-                    dirKey.SetValue("", "Pyxelze");
+                    dirKey.SetValue("", "");
+                    dirKey.SetValue("MUIVerb", "Pyxelze");
                     dirKey.SetValue("Icon", exePath);
-                    dirKey.SetValue("SubCommands", "");
+                    dirKey.SetValue("SubCommands", "encode");
                     using (var shellKey = dirKey.CreateSubKey(@"shell"))
                     {
                         using (var encodeKey = shellKey.CreateSubKey("encode"))
                         {
-                            encodeKey.SetValue("", "Encoder en archive ROX");
+                            encodeKey.SetValue("MUIVerb", "Encoder en archive ROX");
                             encodeKey.SetValue("Icon", exePath);
                             using (var cmdKey = encodeKey.CreateSubKey("command"))
                             {
