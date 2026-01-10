@@ -29,11 +29,7 @@ process.on('unhandledRejection', (reason) => {
 (async () => {
   try {
     let args = process.argv.slice(2);
-    const isPkgSnapshot =
-      typeof process.pkg !== 'undefined' ||
-      (process.argv.length > 1 &&
-        typeof process.argv[1] === 'string' &&
-        process.argv[1].toLowerCase().includes('\\snapshot\\'));
+    const isPkgSnapshot = false;
     let mod;
 
     try {
@@ -76,6 +72,8 @@ process.on('unhandledRejection', (reason) => {
               'Fallback spawn of local bundle failed:',
               spawnErr && spawnErr.stack ? spawnErr.stack : spawnErr,
             );
+            process.exitCode = 1;
+            return;
           }
         }
       }

@@ -6,9 +6,9 @@ set SCRIPT_DIR=%~dp0
 
 rem Prefer a local node.exe in dist (shipped with artifact), then one next to script, otherwise use system node
 if exist "%SCRIPT_DIR%dist\node.exe" (
-  set NODE_EXE="%SCRIPT_DIR%dist\node.exe"
+  set "NODE_EXE=%SCRIPT_DIR%dist\node.exe"
 ) else if exist "%SCRIPT_DIR%node.exe" (
-  set NODE_EXE="%SCRIPT_DIR%node.exe"
+  set "NODE_EXE=%SCRIPT_DIR%node.exe"
 ) else (
   for %%i in (node.exe) do set NODE_EXE=%%~$PATH:i
 )

@@ -1090,8 +1090,4957 @@ var require_png_chunks_extract = __commonJS({
   }
 });
 
-// node_modules/@mongodb-js/zstd/lib/index.js
+// node_modules/sharp/lib/is.js
+var require_is = __commonJS({
+  "node_modules/sharp/lib/is.js"(exports, module2) {
+    var defined = (val) => typeof val !== "undefined" && val !== null;
+    var object = (val) => typeof val === "object";
+    var plainObject = (val) => Object.prototype.toString.call(val) === "[object Object]";
+    var fn = (val) => typeof val === "function";
+    var bool = (val) => typeof val === "boolean";
+    var buffer = (val) => val instanceof Buffer;
+    var typedArray = (val) => {
+      if (defined(val)) {
+        switch (val.constructor) {
+          case Uint8Array:
+          case Uint8ClampedArray:
+          case Int8Array:
+          case Uint16Array:
+          case Int16Array:
+          case Uint32Array:
+          case Int32Array:
+          case Float32Array:
+          case Float64Array:
+            return true;
+        }
+      }
+      return false;
+    };
+    var arrayBuffer = (val) => val instanceof ArrayBuffer;
+    var string = (val) => typeof val === "string" && val.length > 0;
+    var number = (val) => typeof val === "number" && !Number.isNaN(val);
+    var integer = (val) => Number.isInteger(val);
+    var inRange = (val, min, max2) => val >= min && val <= max2;
+    var inArray = (val, list) => list.includes(val);
+    var invalidParameterError = (name, expected, actual) => new Error(
+      `Expected ${expected} for ${name} but received ${actual} of type ${typeof actual}`
+    );
+    var nativeError = (native, context) => {
+      context.message = native.message;
+      return context;
+    };
+    module2.exports = {
+      defined,
+      object,
+      plainObject,
+      fn,
+      bool,
+      buffer,
+      typedArray,
+      arrayBuffer,
+      string,
+      number,
+      integer,
+      inRange,
+      inArray,
+      invalidParameterError,
+      nativeError
+    };
+  }
+});
+
+// node_modules/detect-libc/lib/process.js
+var require_process = __commonJS({
+  "node_modules/detect-libc/lib/process.js"(exports, module2) {
+    "use strict";
+    var isLinux = () => process.platform === "linux";
+    var report = null;
+    var getReport = () => {
+      if (!report) {
+        if (isLinux() && process.report) {
+          const orig = process.report.excludeNetwork;
+          process.report.excludeNetwork = true;
+          report = process.report.getReport();
+          process.report.excludeNetwork = orig;
+        } else {
+          report = {};
+        }
+      }
+      return report;
+    };
+    module2.exports = { isLinux, getReport };
+  }
+});
+
+// node_modules/detect-libc/lib/filesystem.js
+var require_filesystem = __commonJS({
+  "node_modules/detect-libc/lib/filesystem.js"(exports, module2) {
+    "use strict";
+    var fs = require("fs");
+    var LDD_PATH = "/usr/bin/ldd";
+    var SELF_PATH = "/proc/self/exe";
+    var MAX_LENGTH = 2048;
+    var readFileSync5 = (path) => {
+      const fd2 = fs.openSync(path, "r");
+      const buffer = Buffer.alloc(MAX_LENGTH);
+      const bytesRead = fs.readSync(fd2, buffer, 0, MAX_LENGTH, 0);
+      fs.close(fd2, () => {
+      });
+      return buffer.subarray(0, bytesRead);
+    };
+    var readFile = (path) => new Promise((resolve3, reject) => {
+      fs.open(path, "r", (err2, fd2) => {
+        if (err2) {
+          reject(err2);
+        } else {
+          const buffer = Buffer.alloc(MAX_LENGTH);
+          fs.read(fd2, buffer, 0, MAX_LENGTH, 0, (_, bytesRead) => {
+            resolve3(buffer.subarray(0, bytesRead));
+            fs.close(fd2, () => {
+            });
+          });
+        }
+      });
+    });
+    module2.exports = {
+      LDD_PATH,
+      SELF_PATH,
+      readFileSync: readFileSync5,
+      readFile
+    };
+  }
+});
+
+// node_modules/detect-libc/lib/elf.js
+var require_elf = __commonJS({
+  "node_modules/detect-libc/lib/elf.js"(exports, module2) {
+    "use strict";
+    var interpreterPath = (elf) => {
+      if (elf.length < 64) {
+        return null;
+      }
+      if (elf.readUInt32BE(0) !== 2135247942) {
+        return null;
+      }
+      if (elf.readUInt8(4) !== 2) {
+        return null;
+      }
+      if (elf.readUInt8(5) !== 1) {
+        return null;
+      }
+      const offset = elf.readUInt32LE(32);
+      const size = elf.readUInt16LE(54);
+      const count = elf.readUInt16LE(56);
+      for (let i = 0; i < count; i++) {
+        const headerOffset = offset + i * size;
+        const type = elf.readUInt32LE(headerOffset);
+        if (type === 3) {
+          const fileOffset = elf.readUInt32LE(headerOffset + 8);
+          const fileSize = elf.readUInt32LE(headerOffset + 32);
+          return elf.subarray(fileOffset, fileOffset + fileSize).toString().replace(/\0.*$/g, "");
+        }
+      }
+      return null;
+    };
+    module2.exports = {
+      interpreterPath
+    };
+  }
+});
+
+// node_modules/detect-libc/lib/detect-libc.js
+var require_detect_libc = __commonJS({
+  "node_modules/detect-libc/lib/detect-libc.js"(exports, module2) {
+    "use strict";
+    var childProcess = require("child_process");
+    var { isLinux, getReport } = require_process();
+    var { LDD_PATH, SELF_PATH, readFile, readFileSync: readFileSync5 } = require_filesystem();
+    var { interpreterPath } = require_elf();
+    var cachedFamilyInterpreter;
+    var cachedFamilyFilesystem;
+    var cachedVersionFilesystem;
+    var command = "getconf GNU_LIBC_VERSION 2>&1 || true; ldd --version 2>&1 || true";
+    var commandOut = "";
+    var safeCommand = () => {
+      if (!commandOut) {
+        return new Promise((resolve3) => {
+          childProcess.exec(command, (err2, out) => {
+            commandOut = err2 ? " " : out;
+            resolve3(commandOut);
+          });
+        });
+      }
+      return commandOut;
+    };
+    var safeCommandSync = () => {
+      if (!commandOut) {
+        try {
+          commandOut = childProcess.execSync(command, { encoding: "utf8" });
+        } catch (_err) {
+          commandOut = " ";
+        }
+      }
+      return commandOut;
+    };
+    var GLIBC = "glibc";
+    var RE_GLIBC_VERSION = /LIBC[a-z0-9 \-).]*?(\d+\.\d+)/i;
+    var MUSL = "musl";
+    var isFileMusl = (f) => f.includes("libc.musl-") || f.includes("ld-musl-");
+    var familyFromReport = () => {
+      const report = getReport();
+      if (report.header && report.header.glibcVersionRuntime) {
+        return GLIBC;
+      }
+      if (Array.isArray(report.sharedObjects)) {
+        if (report.sharedObjects.some(isFileMusl)) {
+          return MUSL;
+        }
+      }
+      return null;
+    };
+    var familyFromCommand = (out) => {
+      const [getconf, ldd1] = out.split(/[\r\n]+/);
+      if (getconf && getconf.includes(GLIBC)) {
+        return GLIBC;
+      }
+      if (ldd1 && ldd1.includes(MUSL)) {
+        return MUSL;
+      }
+      return null;
+    };
+    var familyFromInterpreterPath = (path) => {
+      if (path) {
+        if (path.includes("/ld-musl-")) {
+          return MUSL;
+        } else if (path.includes("/ld-linux-")) {
+          return GLIBC;
+        }
+      }
+      return null;
+    };
+    var getFamilyFromLddContent = (content) => {
+      content = content.toString();
+      if (content.includes("musl")) {
+        return MUSL;
+      }
+      if (content.includes("GNU C Library")) {
+        return GLIBC;
+      }
+      return null;
+    };
+    var familyFromFilesystem = async () => {
+      if (cachedFamilyFilesystem !== void 0) {
+        return cachedFamilyFilesystem;
+      }
+      cachedFamilyFilesystem = null;
+      try {
+        const lddContent = await readFile(LDD_PATH);
+        cachedFamilyFilesystem = getFamilyFromLddContent(lddContent);
+      } catch (e) {
+      }
+      return cachedFamilyFilesystem;
+    };
+    var familyFromFilesystemSync = () => {
+      if (cachedFamilyFilesystem !== void 0) {
+        return cachedFamilyFilesystem;
+      }
+      cachedFamilyFilesystem = null;
+      try {
+        const lddContent = readFileSync5(LDD_PATH);
+        cachedFamilyFilesystem = getFamilyFromLddContent(lddContent);
+      } catch (e) {
+      }
+      return cachedFamilyFilesystem;
+    };
+    var familyFromInterpreter = async () => {
+      if (cachedFamilyInterpreter !== void 0) {
+        return cachedFamilyInterpreter;
+      }
+      cachedFamilyInterpreter = null;
+      try {
+        const selfContent = await readFile(SELF_PATH);
+        const path = interpreterPath(selfContent);
+        cachedFamilyInterpreter = familyFromInterpreterPath(path);
+      } catch (e) {
+      }
+      return cachedFamilyInterpreter;
+    };
+    var familyFromInterpreterSync = () => {
+      if (cachedFamilyInterpreter !== void 0) {
+        return cachedFamilyInterpreter;
+      }
+      cachedFamilyInterpreter = null;
+      try {
+        const selfContent = readFileSync5(SELF_PATH);
+        const path = interpreterPath(selfContent);
+        cachedFamilyInterpreter = familyFromInterpreterPath(path);
+      } catch (e) {
+      }
+      return cachedFamilyInterpreter;
+    };
+    var family = async () => {
+      let family2 = null;
+      if (isLinux()) {
+        family2 = await familyFromInterpreter();
+        if (!family2) {
+          family2 = await familyFromFilesystem();
+          if (!family2) {
+            family2 = familyFromReport();
+          }
+          if (!family2) {
+            const out = await safeCommand();
+            family2 = familyFromCommand(out);
+          }
+        }
+      }
+      return family2;
+    };
+    var familySync = () => {
+      let family2 = null;
+      if (isLinux()) {
+        family2 = familyFromInterpreterSync();
+        if (!family2) {
+          family2 = familyFromFilesystemSync();
+          if (!family2) {
+            family2 = familyFromReport();
+          }
+          if (!family2) {
+            const out = safeCommandSync();
+            family2 = familyFromCommand(out);
+          }
+        }
+      }
+      return family2;
+    };
+    var isNonGlibcLinux = async () => isLinux() && await family() !== GLIBC;
+    var isNonGlibcLinuxSync = () => isLinux() && familySync() !== GLIBC;
+    var versionFromFilesystem = async () => {
+      if (cachedVersionFilesystem !== void 0) {
+        return cachedVersionFilesystem;
+      }
+      cachedVersionFilesystem = null;
+      try {
+        const lddContent = await readFile(LDD_PATH);
+        const versionMatch = lddContent.match(RE_GLIBC_VERSION);
+        if (versionMatch) {
+          cachedVersionFilesystem = versionMatch[1];
+        }
+      } catch (e) {
+      }
+      return cachedVersionFilesystem;
+    };
+    var versionFromFilesystemSync = () => {
+      if (cachedVersionFilesystem !== void 0) {
+        return cachedVersionFilesystem;
+      }
+      cachedVersionFilesystem = null;
+      try {
+        const lddContent = readFileSync5(LDD_PATH);
+        const versionMatch = lddContent.match(RE_GLIBC_VERSION);
+        if (versionMatch) {
+          cachedVersionFilesystem = versionMatch[1];
+        }
+      } catch (e) {
+      }
+      return cachedVersionFilesystem;
+    };
+    var versionFromReport = () => {
+      const report = getReport();
+      if (report.header && report.header.glibcVersionRuntime) {
+        return report.header.glibcVersionRuntime;
+      }
+      return null;
+    };
+    var versionSuffix = (s) => s.trim().split(/\s+/)[1];
+    var versionFromCommand = (out) => {
+      const [getconf, ldd1, ldd2] = out.split(/[\r\n]+/);
+      if (getconf && getconf.includes(GLIBC)) {
+        return versionSuffix(getconf);
+      }
+      if (ldd1 && ldd2 && ldd1.includes(MUSL)) {
+        return versionSuffix(ldd2);
+      }
+      return null;
+    };
+    var version = async () => {
+      let version2 = null;
+      if (isLinux()) {
+        version2 = await versionFromFilesystem();
+        if (!version2) {
+          version2 = versionFromReport();
+        }
+        if (!version2) {
+          const out = await safeCommand();
+          version2 = versionFromCommand(out);
+        }
+      }
+      return version2;
+    };
+    var versionSync = () => {
+      let version2 = null;
+      if (isLinux()) {
+        version2 = versionFromFilesystemSync();
+        if (!version2) {
+          version2 = versionFromReport();
+        }
+        if (!version2) {
+          const out = safeCommandSync();
+          version2 = versionFromCommand(out);
+        }
+      }
+      return version2;
+    };
+    module2.exports = {
+      GLIBC,
+      MUSL,
+      family,
+      familySync,
+      isNonGlibcLinux,
+      isNonGlibcLinuxSync,
+      version,
+      versionSync
+    };
+  }
+});
+
+// node_modules/semver/internal/debug.js
+var require_debug = __commonJS({
+  "node_modules/semver/internal/debug.js"(exports, module2) {
+    "use strict";
+    var debug = typeof process === "object" && process.env && process.env.NODE_DEBUG && /\bsemver\b/i.test(process.env.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {
+    };
+    module2.exports = debug;
+  }
+});
+
+// node_modules/semver/internal/constants.js
+var require_constants = __commonJS({
+  "node_modules/semver/internal/constants.js"(exports, module2) {
+    "use strict";
+    var SEMVER_SPEC_VERSION = "2.0.0";
+    var MAX_LENGTH = 256;
+    var MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER || /* istanbul ignore next */
+    9007199254740991;
+    var MAX_SAFE_COMPONENT_LENGTH = 16;
+    var MAX_SAFE_BUILD_LENGTH = MAX_LENGTH - 6;
+    var RELEASE_TYPES = [
+      "major",
+      "premajor",
+      "minor",
+      "preminor",
+      "patch",
+      "prepatch",
+      "prerelease"
+    ];
+    module2.exports = {
+      MAX_LENGTH,
+      MAX_SAFE_COMPONENT_LENGTH,
+      MAX_SAFE_BUILD_LENGTH,
+      MAX_SAFE_INTEGER,
+      RELEASE_TYPES,
+      SEMVER_SPEC_VERSION,
+      FLAG_INCLUDE_PRERELEASE: 1,
+      FLAG_LOOSE: 2
+    };
+  }
+});
+
+// node_modules/semver/internal/re.js
+var require_re = __commonJS({
+  "node_modules/semver/internal/re.js"(exports, module2) {
+    "use strict";
+    var {
+      MAX_SAFE_COMPONENT_LENGTH,
+      MAX_SAFE_BUILD_LENGTH,
+      MAX_LENGTH
+    } = require_constants();
+    var debug = require_debug();
+    exports = module2.exports = {};
+    var re = exports.re = [];
+    var safeRe = exports.safeRe = [];
+    var src = exports.src = [];
+    var safeSrc = exports.safeSrc = [];
+    var t = exports.t = {};
+    var R = 0;
+    var LETTERDASHNUMBER = "[a-zA-Z0-9-]";
+    var safeRegexReplacements = [
+      ["\\s", 1],
+      ["\\d", MAX_LENGTH],
+      [LETTERDASHNUMBER, MAX_SAFE_BUILD_LENGTH]
+    ];
+    var makeSafeRegex = (value) => {
+      for (const [token, max2] of safeRegexReplacements) {
+        value = value.split(`${token}*`).join(`${token}{0,${max2}}`).split(`${token}+`).join(`${token}{1,${max2}}`);
+      }
+      return value;
+    };
+    var createToken = (name, value, isGlobal) => {
+      const safe = makeSafeRegex(value);
+      const index = R++;
+      debug(name, index, value);
+      t[name] = index;
+      src[index] = value;
+      safeSrc[index] = safe;
+      re[index] = new RegExp(value, isGlobal ? "g" : void 0);
+      safeRe[index] = new RegExp(safe, isGlobal ? "g" : void 0);
+    };
+    createToken("NUMERICIDENTIFIER", "0|[1-9]\\d*");
+    createToken("NUMERICIDENTIFIERLOOSE", "\\d+");
+    createToken("NONNUMERICIDENTIFIER", `\\d*[a-zA-Z-]${LETTERDASHNUMBER}*`);
+    createToken("MAINVERSION", `(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})`);
+    createToken("MAINVERSIONLOOSE", `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})`);
+    createToken("PRERELEASEIDENTIFIER", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIER]})`);
+    createToken("PRERELEASEIDENTIFIERLOOSE", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIERLOOSE]})`);
+    createToken("PRERELEASE", `(?:-(${src[t.PRERELEASEIDENTIFIER]}(?:\\.${src[t.PRERELEASEIDENTIFIER]})*))`);
+    createToken("PRERELEASELOOSE", `(?:-?(${src[t.PRERELEASEIDENTIFIERLOOSE]}(?:\\.${src[t.PRERELEASEIDENTIFIERLOOSE]})*))`);
+    createToken("BUILDIDENTIFIER", `${LETTERDASHNUMBER}+`);
+    createToken("BUILD", `(?:\\+(${src[t.BUILDIDENTIFIER]}(?:\\.${src[t.BUILDIDENTIFIER]})*))`);
+    createToken("FULLPLAIN", `v?${src[t.MAINVERSION]}${src[t.PRERELEASE]}?${src[t.BUILD]}?`);
+    createToken("FULL", `^${src[t.FULLPLAIN]}$`);
+    createToken("LOOSEPLAIN", `[v=\\s]*${src[t.MAINVERSIONLOOSE]}${src[t.PRERELEASELOOSE]}?${src[t.BUILD]}?`);
+    createToken("LOOSE", `^${src[t.LOOSEPLAIN]}$`);
+    createToken("GTLT", "((?:<|>)?=?)");
+    createToken("XRANGEIDENTIFIERLOOSE", `${src[t.NUMERICIDENTIFIERLOOSE]}|x|X|\\*`);
+    createToken("XRANGEIDENTIFIER", `${src[t.NUMERICIDENTIFIER]}|x|X|\\*`);
+    createToken("XRANGEPLAIN", `[v=\\s]*(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:${src[t.PRERELEASE]})?${src[t.BUILD]}?)?)?`);
+    createToken("XRANGEPLAINLOOSE", `[v=\\s]*(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:${src[t.PRERELEASELOOSE]})?${src[t.BUILD]}?)?)?`);
+    createToken("XRANGE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAIN]}$`);
+    createToken("XRANGELOOSE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken("COERCEPLAIN", `${"(^|[^\\d])(\\d{1,"}${MAX_SAFE_COMPONENT_LENGTH}})(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?`);
+    createToken("COERCE", `${src[t.COERCEPLAIN]}(?:$|[^\\d])`);
+    createToken("COERCEFULL", src[t.COERCEPLAIN] + `(?:${src[t.PRERELEASE]})?(?:${src[t.BUILD]})?(?:$|[^\\d])`);
+    createToken("COERCERTL", src[t.COERCE], true);
+    createToken("COERCERTLFULL", src[t.COERCEFULL], true);
+    createToken("LONETILDE", "(?:~>?)");
+    createToken("TILDETRIM", `(\\s*)${src[t.LONETILDE]}\\s+`, true);
+    exports.tildeTrimReplace = "$1~";
+    createToken("TILDE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAIN]}$`);
+    createToken("TILDELOOSE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken("LONECARET", "(?:\\^)");
+    createToken("CARETTRIM", `(\\s*)${src[t.LONECARET]}\\s+`, true);
+    exports.caretTrimReplace = "$1^";
+    createToken("CARET", `^${src[t.LONECARET]}${src[t.XRANGEPLAIN]}$`);
+    createToken("CARETLOOSE", `^${src[t.LONECARET]}${src[t.XRANGEPLAINLOOSE]}$`);
+    createToken("COMPARATORLOOSE", `^${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]})$|^$`);
+    createToken("COMPARATOR", `^${src[t.GTLT]}\\s*(${src[t.FULLPLAIN]})$|^$`);
+    createToken("COMPARATORTRIM", `(\\s*)${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]}|${src[t.XRANGEPLAIN]})`, true);
+    exports.comparatorTrimReplace = "$1$2$3";
+    createToken("HYPHENRANGE", `^\\s*(${src[t.XRANGEPLAIN]})\\s+-\\s+(${src[t.XRANGEPLAIN]})\\s*$`);
+    createToken("HYPHENRANGELOOSE", `^\\s*(${src[t.XRANGEPLAINLOOSE]})\\s+-\\s+(${src[t.XRANGEPLAINLOOSE]})\\s*$`);
+    createToken("STAR", "(<|>)?=?\\s*\\*");
+    createToken("GTE0", "^\\s*>=\\s*0\\.0\\.0\\s*$");
+    createToken("GTE0PRE", "^\\s*>=\\s*0\\.0\\.0-0\\s*$");
+  }
+});
+
+// node_modules/semver/internal/parse-options.js
+var require_parse_options = __commonJS({
+  "node_modules/semver/internal/parse-options.js"(exports, module2) {
+    "use strict";
+    var looseOption = Object.freeze({ loose: true });
+    var emptyOpts = Object.freeze({});
+    var parseOptions = (options) => {
+      if (!options) {
+        return emptyOpts;
+      }
+      if (typeof options !== "object") {
+        return looseOption;
+      }
+      return options;
+    };
+    module2.exports = parseOptions;
+  }
+});
+
+// node_modules/semver/internal/identifiers.js
+var require_identifiers = __commonJS({
+  "node_modules/semver/internal/identifiers.js"(exports, module2) {
+    "use strict";
+    var numeric = /^[0-9]+$/;
+    var compareIdentifiers = (a, b) => {
+      if (typeof a === "number" && typeof b === "number") {
+        return a === b ? 0 : a < b ? -1 : 1;
+      }
+      const anum = numeric.test(a);
+      const bnum = numeric.test(b);
+      if (anum && bnum) {
+        a = +a;
+        b = +b;
+      }
+      return a === b ? 0 : anum && !bnum ? -1 : bnum && !anum ? 1 : a < b ? -1 : 1;
+    };
+    var rcompareIdentifiers = (a, b) => compareIdentifiers(b, a);
+    module2.exports = {
+      compareIdentifiers,
+      rcompareIdentifiers
+    };
+  }
+});
+
+// node_modules/semver/classes/semver.js
+var require_semver = __commonJS({
+  "node_modules/semver/classes/semver.js"(exports, module2) {
+    "use strict";
+    var debug = require_debug();
+    var { MAX_LENGTH, MAX_SAFE_INTEGER } = require_constants();
+    var { safeRe: re, t } = require_re();
+    var parseOptions = require_parse_options();
+    var { compareIdentifiers } = require_identifiers();
+    var SemVer = class _SemVer {
+      constructor(version, options) {
+        options = parseOptions(options);
+        if (version instanceof _SemVer) {
+          if (version.loose === !!options.loose && version.includePrerelease === !!options.includePrerelease) {
+            return version;
+          } else {
+            version = version.version;
+          }
+        } else if (typeof version !== "string") {
+          throw new TypeError(`Invalid version. Must be a string. Got type "${typeof version}".`);
+        }
+        if (version.length > MAX_LENGTH) {
+          throw new TypeError(
+            `version is longer than ${MAX_LENGTH} characters`
+          );
+        }
+        debug("SemVer", version, options);
+        this.options = options;
+        this.loose = !!options.loose;
+        this.includePrerelease = !!options.includePrerelease;
+        const m = version.trim().match(options.loose ? re[t.LOOSE] : re[t.FULL]);
+        if (!m) {
+          throw new TypeError(`Invalid Version: ${version}`);
+        }
+        this.raw = version;
+        this.major = +m[1];
+        this.minor = +m[2];
+        this.patch = +m[3];
+        if (this.major > MAX_SAFE_INTEGER || this.major < 0) {
+          throw new TypeError("Invalid major version");
+        }
+        if (this.minor > MAX_SAFE_INTEGER || this.minor < 0) {
+          throw new TypeError("Invalid minor version");
+        }
+        if (this.patch > MAX_SAFE_INTEGER || this.patch < 0) {
+          throw new TypeError("Invalid patch version");
+        }
+        if (!m[4]) {
+          this.prerelease = [];
+        } else {
+          this.prerelease = m[4].split(".").map((id) => {
+            if (/^[0-9]+$/.test(id)) {
+              const num = +id;
+              if (num >= 0 && num < MAX_SAFE_INTEGER) {
+                return num;
+              }
+            }
+            return id;
+          });
+        }
+        this.build = m[5] ? m[5].split(".") : [];
+        this.format();
+      }
+      format() {
+        this.version = `${this.major}.${this.minor}.${this.patch}`;
+        if (this.prerelease.length) {
+          this.version += `-${this.prerelease.join(".")}`;
+        }
+        return this.version;
+      }
+      toString() {
+        return this.version;
+      }
+      compare(other) {
+        debug("SemVer.compare", this.version, this.options, other);
+        if (!(other instanceof _SemVer)) {
+          if (typeof other === "string" && other === this.version) {
+            return 0;
+          }
+          other = new _SemVer(other, this.options);
+        }
+        if (other.version === this.version) {
+          return 0;
+        }
+        return this.compareMain(other) || this.comparePre(other);
+      }
+      compareMain(other) {
+        if (!(other instanceof _SemVer)) {
+          other = new _SemVer(other, this.options);
+        }
+        if (this.major < other.major) {
+          return -1;
+        }
+        if (this.major > other.major) {
+          return 1;
+        }
+        if (this.minor < other.minor) {
+          return -1;
+        }
+        if (this.minor > other.minor) {
+          return 1;
+        }
+        if (this.patch < other.patch) {
+          return -1;
+        }
+        if (this.patch > other.patch) {
+          return 1;
+        }
+        return 0;
+      }
+      comparePre(other) {
+        if (!(other instanceof _SemVer)) {
+          other = new _SemVer(other, this.options);
+        }
+        if (this.prerelease.length && !other.prerelease.length) {
+          return -1;
+        } else if (!this.prerelease.length && other.prerelease.length) {
+          return 1;
+        } else if (!this.prerelease.length && !other.prerelease.length) {
+          return 0;
+        }
+        let i = 0;
+        do {
+          const a = this.prerelease[i];
+          const b = other.prerelease[i];
+          debug("prerelease compare", i, a, b);
+          if (a === void 0 && b === void 0) {
+            return 0;
+          } else if (b === void 0) {
+            return 1;
+          } else if (a === void 0) {
+            return -1;
+          } else if (a === b) {
+            continue;
+          } else {
+            return compareIdentifiers(a, b);
+          }
+        } while (++i);
+      }
+      compareBuild(other) {
+        if (!(other instanceof _SemVer)) {
+          other = new _SemVer(other, this.options);
+        }
+        let i = 0;
+        do {
+          const a = this.build[i];
+          const b = other.build[i];
+          debug("build compare", i, a, b);
+          if (a === void 0 && b === void 0) {
+            return 0;
+          } else if (b === void 0) {
+            return 1;
+          } else if (a === void 0) {
+            return -1;
+          } else if (a === b) {
+            continue;
+          } else {
+            return compareIdentifiers(a, b);
+          }
+        } while (++i);
+      }
+      // preminor will bump the version up to the next minor release, and immediately
+      // down to pre-release. premajor and prepatch work the same way.
+      inc(release, identifier, identifierBase) {
+        if (release.startsWith("pre")) {
+          if (!identifier && identifierBase === false) {
+            throw new Error("invalid increment argument: identifier is empty");
+          }
+          if (identifier) {
+            const match = `-${identifier}`.match(this.options.loose ? re[t.PRERELEASELOOSE] : re[t.PRERELEASE]);
+            if (!match || match[1] !== identifier) {
+              throw new Error(`invalid identifier: ${identifier}`);
+            }
+          }
+        }
+        switch (release) {
+          case "premajor":
+            this.prerelease.length = 0;
+            this.patch = 0;
+            this.minor = 0;
+            this.major++;
+            this.inc("pre", identifier, identifierBase);
+            break;
+          case "preminor":
+            this.prerelease.length = 0;
+            this.patch = 0;
+            this.minor++;
+            this.inc("pre", identifier, identifierBase);
+            break;
+          case "prepatch":
+            this.prerelease.length = 0;
+            this.inc("patch", identifier, identifierBase);
+            this.inc("pre", identifier, identifierBase);
+            break;
+          case "prerelease":
+            if (this.prerelease.length === 0) {
+              this.inc("patch", identifier, identifierBase);
+            }
+            this.inc("pre", identifier, identifierBase);
+            break;
+          case "release":
+            if (this.prerelease.length === 0) {
+              throw new Error(`version ${this.raw} is not a prerelease`);
+            }
+            this.prerelease.length = 0;
+            break;
+          case "major":
+            if (this.minor !== 0 || this.patch !== 0 || this.prerelease.length === 0) {
+              this.major++;
+            }
+            this.minor = 0;
+            this.patch = 0;
+            this.prerelease = [];
+            break;
+          case "minor":
+            if (this.patch !== 0 || this.prerelease.length === 0) {
+              this.minor++;
+            }
+            this.patch = 0;
+            this.prerelease = [];
+            break;
+          case "patch":
+            if (this.prerelease.length === 0) {
+              this.patch++;
+            }
+            this.prerelease = [];
+            break;
+          case "pre": {
+            const base = Number(identifierBase) ? 1 : 0;
+            if (this.prerelease.length === 0) {
+              this.prerelease = [base];
+            } else {
+              let i = this.prerelease.length;
+              while (--i >= 0) {
+                if (typeof this.prerelease[i] === "number") {
+                  this.prerelease[i]++;
+                  i = -2;
+                }
+              }
+              if (i === -1) {
+                if (identifier === this.prerelease.join(".") && identifierBase === false) {
+                  throw new Error("invalid increment argument: identifier already exists");
+                }
+                this.prerelease.push(base);
+              }
+            }
+            if (identifier) {
+              let prerelease = [identifier, base];
+              if (identifierBase === false) {
+                prerelease = [identifier];
+              }
+              if (compareIdentifiers(this.prerelease[0], identifier) === 0) {
+                if (isNaN(this.prerelease[1])) {
+                  this.prerelease = prerelease;
+                }
+              } else {
+                this.prerelease = prerelease;
+              }
+            }
+            break;
+          }
+          default:
+            throw new Error(`invalid increment argument: ${release}`);
+        }
+        this.raw = this.format();
+        if (this.build.length) {
+          this.raw += `+${this.build.join(".")}`;
+        }
+        return this;
+      }
+    };
+    module2.exports = SemVer;
+  }
+});
+
+// node_modules/semver/functions/parse.js
+var require_parse = __commonJS({
+  "node_modules/semver/functions/parse.js"(exports, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var parse = (version, options, throwErrors = false) => {
+      if (version instanceof SemVer) {
+        return version;
+      }
+      try {
+        return new SemVer(version, options);
+      } catch (er) {
+        if (!throwErrors) {
+          return null;
+        }
+        throw er;
+      }
+    };
+    module2.exports = parse;
+  }
+});
+
+// node_modules/semver/functions/coerce.js
+var require_coerce = __commonJS({
+  "node_modules/semver/functions/coerce.js"(exports, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var parse = require_parse();
+    var { safeRe: re, t } = require_re();
+    var coerce = (version, options) => {
+      if (version instanceof SemVer) {
+        return version;
+      }
+      if (typeof version === "number") {
+        version = String(version);
+      }
+      if (typeof version !== "string") {
+        return null;
+      }
+      options = options || {};
+      let match = null;
+      if (!options.rtl) {
+        match = version.match(options.includePrerelease ? re[t.COERCEFULL] : re[t.COERCE]);
+      } else {
+        const coerceRtlRegex = options.includePrerelease ? re[t.COERCERTLFULL] : re[t.COERCERTL];
+        let next;
+        while ((next = coerceRtlRegex.exec(version)) && (!match || match.index + match[0].length !== version.length)) {
+          if (!match || next.index + next[0].length !== match.index + match[0].length) {
+            match = next;
+          }
+          coerceRtlRegex.lastIndex = next.index + next[1].length + next[2].length;
+        }
+        coerceRtlRegex.lastIndex = -1;
+      }
+      if (match === null) {
+        return null;
+      }
+      const major = match[2];
+      const minor = match[3] || "0";
+      const patch = match[4] || "0";
+      const prerelease = options.includePrerelease && match[5] ? `-${match[5]}` : "";
+      const build = options.includePrerelease && match[6] ? `+${match[6]}` : "";
+      return parse(`${major}.${minor}.${patch}${prerelease}${build}`, options);
+    };
+    module2.exports = coerce;
+  }
+});
+
+// node_modules/semver/functions/compare.js
+var require_compare = __commonJS({
+  "node_modules/semver/functions/compare.js"(exports, module2) {
+    "use strict";
+    var SemVer = require_semver();
+    var compare = (a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose));
+    module2.exports = compare;
+  }
+});
+
+// node_modules/semver/functions/gte.js
+var require_gte = __commonJS({
+  "node_modules/semver/functions/gte.js"(exports, module2) {
+    "use strict";
+    var compare = require_compare();
+    var gte = (a, b, loose) => compare(a, b, loose) >= 0;
+    module2.exports = gte;
+  }
+});
+
+// node_modules/semver/internal/lrucache.js
+var require_lrucache = __commonJS({
+  "node_modules/semver/internal/lrucache.js"(exports, module2) {
+    "use strict";
+    var LRUCache = class {
+      constructor() {
+        this.max = 1e3;
+        this.map = /* @__PURE__ */ new Map();
+      }
+      get(key) {
+        const value = this.map.get(key);
+        if (value === void 0) {
+          return void 0;
+        } else {
+          this.map.delete(key);
+          this.map.set(key, value);
+          return value;
+        }
+      }
+      delete(key) {
+        return this.map.delete(key);
+      }
+      set(key, value) {
+        const deleted = this.delete(key);
+        if (!deleted && value !== void 0) {
+          if (this.map.size >= this.max) {
+            const firstKey = this.map.keys().next().value;
+            this.delete(firstKey);
+          }
+          this.map.set(key, value);
+        }
+        return this;
+      }
+    };
+    module2.exports = LRUCache;
+  }
+});
+
+// node_modules/semver/functions/eq.js
+var require_eq = __commonJS({
+  "node_modules/semver/functions/eq.js"(exports, module2) {
+    "use strict";
+    var compare = require_compare();
+    var eq = (a, b, loose) => compare(a, b, loose) === 0;
+    module2.exports = eq;
+  }
+});
+
+// node_modules/semver/functions/neq.js
+var require_neq = __commonJS({
+  "node_modules/semver/functions/neq.js"(exports, module2) {
+    "use strict";
+    var compare = require_compare();
+    var neq = (a, b, loose) => compare(a, b, loose) !== 0;
+    module2.exports = neq;
+  }
+});
+
+// node_modules/semver/functions/gt.js
+var require_gt = __commonJS({
+  "node_modules/semver/functions/gt.js"(exports, module2) {
+    "use strict";
+    var compare = require_compare();
+    var gt = (a, b, loose) => compare(a, b, loose) > 0;
+    module2.exports = gt;
+  }
+});
+
+// node_modules/semver/functions/lt.js
+var require_lt = __commonJS({
+  "node_modules/semver/functions/lt.js"(exports, module2) {
+    "use strict";
+    var compare = require_compare();
+    var lt = (a, b, loose) => compare(a, b, loose) < 0;
+    module2.exports = lt;
+  }
+});
+
+// node_modules/semver/functions/lte.js
+var require_lte = __commonJS({
+  "node_modules/semver/functions/lte.js"(exports, module2) {
+    "use strict";
+    var compare = require_compare();
+    var lte = (a, b, loose) => compare(a, b, loose) <= 0;
+    module2.exports = lte;
+  }
+});
+
+// node_modules/semver/functions/cmp.js
+var require_cmp = __commonJS({
+  "node_modules/semver/functions/cmp.js"(exports, module2) {
+    "use strict";
+    var eq = require_eq();
+    var neq = require_neq();
+    var gt = require_gt();
+    var gte = require_gte();
+    var lt = require_lt();
+    var lte = require_lte();
+    var cmp = (a, op, b, loose) => {
+      switch (op) {
+        case "===":
+          if (typeof a === "object") {
+            a = a.version;
+          }
+          if (typeof b === "object") {
+            b = b.version;
+          }
+          return a === b;
+        case "!==":
+          if (typeof a === "object") {
+            a = a.version;
+          }
+          if (typeof b === "object") {
+            b = b.version;
+          }
+          return a !== b;
+        case "":
+        case "=":
+        case "==":
+          return eq(a, b, loose);
+        case "!=":
+          return neq(a, b, loose);
+        case ">":
+          return gt(a, b, loose);
+        case ">=":
+          return gte(a, b, loose);
+        case "<":
+          return lt(a, b, loose);
+        case "<=":
+          return lte(a, b, loose);
+        default:
+          throw new TypeError(`Invalid operator: ${op}`);
+      }
+    };
+    module2.exports = cmp;
+  }
+});
+
+// node_modules/semver/classes/comparator.js
+var require_comparator = __commonJS({
+  "node_modules/semver/classes/comparator.js"(exports, module2) {
+    "use strict";
+    var ANY = Symbol("SemVer ANY");
+    var Comparator = class _Comparator {
+      static get ANY() {
+        return ANY;
+      }
+      constructor(comp, options) {
+        options = parseOptions(options);
+        if (comp instanceof _Comparator) {
+          if (comp.loose === !!options.loose) {
+            return comp;
+          } else {
+            comp = comp.value;
+          }
+        }
+        comp = comp.trim().split(/\s+/).join(" ");
+        debug("comparator", comp, options);
+        this.options = options;
+        this.loose = !!options.loose;
+        this.parse(comp);
+        if (this.semver === ANY) {
+          this.value = "";
+        } else {
+          this.value = this.operator + this.semver.version;
+        }
+        debug("comp", this);
+      }
+      parse(comp) {
+        const r = this.options.loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR];
+        const m = comp.match(r);
+        if (!m) {
+          throw new TypeError(`Invalid comparator: ${comp}`);
+        }
+        this.operator = m[1] !== void 0 ? m[1] : "";
+        if (this.operator === "=") {
+          this.operator = "";
+        }
+        if (!m[2]) {
+          this.semver = ANY;
+        } else {
+          this.semver = new SemVer(m[2], this.options.loose);
+        }
+      }
+      toString() {
+        return this.value;
+      }
+      test(version) {
+        debug("Comparator.test", version, this.options.loose);
+        if (this.semver === ANY || version === ANY) {
+          return true;
+        }
+        if (typeof version === "string") {
+          try {
+            version = new SemVer(version, this.options);
+          } catch (er) {
+            return false;
+          }
+        }
+        return cmp(version, this.operator, this.semver, this.options);
+      }
+      intersects(comp, options) {
+        if (!(comp instanceof _Comparator)) {
+          throw new TypeError("a Comparator is required");
+        }
+        if (this.operator === "") {
+          if (this.value === "") {
+            return true;
+          }
+          return new Range(comp.value, options).test(this.value);
+        } else if (comp.operator === "") {
+          if (comp.value === "") {
+            return true;
+          }
+          return new Range(this.value, options).test(comp.semver);
+        }
+        options = parseOptions(options);
+        if (options.includePrerelease && (this.value === "<0.0.0-0" || comp.value === "<0.0.0-0")) {
+          return false;
+        }
+        if (!options.includePrerelease && (this.value.startsWith("<0.0.0") || comp.value.startsWith("<0.0.0"))) {
+          return false;
+        }
+        if (this.operator.startsWith(">") && comp.operator.startsWith(">")) {
+          return true;
+        }
+        if (this.operator.startsWith("<") && comp.operator.startsWith("<")) {
+          return true;
+        }
+        if (this.semver.version === comp.semver.version && this.operator.includes("=") && comp.operator.includes("=")) {
+          return true;
+        }
+        if (cmp(this.semver, "<", comp.semver, options) && this.operator.startsWith(">") && comp.operator.startsWith("<")) {
+          return true;
+        }
+        if (cmp(this.semver, ">", comp.semver, options) && this.operator.startsWith("<") && comp.operator.startsWith(">")) {
+          return true;
+        }
+        return false;
+      }
+    };
+    module2.exports = Comparator;
+    var parseOptions = require_parse_options();
+    var { safeRe: re, t } = require_re();
+    var cmp = require_cmp();
+    var debug = require_debug();
+    var SemVer = require_semver();
+    var Range = require_range();
+  }
+});
+
+// node_modules/semver/classes/range.js
+var require_range = __commonJS({
+  "node_modules/semver/classes/range.js"(exports, module2) {
+    "use strict";
+    var SPACE_CHARACTERS = /\s+/g;
+    var Range = class _Range {
+      constructor(range, options) {
+        options = parseOptions(options);
+        if (range instanceof _Range) {
+          if (range.loose === !!options.loose && range.includePrerelease === !!options.includePrerelease) {
+            return range;
+          } else {
+            return new _Range(range.raw, options);
+          }
+        }
+        if (range instanceof Comparator) {
+          this.raw = range.value;
+          this.set = [[range]];
+          this.formatted = void 0;
+          return this;
+        }
+        this.options = options;
+        this.loose = !!options.loose;
+        this.includePrerelease = !!options.includePrerelease;
+        this.raw = range.trim().replace(SPACE_CHARACTERS, " ");
+        this.set = this.raw.split("||").map((r) => this.parseRange(r.trim())).filter((c) => c.length);
+        if (!this.set.length) {
+          throw new TypeError(`Invalid SemVer Range: ${this.raw}`);
+        }
+        if (this.set.length > 1) {
+          const first = this.set[0];
+          this.set = this.set.filter((c) => !isNullSet(c[0]));
+          if (this.set.length === 0) {
+            this.set = [first];
+          } else if (this.set.length > 1) {
+            for (const c of this.set) {
+              if (c.length === 1 && isAny(c[0])) {
+                this.set = [c];
+                break;
+              }
+            }
+          }
+        }
+        this.formatted = void 0;
+      }
+      get range() {
+        if (this.formatted === void 0) {
+          this.formatted = "";
+          for (let i = 0; i < this.set.length; i++) {
+            if (i > 0) {
+              this.formatted += "||";
+            }
+            const comps = this.set[i];
+            for (let k = 0; k < comps.length; k++) {
+              if (k > 0) {
+                this.formatted += " ";
+              }
+              this.formatted += comps[k].toString().trim();
+            }
+          }
+        }
+        return this.formatted;
+      }
+      format() {
+        return this.range;
+      }
+      toString() {
+        return this.range;
+      }
+      parseRange(range) {
+        const memoOpts = (this.options.includePrerelease && FLAG_INCLUDE_PRERELEASE) | (this.options.loose && FLAG_LOOSE);
+        const memoKey = memoOpts + ":" + range;
+        const cached = cache.get(memoKey);
+        if (cached) {
+          return cached;
+        }
+        const loose = this.options.loose;
+        const hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE];
+        range = range.replace(hr, hyphenReplace(this.options.includePrerelease));
+        debug("hyphen replace", range);
+        range = range.replace(re[t.COMPARATORTRIM], comparatorTrimReplace);
+        debug("comparator trim", range);
+        range = range.replace(re[t.TILDETRIM], tildeTrimReplace);
+        debug("tilde trim", range);
+        range = range.replace(re[t.CARETTRIM], caretTrimReplace);
+        debug("caret trim", range);
+        let rangeList = range.split(" ").map((comp) => parseComparator(comp, this.options)).join(" ").split(/\s+/).map((comp) => replaceGTE0(comp, this.options));
+        if (loose) {
+          rangeList = rangeList.filter((comp) => {
+            debug("loose invalid filter", comp, this.options);
+            return !!comp.match(re[t.COMPARATORLOOSE]);
+          });
+        }
+        debug("range list", rangeList);
+        const rangeMap = /* @__PURE__ */ new Map();
+        const comparators = rangeList.map((comp) => new Comparator(comp, this.options));
+        for (const comp of comparators) {
+          if (isNullSet(comp)) {
+            return [comp];
+          }
+          rangeMap.set(comp.value, comp);
+        }
+        if (rangeMap.size > 1 && rangeMap.has("")) {
+          rangeMap.delete("");
+        }
+        const result = [...rangeMap.values()];
+        cache.set(memoKey, result);
+        return result;
+      }
+      intersects(range, options) {
+        if (!(range instanceof _Range)) {
+          throw new TypeError("a Range is required");
+        }
+        return this.set.some((thisComparators) => {
+          return isSatisfiable(thisComparators, options) && range.set.some((rangeComparators) => {
+            return isSatisfiable(rangeComparators, options) && thisComparators.every((thisComparator) => {
+              return rangeComparators.every((rangeComparator) => {
+                return thisComparator.intersects(rangeComparator, options);
+              });
+            });
+          });
+        });
+      }
+      // if ANY of the sets match ALL of its comparators, then pass
+      test(version) {
+        if (!version) {
+          return false;
+        }
+        if (typeof version === "string") {
+          try {
+            version = new SemVer(version, this.options);
+          } catch (er) {
+            return false;
+          }
+        }
+        for (let i = 0; i < this.set.length; i++) {
+          if (testSet(this.set[i], version, this.options)) {
+            return true;
+          }
+        }
+        return false;
+      }
+    };
+    module2.exports = Range;
+    var LRU = require_lrucache();
+    var cache = new LRU();
+    var parseOptions = require_parse_options();
+    var Comparator = require_comparator();
+    var debug = require_debug();
+    var SemVer = require_semver();
+    var {
+      safeRe: re,
+      t,
+      comparatorTrimReplace,
+      tildeTrimReplace,
+      caretTrimReplace
+    } = require_re();
+    var { FLAG_INCLUDE_PRERELEASE, FLAG_LOOSE } = require_constants();
+    var isNullSet = (c) => c.value === "<0.0.0-0";
+    var isAny = (c) => c.value === "";
+    var isSatisfiable = (comparators, options) => {
+      let result = true;
+      const remainingComparators = comparators.slice();
+      let testComparator = remainingComparators.pop();
+      while (result && remainingComparators.length) {
+        result = remainingComparators.every((otherComparator) => {
+          return testComparator.intersects(otherComparator, options);
+        });
+        testComparator = remainingComparators.pop();
+      }
+      return result;
+    };
+    var parseComparator = (comp, options) => {
+      comp = comp.replace(re[t.BUILD], "");
+      debug("comp", comp, options);
+      comp = replaceCarets(comp, options);
+      debug("caret", comp);
+      comp = replaceTildes(comp, options);
+      debug("tildes", comp);
+      comp = replaceXRanges(comp, options);
+      debug("xrange", comp);
+      comp = replaceStars(comp, options);
+      debug("stars", comp);
+      return comp;
+    };
+    var isX = (id) => !id || id.toLowerCase() === "x" || id === "*";
+    var replaceTildes = (comp, options) => {
+      return comp.trim().split(/\s+/).map((c) => replaceTilde(c, options)).join(" ");
+    };
+    var replaceTilde = (comp, options) => {
+      const r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE];
+      return comp.replace(r, (_, M, m, p, pr) => {
+        debug("tilde", comp, _, M, m, p, pr);
+        let ret;
+        if (isX(M)) {
+          ret = "";
+        } else if (isX(m)) {
+          ret = `>=${M}.0.0 <${+M + 1}.0.0-0`;
+        } else if (isX(p)) {
+          ret = `>=${M}.${m}.0 <${M}.${+m + 1}.0-0`;
+        } else if (pr) {
+          debug("replaceTilde pr", pr);
+          ret = `>=${M}.${m}.${p}-${pr} <${M}.${+m + 1}.0-0`;
+        } else {
+          ret = `>=${M}.${m}.${p} <${M}.${+m + 1}.0-0`;
+        }
+        debug("tilde return", ret);
+        return ret;
+      });
+    };
+    var replaceCarets = (comp, options) => {
+      return comp.trim().split(/\s+/).map((c) => replaceCaret(c, options)).join(" ");
+    };
+    var replaceCaret = (comp, options) => {
+      debug("caret", comp, options);
+      const r = options.loose ? re[t.CARETLOOSE] : re[t.CARET];
+      const z = options.includePrerelease ? "-0" : "";
+      return comp.replace(r, (_, M, m, p, pr) => {
+        debug("caret", comp, _, M, m, p, pr);
+        let ret;
+        if (isX(M)) {
+          ret = "";
+        } else if (isX(m)) {
+          ret = `>=${M}.0.0${z} <${+M + 1}.0.0-0`;
+        } else if (isX(p)) {
+          if (M === "0") {
+            ret = `>=${M}.${m}.0${z} <${M}.${+m + 1}.0-0`;
+          } else {
+            ret = `>=${M}.${m}.0${z} <${+M + 1}.0.0-0`;
+          }
+        } else if (pr) {
+          debug("replaceCaret pr", pr);
+          if (M === "0") {
+            if (m === "0") {
+              ret = `>=${M}.${m}.${p}-${pr} <${M}.${m}.${+p + 1}-0`;
+            } else {
+              ret = `>=${M}.${m}.${p}-${pr} <${M}.${+m + 1}.0-0`;
+            }
+          } else {
+            ret = `>=${M}.${m}.${p}-${pr} <${+M + 1}.0.0-0`;
+          }
+        } else {
+          debug("no pr");
+          if (M === "0") {
+            if (m === "0") {
+              ret = `>=${M}.${m}.${p}${z} <${M}.${m}.${+p + 1}-0`;
+            } else {
+              ret = `>=${M}.${m}.${p}${z} <${M}.${+m + 1}.0-0`;
+            }
+          } else {
+            ret = `>=${M}.${m}.${p} <${+M + 1}.0.0-0`;
+          }
+        }
+        debug("caret return", ret);
+        return ret;
+      });
+    };
+    var replaceXRanges = (comp, options) => {
+      debug("replaceXRanges", comp, options);
+      return comp.split(/\s+/).map((c) => replaceXRange(c, options)).join(" ");
+    };
+    var replaceXRange = (comp, options) => {
+      comp = comp.trim();
+      const r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE];
+      return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
+        debug("xRange", comp, ret, gtlt, M, m, p, pr);
+        const xM = isX(M);
+        const xm = xM || isX(m);
+        const xp = xm || isX(p);
+        const anyX = xp;
+        if (gtlt === "=" && anyX) {
+          gtlt = "";
+        }
+        pr = options.includePrerelease ? "-0" : "";
+        if (xM) {
+          if (gtlt === ">" || gtlt === "<") {
+            ret = "<0.0.0-0";
+          } else {
+            ret = "*";
+          }
+        } else if (gtlt && anyX) {
+          if (xm) {
+            m = 0;
+          }
+          p = 0;
+          if (gtlt === ">") {
+            gtlt = ">=";
+            if (xm) {
+              M = +M + 1;
+              m = 0;
+              p = 0;
+            } else {
+              m = +m + 1;
+              p = 0;
+            }
+          } else if (gtlt === "<=") {
+            gtlt = "<";
+            if (xm) {
+              M = +M + 1;
+            } else {
+              m = +m + 1;
+            }
+          }
+          if (gtlt === "<") {
+            pr = "-0";
+          }
+          ret = `${gtlt + M}.${m}.${p}${pr}`;
+        } else if (xm) {
+          ret = `>=${M}.0.0${pr} <${+M + 1}.0.0-0`;
+        } else if (xp) {
+          ret = `>=${M}.${m}.0${pr} <${M}.${+m + 1}.0-0`;
+        }
+        debug("xRange return", ret);
+        return ret;
+      });
+    };
+    var replaceStars = (comp, options) => {
+      debug("replaceStars", comp, options);
+      return comp.trim().replace(re[t.STAR], "");
+    };
+    var replaceGTE0 = (comp, options) => {
+      debug("replaceGTE0", comp, options);
+      return comp.trim().replace(re[options.includePrerelease ? t.GTE0PRE : t.GTE0], "");
+    };
+    var hyphenReplace = (incPr) => ($0, from, fM, fm, fp, fpr, fb, to, tM, tm, tp, tpr) => {
+      if (isX(fM)) {
+        from = "";
+      } else if (isX(fm)) {
+        from = `>=${fM}.0.0${incPr ? "-0" : ""}`;
+      } else if (isX(fp)) {
+        from = `>=${fM}.${fm}.0${incPr ? "-0" : ""}`;
+      } else if (fpr) {
+        from = `>=${from}`;
+      } else {
+        from = `>=${from}${incPr ? "-0" : ""}`;
+      }
+      if (isX(tM)) {
+        to = "";
+      } else if (isX(tm)) {
+        to = `<${+tM + 1}.0.0-0`;
+      } else if (isX(tp)) {
+        to = `<${tM}.${+tm + 1}.0-0`;
+      } else if (tpr) {
+        to = `<=${tM}.${tm}.${tp}-${tpr}`;
+      } else if (incPr) {
+        to = `<${tM}.${tm}.${+tp + 1}-0`;
+      } else {
+        to = `<=${to}`;
+      }
+      return `${from} ${to}`.trim();
+    };
+    var testSet = (set, version, options) => {
+      for (let i = 0; i < set.length; i++) {
+        if (!set[i].test(version)) {
+          return false;
+        }
+      }
+      if (version.prerelease.length && !options.includePrerelease) {
+        for (let i = 0; i < set.length; i++) {
+          debug(set[i].semver);
+          if (set[i].semver === Comparator.ANY) {
+            continue;
+          }
+          if (set[i].semver.prerelease.length > 0) {
+            const allowed = set[i].semver;
+            if (allowed.major === version.major && allowed.minor === version.minor && allowed.patch === version.patch) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+      return true;
+    };
+  }
+});
+
+// node_modules/semver/functions/satisfies.js
+var require_satisfies = __commonJS({
+  "node_modules/semver/functions/satisfies.js"(exports, module2) {
+    "use strict";
+    var Range = require_range();
+    var satisfies = (version, range, options) => {
+      try {
+        range = new Range(range, options);
+      } catch (er) {
+        return false;
+      }
+      return range.test(version);
+    };
+    module2.exports = satisfies;
+  }
+});
+
+// node_modules/sharp/package.json
+var require_package = __commonJS({
+  "node_modules/sharp/package.json"(exports, module2) {
+    module2.exports = {
+      name: "sharp",
+      description: "High performance Node.js image processing, the fastest module to resize JPEG, PNG, WebP, GIF, AVIF and TIFF images",
+      version: "0.34.5",
+      author: "Lovell Fuller <npm@lovell.info>",
+      homepage: "https://sharp.pixelplumbing.com",
+      contributors: [
+        "Pierre Inglebert <pierre.inglebert@gmail.com>",
+        "Jonathan Ong <jonathanrichardong@gmail.com>",
+        "Chanon Sajjamanochai <chanon.s@gmail.com>",
+        "Juliano Julio <julianojulio@gmail.com>",
+        "Daniel Gasienica <daniel@gasienica.ch>",
+        "Julian Walker <julian@fiftythree.com>",
+        "Amit Pitaru <pitaru.amit@gmail.com>",
+        "Brandon Aaron <hello.brandon@aaron.sh>",
+        "Andreas Lind <andreas@one.com>",
+        "Maurus Cuelenaere <mcuelenaere@gmail.com>",
+        "Linus Unneb\xE4ck <linus@folkdatorn.se>",
+        "Victor Mateevitsi <mvictoras@gmail.com>",
+        "Alaric Holloway <alaric.holloway@gmail.com>",
+        "Bernhard K. Weisshuhn <bkw@codingforce.com>",
+        "Chris Riley <criley@primedia.com>",
+        "David Carley <dacarley@gmail.com>",
+        "John Tobin <john@limelightmobileinc.com>",
+        "Kenton Gray <kentongray@gmail.com>",
+        "Felix B\xFCnemann <Felix.Buenemann@gmail.com>",
+        "Samy Al Zahrani <samyalzahrany@gmail.com>",
+        "Chintan Thakkar <lemnisk8@gmail.com>",
+        "F. Orlando Galashan <frulo@gmx.de>",
+        "Kleis Auke Wolthuizen <info@kleisauke.nl>",
+        "Matt Hirsch <mhirsch@media.mit.edu>",
+        "Matthias Thoemmes <thoemmes@gmail.com>",
+        "Patrick Paskaris <patrick@paskaris.gr>",
+        "J\xE9r\xE9my Lal <kapouer@melix.org>",
+        "Rahul Nanwani <r.nanwani@gmail.com>",
+        "Alice Monday <alice0meta@gmail.com>",
+        "Kristo Jorgenson <kristo.jorgenson@gmail.com>",
+        "YvesBos <yves_bos@outlook.com>",
+        "Guy Maliar <guy@tailorbrands.com>",
+        "Nicolas Coden <nicolas@ncoden.fr>",
+        "Matt Parrish <matt.r.parrish@gmail.com>",
+        "Marcel Bretschneider <marcel.bretschneider@gmail.com>",
+        "Matthew McEachen <matthew+github@mceachen.org>",
+        "Jarda Kot\u011B\u0161ovec <jarda.kotesovec@gmail.com>",
+        "Kenric D'Souza <kenric.dsouza@gmail.com>",
+        "Oleh Aleinyk <oleg.aleynik@gmail.com>",
+        "Marcel Bretschneider <marcel.bretschneider@gmail.com>",
+        "Andrea Bianco <andrea.bianco@unibas.ch>",
+        "Rik Heywood <rik@rik.org>",
+        "Thomas Parisot <hi@oncletom.io>",
+        "Nathan Graves <nathanrgraves+github@gmail.com>",
+        "Tom Lokhorst <tom@lokhorst.eu>",
+        "Espen Hovlandsdal <espen@hovlandsdal.com>",
+        "Sylvain Dumont <sylvain.dumont35@gmail.com>",
+        "Alun Davies <alun.owain.davies@googlemail.com>",
+        "Aidan Hoolachan <ajhoolachan21@gmail.com>",
+        "Axel Eirola <axel.eirola@iki.fi>",
+        "Freezy <freezy@xbmc.org>",
+        "Daiz <taneli.vatanen@gmail.com>",
+        "Julian Aubourg <j@ubourg.net>",
+        "Keith Belovay <keith@picthrive.com>",
+        "Michael B. Klein <mbklein@gmail.com>",
+        "Jordan Prudhomme <jordan@raboland.fr>",
+        "Ilya Ovdin <iovdin@gmail.com>",
+        "Andargor <andargor@yahoo.com>",
+        "Paul Neave <paul.neave@gmail.com>",
+        "Brendan Kennedy <brenwken@gmail.com>",
+        "Brychan Bennett-Odlum <git@brychan.io>",
+        "Edward Silverton <e.silverton@gmail.com>",
+        "Roman Malieiev <aromaleev@gmail.com>",
+        "Tomas Szabo <tomas.szabo@deftomat.com>",
+        "Robert O'Rourke <robert@o-rourke.org>",
+        "Guillermo Alfonso Varela Chouci\xF1o <guillevch@gmail.com>",
+        "Christian Flintrup <chr@gigahost.dk>",
+        "Manan Jadhav <manan@motionden.com>",
+        "Leon Radley <leon@radley.se>",
+        "alza54 <alza54@thiocod.in>",
+        "Jacob Smith <jacob@frende.me>",
+        "Michael Nutt <michael@nutt.im>",
+        "Brad Parham <baparham@gmail.com>",
+        "Taneli Vatanen <taneli.vatanen@gmail.com>",
+        "Joris Dugu\xE9 <zaruike10@gmail.com>",
+        "Chris Banks <christopher.bradley.banks@gmail.com>",
+        "Ompal Singh <ompal.hitm09@gmail.com>",
+        "Brodan <christopher.hranj@gmail.com>",
+        "Ankur Parihar <ankur.github@gmail.com>",
+        "Brahim Ait elhaj <brahima@gmail.com>",
+        "Mart Jansink <m.jansink@gmail.com>",
+        "Lachlan Newman <lachnewman007@gmail.com>",
+        "Dennis Beatty <dennis@dcbeatty.com>",
+        "Ingvar Stepanyan <me@rreverser.com>",
+        "Don Denton <don@happycollision.com>"
+      ],
+      scripts: {
+        build: "node install/build.js",
+        install: "node install/check.js || npm run build",
+        clean: "rm -rf src/build/ .nyc_output/ coverage/ test/fixtures/output.*",
+        test: "npm run lint && npm run test-unit",
+        lint: "npm run lint-cpp && npm run lint-js && npm run lint-types",
+        "lint-cpp": "cpplint --quiet src/*.h src/*.cc",
+        "lint-js": "biome lint",
+        "lint-types": "tsd --files ./test/types/sharp.test-d.ts",
+        "test-leak": "./test/leak/leak.sh",
+        "test-unit": "node --experimental-test-coverage test/unit.mjs",
+        "package-from-local-build": "node npm/from-local-build.js",
+        "package-release-notes": "node npm/release-notes.js",
+        "docs-build": "node docs/build.mjs",
+        "docs-serve": "cd docs && npm start",
+        "docs-publish": "cd docs && npm run build && npx firebase-tools deploy --project pixelplumbing --only hosting:pixelplumbing-sharp"
+      },
+      type: "commonjs",
+      main: "lib/index.js",
+      types: "lib/index.d.ts",
+      files: [
+        "install",
+        "lib",
+        "src/*.{cc,h,gyp}"
+      ],
+      repository: {
+        type: "git",
+        url: "git://github.com/lovell/sharp.git"
+      },
+      keywords: [
+        "jpeg",
+        "png",
+        "webp",
+        "avif",
+        "tiff",
+        "gif",
+        "svg",
+        "jp2",
+        "dzi",
+        "image",
+        "resize",
+        "thumbnail",
+        "crop",
+        "embed",
+        "libvips",
+        "vips"
+      ],
+      dependencies: {
+        "@img/colour": "^1.0.0",
+        "detect-libc": "^2.1.2",
+        semver: "^7.7.3"
+      },
+      optionalDependencies: {
+        "@img/sharp-darwin-arm64": "0.34.5",
+        "@img/sharp-darwin-x64": "0.34.5",
+        "@img/sharp-libvips-darwin-arm64": "1.2.4",
+        "@img/sharp-libvips-darwin-x64": "1.2.4",
+        "@img/sharp-libvips-linux-arm": "1.2.4",
+        "@img/sharp-libvips-linux-arm64": "1.2.4",
+        "@img/sharp-libvips-linux-ppc64": "1.2.4",
+        "@img/sharp-libvips-linux-riscv64": "1.2.4",
+        "@img/sharp-libvips-linux-s390x": "1.2.4",
+        "@img/sharp-libvips-linux-x64": "1.2.4",
+        "@img/sharp-libvips-linuxmusl-arm64": "1.2.4",
+        "@img/sharp-libvips-linuxmusl-x64": "1.2.4",
+        "@img/sharp-linux-arm": "0.34.5",
+        "@img/sharp-linux-arm64": "0.34.5",
+        "@img/sharp-linux-ppc64": "0.34.5",
+        "@img/sharp-linux-riscv64": "0.34.5",
+        "@img/sharp-linux-s390x": "0.34.5",
+        "@img/sharp-linux-x64": "0.34.5",
+        "@img/sharp-linuxmusl-arm64": "0.34.5",
+        "@img/sharp-linuxmusl-x64": "0.34.5",
+        "@img/sharp-wasm32": "0.34.5",
+        "@img/sharp-win32-arm64": "0.34.5",
+        "@img/sharp-win32-ia32": "0.34.5",
+        "@img/sharp-win32-x64": "0.34.5"
+      },
+      devDependencies: {
+        "@biomejs/biome": "^2.3.4",
+        "@cpplint/cli": "^0.1.0",
+        "@emnapi/runtime": "^1.7.0",
+        "@img/sharp-libvips-dev": "1.2.4",
+        "@img/sharp-libvips-dev-wasm32": "1.2.4",
+        "@img/sharp-libvips-win32-arm64": "1.2.4",
+        "@img/sharp-libvips-win32-ia32": "1.2.4",
+        "@img/sharp-libvips-win32-x64": "1.2.4",
+        "@types/node": "*",
+        emnapi: "^1.7.0",
+        "exif-reader": "^2.0.2",
+        "extract-zip": "^2.0.1",
+        icc: "^3.0.0",
+        "jsdoc-to-markdown": "^9.1.3",
+        "node-addon-api": "^8.5.0",
+        "node-gyp": "^11.5.0",
+        "tar-fs": "^3.1.1",
+        tsd: "^0.33.0"
+      },
+      license: "Apache-2.0",
+      engines: {
+        node: "^18.17.0 || ^20.3.0 || >=21.0.0"
+      },
+      config: {
+        libvips: ">=8.17.3"
+      },
+      funding: {
+        url: "https://opencollective.com/libvips"
+      }
+    };
+  }
+});
+
+// node_modules/sharp/lib/libvips.js
+var require_libvips = __commonJS({
+  "node_modules/sharp/lib/libvips.js"(exports, module2) {
+    var { spawnSync: spawnSync2 } = require("node:child_process");
+    var { createHash } = require("node:crypto");
+    var semverCoerce = require_coerce();
+    var semverGreaterThanOrEqualTo = require_gte();
+    var semverSatisfies = require_satisfies();
+    var detectLibc = require_detect_libc();
+    var { config, engines, optionalDependencies } = require_package();
+    var minimumLibvipsVersionLabelled = process.env.npm_package_config_libvips || config.libvips;
+    var minimumLibvipsVersion = semverCoerce(minimumLibvipsVersionLabelled).version;
+    var prebuiltPlatforms = [
+      "darwin-arm64",
+      "darwin-x64",
+      "linux-arm",
+      "linux-arm64",
+      "linux-ppc64",
+      "linux-riscv64",
+      "linux-s390x",
+      "linux-x64",
+      "linuxmusl-arm64",
+      "linuxmusl-x64",
+      "win32-arm64",
+      "win32-ia32",
+      "win32-x64"
+    ];
+    var spawnSyncOptions = {
+      encoding: "utf8",
+      shell: true
+    };
+    var log = (item) => {
+      if (item instanceof Error) {
+        console.error(`sharp: Installation error: ${item.message}`);
+      } else {
+        console.log(`sharp: ${item}`);
+      }
+    };
+    var runtimeLibc = () => detectLibc.isNonGlibcLinuxSync() ? detectLibc.familySync() : "";
+    var runtimePlatformArch = () => `${process.platform}${runtimeLibc()}-${process.arch}`;
+    var buildPlatformArch = () => {
+      if (isEmscripten()) {
+        return "wasm32";
+      }
+      const { npm_config_arch, npm_config_platform, npm_config_libc } = process.env;
+      const libc = typeof npm_config_libc === "string" ? npm_config_libc : runtimeLibc();
+      return `${npm_config_platform || process.platform}${libc}-${npm_config_arch || process.arch}`;
+    };
+    var buildSharpLibvipsIncludeDir = () => {
+      try {
+        return require(`@img/sharp-libvips-dev-${buildPlatformArch()}/include`);
+      } catch {
+        try {
+          return require("@img/sharp-libvips-dev/include");
+        } catch {
+        }
+      }
+      return "";
+    };
+    var buildSharpLibvipsCPlusPlusDir = () => {
+      try {
+        return require("@img/sharp-libvips-dev/cplusplus");
+      } catch {
+      }
+      return "";
+    };
+    var buildSharpLibvipsLibDir = () => {
+      try {
+        return require(`@img/sharp-libvips-dev-${buildPlatformArch()}/lib`);
+      } catch {
+        try {
+          return require(`@img/sharp-libvips-${buildPlatformArch()}/lib`);
+        } catch {
+        }
+      }
+      return "";
+    };
+    var isUnsupportedNodeRuntime = () => {
+      if (process.release?.name === "node" && process.versions) {
+        if (!semverSatisfies(process.versions.node, engines.node)) {
+          return { found: process.versions.node, expected: engines.node };
+        }
+      }
+    };
+    var isEmscripten = () => {
+      const { CC } = process.env;
+      return Boolean(CC?.endsWith("/emcc"));
+    };
+    var isRosetta = () => {
+      if (process.platform === "darwin" && process.arch === "x64") {
+        const translated = spawnSync2("sysctl sysctl.proc_translated", spawnSyncOptions).stdout;
+        return (translated || "").trim() === "sysctl.proc_translated: 1";
+      }
+      return false;
+    };
+    var sha512 = (s) => createHash("sha512").update(s).digest("hex");
+    var yarnLocator = () => {
+      try {
+        const identHash = sha512(`imgsharp-libvips-${buildPlatformArch()}`);
+        const npmVersion = semverCoerce(optionalDependencies[`@img/sharp-libvips-${buildPlatformArch()}`], {
+          includePrerelease: true
+        }).version;
+        return sha512(`${identHash}npm:${npmVersion}`).slice(0, 10);
+      } catch {
+      }
+      return "";
+    };
+    var spawnRebuild = () => spawnSync2(`node-gyp rebuild --directory=src ${isEmscripten() ? "--nodedir=emscripten" : ""}`, {
+      ...spawnSyncOptions,
+      stdio: "inherit"
+    }).status;
+    var globalLibvipsVersion = () => {
+      if (process.platform !== "win32") {
+        const globalLibvipsVersion2 = spawnSync2("pkg-config --modversion vips-cpp", {
+          ...spawnSyncOptions,
+          env: {
+            ...process.env,
+            PKG_CONFIG_PATH: pkgConfigPath()
+          }
+        }).stdout;
+        return (globalLibvipsVersion2 || "").trim();
+      } else {
+        return "";
+      }
+    };
+    var pkgConfigPath = () => {
+      if (process.platform !== "win32") {
+        const brewPkgConfigPath = spawnSync2(
+          'which brew >/dev/null 2>&1 && brew environment --plain | grep PKG_CONFIG_LIBDIR | cut -d" " -f2',
+          spawnSyncOptions
+        ).stdout || "";
+        return [
+          brewPkgConfigPath.trim(),
+          process.env.PKG_CONFIG_PATH,
+          "/usr/local/lib/pkgconfig",
+          "/usr/lib/pkgconfig",
+          "/usr/local/libdata/pkgconfig",
+          "/usr/libdata/pkgconfig"
+        ].filter(Boolean).join(":");
+      } else {
+        return "";
+      }
+    };
+    var skipSearch = (status, reason, logger) => {
+      if (logger) {
+        logger(`Detected ${reason}, skipping search for globally-installed libvips`);
+      }
+      return status;
+    };
+    var useGlobalLibvips = (logger) => {
+      if (Boolean(process.env.SHARP_IGNORE_GLOBAL_LIBVIPS) === true) {
+        return skipSearch(false, "SHARP_IGNORE_GLOBAL_LIBVIPS", logger);
+      }
+      if (Boolean(process.env.SHARP_FORCE_GLOBAL_LIBVIPS) === true) {
+        return skipSearch(true, "SHARP_FORCE_GLOBAL_LIBVIPS", logger);
+      }
+      if (isRosetta()) {
+        return skipSearch(false, "Rosetta", logger);
+      }
+      const globalVipsVersion = globalLibvipsVersion();
+      return !!globalVipsVersion && semverGreaterThanOrEqualTo(globalVipsVersion, minimumLibvipsVersion);
+    };
+    module2.exports = {
+      minimumLibvipsVersion,
+      prebuiltPlatforms,
+      buildPlatformArch,
+      buildSharpLibvipsIncludeDir,
+      buildSharpLibvipsCPlusPlusDir,
+      buildSharpLibvipsLibDir,
+      isUnsupportedNodeRuntime,
+      runtimePlatformArch,
+      log,
+      yarnLocator,
+      spawnRebuild,
+      globalLibvipsVersion,
+      pkgConfigPath,
+      useGlobalLibvips
+    };
+  }
+});
+
+// node_modules/sharp/lib/sharp.js
+var require_sharp = __commonJS({
+  "node_modules/sharp/lib/sharp.js"(exports, module2) {
+    var { familySync, versionSync } = require_detect_libc();
+    var { runtimePlatformArch, isUnsupportedNodeRuntime, prebuiltPlatforms, minimumLibvipsVersion } = require_libvips();
+    var runtimePlatform = runtimePlatformArch();
+    var paths = [
+      `../src/build/Release/sharp-${runtimePlatform}.node`,
+      "../src/build/Release/sharp-wasm32.node",
+      `@img/sharp-${runtimePlatform}/sharp.node`,
+      "@img/sharp-wasm32/sharp.node"
+    ];
+    var path;
+    var sharp5;
+    var errors = [];
+    for (path of paths) {
+      try {
+        sharp5 = require(path);
+        break;
+      } catch (err2) {
+        errors.push(err2);
+      }
+    }
+    if (sharp5 && path.startsWith("@img/sharp-linux-x64") && !sharp5._isUsingX64V2()) {
+      const err2 = new Error("Prebuilt binaries for linux-x64 require v2 microarchitecture");
+      err2.code = "Unsupported CPU";
+      errors.push(err2);
+      sharp5 = null;
+    }
+    if (sharp5) {
+      module2.exports = sharp5;
+    } else {
+      const [isLinux, isMacOs, isWindows] = ["linux", "darwin", "win32"].map((os) => runtimePlatform.startsWith(os));
+      const help = [`Could not load the "sharp" module using the ${runtimePlatform} runtime`];
+      errors.forEach((err2) => {
+        if (err2.code !== "MODULE_NOT_FOUND") {
+          help.push(`${err2.code}: ${err2.message}`);
+        }
+      });
+      const messages = errors.map((err2) => err2.message).join(" ");
+      help.push("Possible solutions:");
+      if (isUnsupportedNodeRuntime()) {
+        const { found, expected } = isUnsupportedNodeRuntime();
+        help.push(
+          "- Please upgrade Node.js:",
+          `    Found ${found}`,
+          `    Requires ${expected}`
+        );
+      } else if (prebuiltPlatforms.includes(runtimePlatform)) {
+        const [os, cpu] = runtimePlatform.split("-");
+        const libc = os.endsWith("musl") ? " --libc=musl" : "";
+        help.push(
+          "- Ensure optional dependencies can be installed:",
+          "    npm install --include=optional sharp",
+          "- Ensure your package manager supports multi-platform installation:",
+          "    See https://sharp.pixelplumbing.com/install#cross-platform",
+          "- Add platform-specific dependencies:",
+          `    npm install --os=${os.replace("musl", "")}${libc} --cpu=${cpu} sharp`
+        );
+      } else {
+        help.push(
+          `- Manually install libvips >= ${minimumLibvipsVersion}`,
+          "- Add experimental WebAssembly-based dependencies:",
+          "    npm install --cpu=wasm32 sharp",
+          "    npm install @img/sharp-wasm32"
+        );
+      }
+      if (isLinux && /(symbol not found|CXXABI_)/i.test(messages)) {
+        try {
+          const { config } = require(`@img/sharp-libvips-${runtimePlatform}/package`);
+          const libcFound = `${familySync()} ${versionSync()}`;
+          const libcRequires = `${config.musl ? "musl" : "glibc"} ${config.musl || config.glibc}`;
+          help.push(
+            "- Update your OS:",
+            `    Found ${libcFound}`,
+            `    Requires ${libcRequires}`
+          );
+        } catch (_errEngines) {
+        }
+      }
+      if (isLinux && /\/snap\/core[0-9]{2}/.test(messages)) {
+        help.push(
+          "- Remove the Node.js Snap, which does not support native modules",
+          "    snap remove node"
+        );
+      }
+      if (isMacOs && /Incompatible library version/.test(messages)) {
+        help.push(
+          "- Update Homebrew:",
+          "    brew update && brew upgrade vips"
+        );
+      }
+      if (errors.some((err2) => err2.code === "ERR_DLOPEN_DISABLED")) {
+        help.push("- Run Node.js without using the --no-addons flag");
+      }
+      if (isWindows && /The specified procedure could not be found/.test(messages)) {
+        help.push(
+          "- Using the canvas package on Windows?",
+          "    See https://sharp.pixelplumbing.com/install#canvas-and-windows",
+          "- Check for outdated versions of sharp in the dependency tree:",
+          "    npm ls sharp"
+        );
+      }
+      help.push(
+        "- Consult the installation documentation:",
+        "    See https://sharp.pixelplumbing.com/install"
+      );
+      throw new Error(help.join("\n"));
+    }
+  }
+});
+
+// node_modules/sharp/lib/constructor.js
+var require_constructor = __commonJS({
+  "node_modules/sharp/lib/constructor.js"(exports, module2) {
+    var util = require("node:util");
+    var stream = require("node:stream");
+    var is = require_is();
+    require_sharp();
+    var debuglog = util.debuglog("sharp");
+    var queueListener = (queueLength) => {
+      Sharp.queue.emit("change", queueLength);
+    };
+    var Sharp = function(input, options) {
+      if (arguments.length === 1 && !is.defined(input)) {
+        throw new Error("Invalid input");
+      }
+      if (!(this instanceof Sharp)) {
+        return new Sharp(input, options);
+      }
+      stream.Duplex.call(this);
+      this.options = {
+        // resize options
+        topOffsetPre: -1,
+        leftOffsetPre: -1,
+        widthPre: -1,
+        heightPre: -1,
+        topOffsetPost: -1,
+        leftOffsetPost: -1,
+        widthPost: -1,
+        heightPost: -1,
+        width: -1,
+        height: -1,
+        canvas: "crop",
+        position: 0,
+        resizeBackground: [0, 0, 0, 255],
+        angle: 0,
+        rotationAngle: 0,
+        rotationBackground: [0, 0, 0, 255],
+        rotateBefore: false,
+        orientBefore: false,
+        flip: false,
+        flop: false,
+        extendTop: 0,
+        extendBottom: 0,
+        extendLeft: 0,
+        extendRight: 0,
+        extendBackground: [0, 0, 0, 255],
+        extendWith: "background",
+        withoutEnlargement: false,
+        withoutReduction: false,
+        affineMatrix: [],
+        affineBackground: [0, 0, 0, 255],
+        affineIdx: 0,
+        affineIdy: 0,
+        affineOdx: 0,
+        affineOdy: 0,
+        affineInterpolator: this.constructor.interpolators.bilinear,
+        kernel: "lanczos3",
+        fastShrinkOnLoad: true,
+        // operations
+        tint: [-1, 0, 0, 0],
+        flatten: false,
+        flattenBackground: [0, 0, 0],
+        unflatten: false,
+        negate: false,
+        negateAlpha: true,
+        medianSize: 0,
+        blurSigma: 0,
+        precision: "integer",
+        minAmpl: 0.2,
+        sharpenSigma: 0,
+        sharpenM1: 1,
+        sharpenM2: 2,
+        sharpenX1: 2,
+        sharpenY2: 10,
+        sharpenY3: 20,
+        threshold: 0,
+        thresholdGrayscale: true,
+        trimBackground: [],
+        trimThreshold: -1,
+        trimLineArt: false,
+        dilateWidth: 0,
+        erodeWidth: 0,
+        gamma: 0,
+        gammaOut: 0,
+        greyscale: false,
+        normalise: false,
+        normaliseLower: 1,
+        normaliseUpper: 99,
+        claheWidth: 0,
+        claheHeight: 0,
+        claheMaxSlope: 3,
+        brightness: 1,
+        saturation: 1,
+        hue: 0,
+        lightness: 0,
+        booleanBufferIn: null,
+        booleanFileIn: "",
+        joinChannelIn: [],
+        extractChannel: -1,
+        removeAlpha: false,
+        ensureAlpha: -1,
+        colourspace: "srgb",
+        colourspacePipeline: "last",
+        composite: [],
+        // output
+        fileOut: "",
+        formatOut: "input",
+        streamOut: false,
+        keepMetadata: 0,
+        withMetadataOrientation: -1,
+        withMetadataDensity: 0,
+        withIccProfile: "",
+        withExif: {},
+        withExifMerge: true,
+        withXmp: "",
+        resolveWithObject: false,
+        loop: -1,
+        delay: [],
+        // output format
+        jpegQuality: 80,
+        jpegProgressive: false,
+        jpegChromaSubsampling: "4:2:0",
+        jpegTrellisQuantisation: false,
+        jpegOvershootDeringing: false,
+        jpegOptimiseScans: false,
+        jpegOptimiseCoding: true,
+        jpegQuantisationTable: 0,
+        pngProgressive: false,
+        pngCompressionLevel: 6,
+        pngAdaptiveFiltering: false,
+        pngPalette: false,
+        pngQuality: 100,
+        pngEffort: 7,
+        pngBitdepth: 8,
+        pngDither: 1,
+        jp2Quality: 80,
+        jp2TileHeight: 512,
+        jp2TileWidth: 512,
+        jp2Lossless: false,
+        jp2ChromaSubsampling: "4:4:4",
+        webpQuality: 80,
+        webpAlphaQuality: 100,
+        webpLossless: false,
+        webpNearLossless: false,
+        webpSmartSubsample: false,
+        webpSmartDeblock: false,
+        webpPreset: "default",
+        webpEffort: 4,
+        webpMinSize: false,
+        webpMixed: false,
+        gifBitdepth: 8,
+        gifEffort: 7,
+        gifDither: 1,
+        gifInterFrameMaxError: 0,
+        gifInterPaletteMaxError: 3,
+        gifKeepDuplicateFrames: false,
+        gifReuse: true,
+        gifProgressive: false,
+        tiffQuality: 80,
+        tiffCompression: "jpeg",
+        tiffBigtiff: false,
+        tiffPredictor: "horizontal",
+        tiffPyramid: false,
+        tiffMiniswhite: false,
+        tiffBitdepth: 8,
+        tiffTile: false,
+        tiffTileHeight: 256,
+        tiffTileWidth: 256,
+        tiffXres: 1,
+        tiffYres: 1,
+        tiffResolutionUnit: "inch",
+        heifQuality: 50,
+        heifLossless: false,
+        heifCompression: "av1",
+        heifEffort: 4,
+        heifChromaSubsampling: "4:4:4",
+        heifBitdepth: 8,
+        jxlDistance: 1,
+        jxlDecodingTier: 0,
+        jxlEffort: 7,
+        jxlLossless: false,
+        rawDepth: "uchar",
+        tileSize: 256,
+        tileOverlap: 0,
+        tileContainer: "fs",
+        tileLayout: "dz",
+        tileFormat: "last",
+        tileDepth: "last",
+        tileAngle: 0,
+        tileSkipBlanks: -1,
+        tileBackground: [255, 255, 255, 255],
+        tileCentre: false,
+        tileId: "https://example.com/iiif",
+        tileBasename: "",
+        timeoutSeconds: 0,
+        linearA: [],
+        linearB: [],
+        pdfBackground: [255, 255, 255, 255],
+        // Function to notify of libvips warnings
+        debuglog: (warning) => {
+          this.emit("warning", warning);
+          debuglog(warning);
+        },
+        // Function to notify of queue length changes
+        queueListener
+      };
+      this.options.input = this._createInputDescriptor(input, options, { allowStream: true });
+      return this;
+    };
+    Object.setPrototypeOf(Sharp.prototype, stream.Duplex.prototype);
+    Object.setPrototypeOf(Sharp, stream.Duplex);
+    function clone() {
+      const clone2 = this.constructor.call();
+      const { debuglog: debuglog2, queueListener: queueListener2, ...options } = this.options;
+      clone2.options = structuredClone(options);
+      clone2.options.debuglog = debuglog2;
+      clone2.options.queueListener = queueListener2;
+      if (this._isStreamInput()) {
+        this.on("finish", () => {
+          this._flattenBufferIn();
+          clone2.options.input.buffer = this.options.input.buffer;
+          clone2.emit("finish");
+        });
+      }
+      return clone2;
+    }
+    Object.assign(Sharp.prototype, { clone });
+    module2.exports = Sharp;
+  }
+});
+
+// node_modules/sharp/lib/input.js
+var require_input = __commonJS({
+  "node_modules/sharp/lib/input.js"(exports, module2) {
+    var is = require_is();
+    var sharp5 = require_sharp();
+    var align = {
+      left: "low",
+      top: "low",
+      low: "low",
+      center: "centre",
+      centre: "centre",
+      right: "high",
+      bottom: "high",
+      high: "high"
+    };
+    var inputStreamParameters = [
+      // Limits and error handling
+      "failOn",
+      "limitInputPixels",
+      "unlimited",
+      // Format-generic
+      "animated",
+      "autoOrient",
+      "density",
+      "ignoreIcc",
+      "page",
+      "pages",
+      "sequentialRead",
+      // Format-specific
+      "jp2",
+      "openSlide",
+      "pdf",
+      "raw",
+      "svg",
+      "tiff",
+      // Deprecated
+      "failOnError",
+      "openSlideLevel",
+      "pdfBackground",
+      "tiffSubifd"
+    ];
+    function _inputOptionsFromObject(obj) {
+      const params = inputStreamParameters.filter((p) => is.defined(obj[p])).map((p) => [p, obj[p]]);
+      return params.length ? Object.fromEntries(params) : void 0;
+    }
+    function _createInputDescriptor(input, inputOptions, containerOptions) {
+      const inputDescriptor = {
+        autoOrient: false,
+        failOn: "warning",
+        limitInputPixels: 16383 ** 2,
+        ignoreIcc: false,
+        unlimited: false,
+        sequentialRead: true
+      };
+      if (is.string(input)) {
+        inputDescriptor.file = input;
+      } else if (is.buffer(input)) {
+        if (input.length === 0) {
+          throw Error("Input Buffer is empty");
+        }
+        inputDescriptor.buffer = input;
+      } else if (is.arrayBuffer(input)) {
+        if (input.byteLength === 0) {
+          throw Error("Input bit Array is empty");
+        }
+        inputDescriptor.buffer = Buffer.from(input, 0, input.byteLength);
+      } else if (is.typedArray(input)) {
+        if (input.length === 0) {
+          throw Error("Input Bit Array is empty");
+        }
+        inputDescriptor.buffer = Buffer.from(input.buffer, input.byteOffset, input.byteLength);
+      } else if (is.plainObject(input) && !is.defined(inputOptions)) {
+        inputOptions = input;
+        if (_inputOptionsFromObject(inputOptions)) {
+          inputDescriptor.buffer = [];
+        }
+      } else if (!is.defined(input) && !is.defined(inputOptions) && is.object(containerOptions) && containerOptions.allowStream) {
+        inputDescriptor.buffer = [];
+      } else if (Array.isArray(input)) {
+        if (input.length > 1) {
+          if (!this.options.joining) {
+            this.options.joining = true;
+            this.options.join = input.map((i) => this._createInputDescriptor(i));
+          } else {
+            throw new Error("Recursive join is unsupported");
+          }
+        } else {
+          throw new Error("Expected at least two images to join");
+        }
+      } else {
+        throw new Error(`Unsupported input '${input}' of type ${typeof input}${is.defined(inputOptions) ? ` when also providing options of type ${typeof inputOptions}` : ""}`);
+      }
+      if (is.object(inputOptions)) {
+        if (is.defined(inputOptions.failOnError)) {
+          if (is.bool(inputOptions.failOnError)) {
+            inputDescriptor.failOn = inputOptions.failOnError ? "warning" : "none";
+          } else {
+            throw is.invalidParameterError("failOnError", "boolean", inputOptions.failOnError);
+          }
+        }
+        if (is.defined(inputOptions.failOn)) {
+          if (is.string(inputOptions.failOn) && is.inArray(inputOptions.failOn, ["none", "truncated", "error", "warning"])) {
+            inputDescriptor.failOn = inputOptions.failOn;
+          } else {
+            throw is.invalidParameterError("failOn", "one of: none, truncated, error, warning", inputOptions.failOn);
+          }
+        }
+        if (is.defined(inputOptions.autoOrient)) {
+          if (is.bool(inputOptions.autoOrient)) {
+            inputDescriptor.autoOrient = inputOptions.autoOrient;
+          } else {
+            throw is.invalidParameterError("autoOrient", "boolean", inputOptions.autoOrient);
+          }
+        }
+        if (is.defined(inputOptions.density)) {
+          if (is.inRange(inputOptions.density, 1, 1e5)) {
+            inputDescriptor.density = inputOptions.density;
+          } else {
+            throw is.invalidParameterError("density", "number between 1 and 100000", inputOptions.density);
+          }
+        }
+        if (is.defined(inputOptions.ignoreIcc)) {
+          if (is.bool(inputOptions.ignoreIcc)) {
+            inputDescriptor.ignoreIcc = inputOptions.ignoreIcc;
+          } else {
+            throw is.invalidParameterError("ignoreIcc", "boolean", inputOptions.ignoreIcc);
+          }
+        }
+        if (is.defined(inputOptions.limitInputPixels)) {
+          if (is.bool(inputOptions.limitInputPixels)) {
+            inputDescriptor.limitInputPixels = inputOptions.limitInputPixels ? 16383 ** 2 : 0;
+          } else if (is.integer(inputOptions.limitInputPixels) && is.inRange(inputOptions.limitInputPixels, 0, Number.MAX_SAFE_INTEGER)) {
+            inputDescriptor.limitInputPixels = inputOptions.limitInputPixels;
+          } else {
+            throw is.invalidParameterError("limitInputPixels", "positive integer", inputOptions.limitInputPixels);
+          }
+        }
+        if (is.defined(inputOptions.unlimited)) {
+          if (is.bool(inputOptions.unlimited)) {
+            inputDescriptor.unlimited = inputOptions.unlimited;
+          } else {
+            throw is.invalidParameterError("unlimited", "boolean", inputOptions.unlimited);
+          }
+        }
+        if (is.defined(inputOptions.sequentialRead)) {
+          if (is.bool(inputOptions.sequentialRead)) {
+            inputDescriptor.sequentialRead = inputOptions.sequentialRead;
+          } else {
+            throw is.invalidParameterError("sequentialRead", "boolean", inputOptions.sequentialRead);
+          }
+        }
+        if (is.defined(inputOptions.raw)) {
+          if (is.object(inputOptions.raw) && is.integer(inputOptions.raw.width) && inputOptions.raw.width > 0 && is.integer(inputOptions.raw.height) && inputOptions.raw.height > 0 && is.integer(inputOptions.raw.channels) && is.inRange(inputOptions.raw.channels, 1, 4)) {
+            inputDescriptor.rawWidth = inputOptions.raw.width;
+            inputDescriptor.rawHeight = inputOptions.raw.height;
+            inputDescriptor.rawChannels = inputOptions.raw.channels;
+            switch (input.constructor) {
+              case Uint8Array:
+              case Uint8ClampedArray:
+                inputDescriptor.rawDepth = "uchar";
+                break;
+              case Int8Array:
+                inputDescriptor.rawDepth = "char";
+                break;
+              case Uint16Array:
+                inputDescriptor.rawDepth = "ushort";
+                break;
+              case Int16Array:
+                inputDescriptor.rawDepth = "short";
+                break;
+              case Uint32Array:
+                inputDescriptor.rawDepth = "uint";
+                break;
+              case Int32Array:
+                inputDescriptor.rawDepth = "int";
+                break;
+              case Float32Array:
+                inputDescriptor.rawDepth = "float";
+                break;
+              case Float64Array:
+                inputDescriptor.rawDepth = "double";
+                break;
+              default:
+                inputDescriptor.rawDepth = "uchar";
+                break;
+            }
+          } else {
+            throw new Error("Expected width, height and channels for raw pixel input");
+          }
+          inputDescriptor.rawPremultiplied = false;
+          if (is.defined(inputOptions.raw.premultiplied)) {
+            if (is.bool(inputOptions.raw.premultiplied)) {
+              inputDescriptor.rawPremultiplied = inputOptions.raw.premultiplied;
+            } else {
+              throw is.invalidParameterError("raw.premultiplied", "boolean", inputOptions.raw.premultiplied);
+            }
+          }
+          inputDescriptor.rawPageHeight = 0;
+          if (is.defined(inputOptions.raw.pageHeight)) {
+            if (is.integer(inputOptions.raw.pageHeight) && inputOptions.raw.pageHeight > 0 && inputOptions.raw.pageHeight <= inputOptions.raw.height) {
+              if (inputOptions.raw.height % inputOptions.raw.pageHeight !== 0) {
+                throw new Error(`Expected raw.height ${inputOptions.raw.height} to be a multiple of raw.pageHeight ${inputOptions.raw.pageHeight}`);
+              }
+              inputDescriptor.rawPageHeight = inputOptions.raw.pageHeight;
+            } else {
+              throw is.invalidParameterError("raw.pageHeight", "positive integer", inputOptions.raw.pageHeight);
+            }
+          }
+        }
+        if (is.defined(inputOptions.animated)) {
+          if (is.bool(inputOptions.animated)) {
+            inputDescriptor.pages = inputOptions.animated ? -1 : 1;
+          } else {
+            throw is.invalidParameterError("animated", "boolean", inputOptions.animated);
+          }
+        }
+        if (is.defined(inputOptions.pages)) {
+          if (is.integer(inputOptions.pages) && is.inRange(inputOptions.pages, -1, 1e5)) {
+            inputDescriptor.pages = inputOptions.pages;
+          } else {
+            throw is.invalidParameterError("pages", "integer between -1 and 100000", inputOptions.pages);
+          }
+        }
+        if (is.defined(inputOptions.page)) {
+          if (is.integer(inputOptions.page) && is.inRange(inputOptions.page, 0, 1e5)) {
+            inputDescriptor.page = inputOptions.page;
+          } else {
+            throw is.invalidParameterError("page", "integer between 0 and 100000", inputOptions.page);
+          }
+        }
+        if (is.object(inputOptions.openSlide) && is.defined(inputOptions.openSlide.level)) {
+          if (is.integer(inputOptions.openSlide.level) && is.inRange(inputOptions.openSlide.level, 0, 256)) {
+            inputDescriptor.openSlideLevel = inputOptions.openSlide.level;
+          } else {
+            throw is.invalidParameterError("openSlide.level", "integer between 0 and 256", inputOptions.openSlide.level);
+          }
+        } else if (is.defined(inputOptions.level)) {
+          if (is.integer(inputOptions.level) && is.inRange(inputOptions.level, 0, 256)) {
+            inputDescriptor.openSlideLevel = inputOptions.level;
+          } else {
+            throw is.invalidParameterError("level", "integer between 0 and 256", inputOptions.level);
+          }
+        }
+        if (is.object(inputOptions.tiff) && is.defined(inputOptions.tiff.subifd)) {
+          if (is.integer(inputOptions.tiff.subifd) && is.inRange(inputOptions.tiff.subifd, -1, 1e5)) {
+            inputDescriptor.tiffSubifd = inputOptions.tiff.subifd;
+          } else {
+            throw is.invalidParameterError("tiff.subifd", "integer between -1 and 100000", inputOptions.tiff.subifd);
+          }
+        } else if (is.defined(inputOptions.subifd)) {
+          if (is.integer(inputOptions.subifd) && is.inRange(inputOptions.subifd, -1, 1e5)) {
+            inputDescriptor.tiffSubifd = inputOptions.subifd;
+          } else {
+            throw is.invalidParameterError("subifd", "integer between -1 and 100000", inputOptions.subifd);
+          }
+        }
+        if (is.object(inputOptions.svg)) {
+          if (is.defined(inputOptions.svg.stylesheet)) {
+            if (is.string(inputOptions.svg.stylesheet)) {
+              inputDescriptor.svgStylesheet = inputOptions.svg.stylesheet;
+            } else {
+              throw is.invalidParameterError("svg.stylesheet", "string", inputOptions.svg.stylesheet);
+            }
+          }
+          if (is.defined(inputOptions.svg.highBitdepth)) {
+            if (is.bool(inputOptions.svg.highBitdepth)) {
+              inputDescriptor.svgHighBitdepth = inputOptions.svg.highBitdepth;
+            } else {
+              throw is.invalidParameterError("svg.highBitdepth", "boolean", inputOptions.svg.highBitdepth);
+            }
+          }
+        }
+        if (is.object(inputOptions.pdf) && is.defined(inputOptions.pdf.background)) {
+          inputDescriptor.pdfBackground = this._getBackgroundColourOption(inputOptions.pdf.background);
+        } else if (is.defined(inputOptions.pdfBackground)) {
+          inputDescriptor.pdfBackground = this._getBackgroundColourOption(inputOptions.pdfBackground);
+        }
+        if (is.object(inputOptions.jp2) && is.defined(inputOptions.jp2.oneshot)) {
+          if (is.bool(inputOptions.jp2.oneshot)) {
+            inputDescriptor.jp2Oneshot = inputOptions.jp2.oneshot;
+          } else {
+            throw is.invalidParameterError("jp2.oneshot", "boolean", inputOptions.jp2.oneshot);
+          }
+        }
+        if (is.defined(inputOptions.create)) {
+          if (is.object(inputOptions.create) && is.integer(inputOptions.create.width) && inputOptions.create.width > 0 && is.integer(inputOptions.create.height) && inputOptions.create.height > 0 && is.integer(inputOptions.create.channels)) {
+            inputDescriptor.createWidth = inputOptions.create.width;
+            inputDescriptor.createHeight = inputOptions.create.height;
+            inputDescriptor.createChannels = inputOptions.create.channels;
+            inputDescriptor.createPageHeight = 0;
+            if (is.defined(inputOptions.create.pageHeight)) {
+              if (is.integer(inputOptions.create.pageHeight) && inputOptions.create.pageHeight > 0 && inputOptions.create.pageHeight <= inputOptions.create.height) {
+                if (inputOptions.create.height % inputOptions.create.pageHeight !== 0) {
+                  throw new Error(`Expected create.height ${inputOptions.create.height} to be a multiple of create.pageHeight ${inputOptions.create.pageHeight}`);
+                }
+                inputDescriptor.createPageHeight = inputOptions.create.pageHeight;
+              } else {
+                throw is.invalidParameterError("create.pageHeight", "positive integer", inputOptions.create.pageHeight);
+              }
+            }
+            if (is.defined(inputOptions.create.noise)) {
+              if (!is.object(inputOptions.create.noise)) {
+                throw new Error("Expected noise to be an object");
+              }
+              if (inputOptions.create.noise.type !== "gaussian") {
+                throw new Error("Only gaussian noise is supported at the moment");
+              }
+              inputDescriptor.createNoiseType = inputOptions.create.noise.type;
+              if (!is.inRange(inputOptions.create.channels, 1, 4)) {
+                throw is.invalidParameterError("create.channels", "number between 1 and 4", inputOptions.create.channels);
+              }
+              inputDescriptor.createNoiseMean = 128;
+              if (is.defined(inputOptions.create.noise.mean)) {
+                if (is.number(inputOptions.create.noise.mean) && is.inRange(inputOptions.create.noise.mean, 0, 1e4)) {
+                  inputDescriptor.createNoiseMean = inputOptions.create.noise.mean;
+                } else {
+                  throw is.invalidParameterError("create.noise.mean", "number between 0 and 10000", inputOptions.create.noise.mean);
+                }
+              }
+              inputDescriptor.createNoiseSigma = 30;
+              if (is.defined(inputOptions.create.noise.sigma)) {
+                if (is.number(inputOptions.create.noise.sigma) && is.inRange(inputOptions.create.noise.sigma, 0, 1e4)) {
+                  inputDescriptor.createNoiseSigma = inputOptions.create.noise.sigma;
+                } else {
+                  throw is.invalidParameterError("create.noise.sigma", "number between 0 and 10000", inputOptions.create.noise.sigma);
+                }
+              }
+            } else if (is.defined(inputOptions.create.background)) {
+              if (!is.inRange(inputOptions.create.channels, 3, 4)) {
+                throw is.invalidParameterError("create.channels", "number between 3 and 4", inputOptions.create.channels);
+              }
+              inputDescriptor.createBackground = this._getBackgroundColourOption(inputOptions.create.background);
+            } else {
+              throw new Error("Expected valid noise or background to create a new input image");
+            }
+            delete inputDescriptor.buffer;
+          } else {
+            throw new Error("Expected valid width, height and channels to create a new input image");
+          }
+        }
+        if (is.defined(inputOptions.text)) {
+          if (is.object(inputOptions.text) && is.string(inputOptions.text.text)) {
+            inputDescriptor.textValue = inputOptions.text.text;
+            if (is.defined(inputOptions.text.height) && is.defined(inputOptions.text.dpi)) {
+              throw new Error("Expected only one of dpi or height");
+            }
+            if (is.defined(inputOptions.text.font)) {
+              if (is.string(inputOptions.text.font)) {
+                inputDescriptor.textFont = inputOptions.text.font;
+              } else {
+                throw is.invalidParameterError("text.font", "string", inputOptions.text.font);
+              }
+            }
+            if (is.defined(inputOptions.text.fontfile)) {
+              if (is.string(inputOptions.text.fontfile)) {
+                inputDescriptor.textFontfile = inputOptions.text.fontfile;
+              } else {
+                throw is.invalidParameterError("text.fontfile", "string", inputOptions.text.fontfile);
+              }
+            }
+            if (is.defined(inputOptions.text.width)) {
+              if (is.integer(inputOptions.text.width) && inputOptions.text.width > 0) {
+                inputDescriptor.textWidth = inputOptions.text.width;
+              } else {
+                throw is.invalidParameterError("text.width", "positive integer", inputOptions.text.width);
+              }
+            }
+            if (is.defined(inputOptions.text.height)) {
+              if (is.integer(inputOptions.text.height) && inputOptions.text.height > 0) {
+                inputDescriptor.textHeight = inputOptions.text.height;
+              } else {
+                throw is.invalidParameterError("text.height", "positive integer", inputOptions.text.height);
+              }
+            }
+            if (is.defined(inputOptions.text.align)) {
+              if (is.string(inputOptions.text.align) && is.string(this.constructor.align[inputOptions.text.align])) {
+                inputDescriptor.textAlign = this.constructor.align[inputOptions.text.align];
+              } else {
+                throw is.invalidParameterError("text.align", "valid alignment", inputOptions.text.align);
+              }
+            }
+            if (is.defined(inputOptions.text.justify)) {
+              if (is.bool(inputOptions.text.justify)) {
+                inputDescriptor.textJustify = inputOptions.text.justify;
+              } else {
+                throw is.invalidParameterError("text.justify", "boolean", inputOptions.text.justify);
+              }
+            }
+            if (is.defined(inputOptions.text.dpi)) {
+              if (is.integer(inputOptions.text.dpi) && is.inRange(inputOptions.text.dpi, 1, 1e6)) {
+                inputDescriptor.textDpi = inputOptions.text.dpi;
+              } else {
+                throw is.invalidParameterError("text.dpi", "integer between 1 and 1000000", inputOptions.text.dpi);
+              }
+            }
+            if (is.defined(inputOptions.text.rgba)) {
+              if (is.bool(inputOptions.text.rgba)) {
+                inputDescriptor.textRgba = inputOptions.text.rgba;
+              } else {
+                throw is.invalidParameterError("text.rgba", "bool", inputOptions.text.rgba);
+              }
+            }
+            if (is.defined(inputOptions.text.spacing)) {
+              if (is.integer(inputOptions.text.spacing) && is.inRange(inputOptions.text.spacing, -1e6, 1e6)) {
+                inputDescriptor.textSpacing = inputOptions.text.spacing;
+              } else {
+                throw is.invalidParameterError("text.spacing", "integer between -1000000 and 1000000", inputOptions.text.spacing);
+              }
+            }
+            if (is.defined(inputOptions.text.wrap)) {
+              if (is.string(inputOptions.text.wrap) && is.inArray(inputOptions.text.wrap, ["word", "char", "word-char", "none"])) {
+                inputDescriptor.textWrap = inputOptions.text.wrap;
+              } else {
+                throw is.invalidParameterError("text.wrap", "one of: word, char, word-char, none", inputOptions.text.wrap);
+              }
+            }
+            delete inputDescriptor.buffer;
+          } else {
+            throw new Error("Expected a valid string to create an image with text.");
+          }
+        }
+        if (is.defined(inputOptions.join)) {
+          if (is.defined(this.options.join)) {
+            if (is.defined(inputOptions.join.animated)) {
+              if (is.bool(inputOptions.join.animated)) {
+                inputDescriptor.joinAnimated = inputOptions.join.animated;
+              } else {
+                throw is.invalidParameterError("join.animated", "boolean", inputOptions.join.animated);
+              }
+            }
+            if (is.defined(inputOptions.join.across)) {
+              if (is.integer(inputOptions.join.across) && is.inRange(inputOptions.join.across, 1, 1e6)) {
+                inputDescriptor.joinAcross = inputOptions.join.across;
+              } else {
+                throw is.invalidParameterError("join.across", "integer between 1 and 100000", inputOptions.join.across);
+              }
+            }
+            if (is.defined(inputOptions.join.shim)) {
+              if (is.integer(inputOptions.join.shim) && is.inRange(inputOptions.join.shim, 0, 1e6)) {
+                inputDescriptor.joinShim = inputOptions.join.shim;
+              } else {
+                throw is.invalidParameterError("join.shim", "integer between 0 and 100000", inputOptions.join.shim);
+              }
+            }
+            if (is.defined(inputOptions.join.background)) {
+              inputDescriptor.joinBackground = this._getBackgroundColourOption(inputOptions.join.background);
+            }
+            if (is.defined(inputOptions.join.halign)) {
+              if (is.string(inputOptions.join.halign) && is.string(this.constructor.align[inputOptions.join.halign])) {
+                inputDescriptor.joinHalign = this.constructor.align[inputOptions.join.halign];
+              } else {
+                throw is.invalidParameterError("join.halign", "valid alignment", inputOptions.join.halign);
+              }
+            }
+            if (is.defined(inputOptions.join.valign)) {
+              if (is.string(inputOptions.join.valign) && is.string(this.constructor.align[inputOptions.join.valign])) {
+                inputDescriptor.joinValign = this.constructor.align[inputOptions.join.valign];
+              } else {
+                throw is.invalidParameterError("join.valign", "valid alignment", inputOptions.join.valign);
+              }
+            }
+          } else {
+            throw new Error("Expected input to be an array of images to join");
+          }
+        }
+      } else if (is.defined(inputOptions)) {
+        throw new Error(`Invalid input options ${inputOptions}`);
+      }
+      return inputDescriptor;
+    }
+    function _write(chunk, _encoding, callback) {
+      if (Array.isArray(this.options.input.buffer)) {
+        if (is.buffer(chunk)) {
+          if (this.options.input.buffer.length === 0) {
+            this.on("finish", () => {
+              this.streamInFinished = true;
+            });
+          }
+          this.options.input.buffer.push(chunk);
+          callback();
+        } else {
+          callback(new Error("Non-Buffer data on Writable Stream"));
+        }
+      } else {
+        callback(new Error("Unexpected data on Writable Stream"));
+      }
+    }
+    function _flattenBufferIn() {
+      if (this._isStreamInput()) {
+        this.options.input.buffer = Buffer.concat(this.options.input.buffer);
+      }
+    }
+    function _isStreamInput() {
+      return Array.isArray(this.options.input.buffer);
+    }
+    function metadata(callback) {
+      const stack = Error();
+      if (is.fn(callback)) {
+        if (this._isStreamInput()) {
+          this.on("finish", () => {
+            this._flattenBufferIn();
+            sharp5.metadata(this.options, (err2, metadata2) => {
+              if (err2) {
+                callback(is.nativeError(err2, stack));
+              } else {
+                callback(null, metadata2);
+              }
+            });
+          });
+        } else {
+          sharp5.metadata(this.options, (err2, metadata2) => {
+            if (err2) {
+              callback(is.nativeError(err2, stack));
+            } else {
+              callback(null, metadata2);
+            }
+          });
+        }
+        return this;
+      } else {
+        if (this._isStreamInput()) {
+          return new Promise((resolve3, reject) => {
+            const finished = () => {
+              this._flattenBufferIn();
+              sharp5.metadata(this.options, (err2, metadata2) => {
+                if (err2) {
+                  reject(is.nativeError(err2, stack));
+                } else {
+                  resolve3(metadata2);
+                }
+              });
+            };
+            if (this.writableFinished) {
+              finished();
+            } else {
+              this.once("finish", finished);
+            }
+          });
+        } else {
+          return new Promise((resolve3, reject) => {
+            sharp5.metadata(this.options, (err2, metadata2) => {
+              if (err2) {
+                reject(is.nativeError(err2, stack));
+              } else {
+                resolve3(metadata2);
+              }
+            });
+          });
+        }
+      }
+    }
+    function stats(callback) {
+      const stack = Error();
+      if (is.fn(callback)) {
+        if (this._isStreamInput()) {
+          this.on("finish", () => {
+            this._flattenBufferIn();
+            sharp5.stats(this.options, (err2, stats2) => {
+              if (err2) {
+                callback(is.nativeError(err2, stack));
+              } else {
+                callback(null, stats2);
+              }
+            });
+          });
+        } else {
+          sharp5.stats(this.options, (err2, stats2) => {
+            if (err2) {
+              callback(is.nativeError(err2, stack));
+            } else {
+              callback(null, stats2);
+            }
+          });
+        }
+        return this;
+      } else {
+        if (this._isStreamInput()) {
+          return new Promise((resolve3, reject) => {
+            this.on("finish", function() {
+              this._flattenBufferIn();
+              sharp5.stats(this.options, (err2, stats2) => {
+                if (err2) {
+                  reject(is.nativeError(err2, stack));
+                } else {
+                  resolve3(stats2);
+                }
+              });
+            });
+          });
+        } else {
+          return new Promise((resolve3, reject) => {
+            sharp5.stats(this.options, (err2, stats2) => {
+              if (err2) {
+                reject(is.nativeError(err2, stack));
+              } else {
+                resolve3(stats2);
+              }
+            });
+          });
+        }
+      }
+    }
+    module2.exports = (Sharp) => {
+      Object.assign(Sharp.prototype, {
+        // Private
+        _inputOptionsFromObject,
+        _createInputDescriptor,
+        _write,
+        _flattenBufferIn,
+        _isStreamInput,
+        // Public
+        metadata,
+        stats
+      });
+      Sharp.align = align;
+    };
+  }
+});
+
+// node_modules/sharp/lib/resize.js
+var require_resize = __commonJS({
+  "node_modules/sharp/lib/resize.js"(exports, module2) {
+    var is = require_is();
+    var gravity = {
+      center: 0,
+      centre: 0,
+      north: 1,
+      east: 2,
+      south: 3,
+      west: 4,
+      northeast: 5,
+      southeast: 6,
+      southwest: 7,
+      northwest: 8
+    };
+    var position = {
+      top: 1,
+      right: 2,
+      bottom: 3,
+      left: 4,
+      "right top": 5,
+      "right bottom": 6,
+      "left bottom": 7,
+      "left top": 8
+    };
+    var extendWith = {
+      background: "background",
+      copy: "copy",
+      repeat: "repeat",
+      mirror: "mirror"
+    };
+    var strategy = {
+      entropy: 16,
+      attention: 17
+    };
+    var kernel = {
+      nearest: "nearest",
+      linear: "linear",
+      cubic: "cubic",
+      mitchell: "mitchell",
+      lanczos2: "lanczos2",
+      lanczos3: "lanczos3",
+      mks2013: "mks2013",
+      mks2021: "mks2021"
+    };
+    var fit = {
+      contain: "contain",
+      cover: "cover",
+      fill: "fill",
+      inside: "inside",
+      outside: "outside"
+    };
+    var mapFitToCanvas = {
+      contain: "embed",
+      cover: "crop",
+      fill: "ignore_aspect",
+      inside: "max",
+      outside: "min"
+    };
+    function isRotationExpected(options) {
+      return options.angle % 360 !== 0 || options.rotationAngle !== 0;
+    }
+    function isResizeExpected(options) {
+      return options.width !== -1 || options.height !== -1;
+    }
+    function resize(widthOrOptions, height, options) {
+      if (isResizeExpected(this.options)) {
+        this.options.debuglog("ignoring previous resize options");
+      }
+      if (this.options.widthPost !== -1) {
+        this.options.debuglog("operation order will be: extract, resize, extract");
+      }
+      if (is.defined(widthOrOptions)) {
+        if (is.object(widthOrOptions) && !is.defined(options)) {
+          options = widthOrOptions;
+        } else if (is.integer(widthOrOptions) && widthOrOptions > 0) {
+          this.options.width = widthOrOptions;
+        } else {
+          throw is.invalidParameterError("width", "positive integer", widthOrOptions);
+        }
+      } else {
+        this.options.width = -1;
+      }
+      if (is.defined(height)) {
+        if (is.integer(height) && height > 0) {
+          this.options.height = height;
+        } else {
+          throw is.invalidParameterError("height", "positive integer", height);
+        }
+      } else {
+        this.options.height = -1;
+      }
+      if (is.object(options)) {
+        if (is.defined(options.width)) {
+          if (is.integer(options.width) && options.width > 0) {
+            this.options.width = options.width;
+          } else {
+            throw is.invalidParameterError("width", "positive integer", options.width);
+          }
+        }
+        if (is.defined(options.height)) {
+          if (is.integer(options.height) && options.height > 0) {
+            this.options.height = options.height;
+          } else {
+            throw is.invalidParameterError("height", "positive integer", options.height);
+          }
+        }
+        if (is.defined(options.fit)) {
+          const canvas = mapFitToCanvas[options.fit];
+          if (is.string(canvas)) {
+            this.options.canvas = canvas;
+          } else {
+            throw is.invalidParameterError("fit", "valid fit", options.fit);
+          }
+        }
+        if (is.defined(options.position)) {
+          const pos = is.integer(options.position) ? options.position : strategy[options.position] || position[options.position] || gravity[options.position];
+          if (is.integer(pos) && (is.inRange(pos, 0, 8) || is.inRange(pos, 16, 17))) {
+            this.options.position = pos;
+          } else {
+            throw is.invalidParameterError("position", "valid position/gravity/strategy", options.position);
+          }
+        }
+        this._setBackgroundColourOption("resizeBackground", options.background);
+        if (is.defined(options.kernel)) {
+          if (is.string(kernel[options.kernel])) {
+            this.options.kernel = kernel[options.kernel];
+          } else {
+            throw is.invalidParameterError("kernel", "valid kernel name", options.kernel);
+          }
+        }
+        if (is.defined(options.withoutEnlargement)) {
+          this._setBooleanOption("withoutEnlargement", options.withoutEnlargement);
+        }
+        if (is.defined(options.withoutReduction)) {
+          this._setBooleanOption("withoutReduction", options.withoutReduction);
+        }
+        if (is.defined(options.fastShrinkOnLoad)) {
+          this._setBooleanOption("fastShrinkOnLoad", options.fastShrinkOnLoad);
+        }
+      }
+      if (isRotationExpected(this.options) && isResizeExpected(this.options)) {
+        this.options.rotateBefore = true;
+      }
+      return this;
+    }
+    function extend(extend2) {
+      if (is.integer(extend2) && extend2 > 0) {
+        this.options.extendTop = extend2;
+        this.options.extendBottom = extend2;
+        this.options.extendLeft = extend2;
+        this.options.extendRight = extend2;
+      } else if (is.object(extend2)) {
+        if (is.defined(extend2.top)) {
+          if (is.integer(extend2.top) && extend2.top >= 0) {
+            this.options.extendTop = extend2.top;
+          } else {
+            throw is.invalidParameterError("top", "positive integer", extend2.top);
+          }
+        }
+        if (is.defined(extend2.bottom)) {
+          if (is.integer(extend2.bottom) && extend2.bottom >= 0) {
+            this.options.extendBottom = extend2.bottom;
+          } else {
+            throw is.invalidParameterError("bottom", "positive integer", extend2.bottom);
+          }
+        }
+        if (is.defined(extend2.left)) {
+          if (is.integer(extend2.left) && extend2.left >= 0) {
+            this.options.extendLeft = extend2.left;
+          } else {
+            throw is.invalidParameterError("left", "positive integer", extend2.left);
+          }
+        }
+        if (is.defined(extend2.right)) {
+          if (is.integer(extend2.right) && extend2.right >= 0) {
+            this.options.extendRight = extend2.right;
+          } else {
+            throw is.invalidParameterError("right", "positive integer", extend2.right);
+          }
+        }
+        this._setBackgroundColourOption("extendBackground", extend2.background);
+        if (is.defined(extend2.extendWith)) {
+          if (is.string(extendWith[extend2.extendWith])) {
+            this.options.extendWith = extendWith[extend2.extendWith];
+          } else {
+            throw is.invalidParameterError("extendWith", "one of: background, copy, repeat, mirror", extend2.extendWith);
+          }
+        }
+      } else {
+        throw is.invalidParameterError("extend", "integer or object", extend2);
+      }
+      return this;
+    }
+    function extract4(options) {
+      const suffix = isResizeExpected(this.options) || this.options.widthPre !== -1 ? "Post" : "Pre";
+      if (this.options[`width${suffix}`] !== -1) {
+        this.options.debuglog("ignoring previous extract options");
+      }
+      ["left", "top", "width", "height"].forEach(function(name) {
+        const value = options[name];
+        if (is.integer(value) && value >= 0) {
+          this.options[name + (name === "left" || name === "top" ? "Offset" : "") + suffix] = value;
+        } else {
+          throw is.invalidParameterError(name, "integer", value);
+        }
+      }, this);
+      if (isRotationExpected(this.options) && !isResizeExpected(this.options)) {
+        if (this.options.widthPre === -1 || this.options.widthPost === -1) {
+          this.options.rotateBefore = true;
+        }
+      }
+      if (this.options.input.autoOrient) {
+        this.options.orientBefore = true;
+      }
+      return this;
+    }
+    function trim(options) {
+      this.options.trimThreshold = 10;
+      if (is.defined(options)) {
+        if (is.object(options)) {
+          if (is.defined(options.background)) {
+            this._setBackgroundColourOption("trimBackground", options.background);
+          }
+          if (is.defined(options.threshold)) {
+            if (is.number(options.threshold) && options.threshold >= 0) {
+              this.options.trimThreshold = options.threshold;
+            } else {
+              throw is.invalidParameterError("threshold", "positive number", options.threshold);
+            }
+          }
+          if (is.defined(options.lineArt)) {
+            this._setBooleanOption("trimLineArt", options.lineArt);
+          }
+        } else {
+          throw is.invalidParameterError("trim", "object", options);
+        }
+      }
+      if (isRotationExpected(this.options)) {
+        this.options.rotateBefore = true;
+      }
+      return this;
+    }
+    module2.exports = (Sharp) => {
+      Object.assign(Sharp.prototype, {
+        resize,
+        extend,
+        extract: extract4,
+        trim
+      });
+      Sharp.gravity = gravity;
+      Sharp.strategy = strategy;
+      Sharp.kernel = kernel;
+      Sharp.fit = fit;
+      Sharp.position = position;
+    };
+  }
+});
+
+// node_modules/sharp/lib/composite.js
+var require_composite = __commonJS({
+  "node_modules/sharp/lib/composite.js"(exports, module2) {
+    var is = require_is();
+    var blend = {
+      clear: "clear",
+      source: "source",
+      over: "over",
+      in: "in",
+      out: "out",
+      atop: "atop",
+      dest: "dest",
+      "dest-over": "dest-over",
+      "dest-in": "dest-in",
+      "dest-out": "dest-out",
+      "dest-atop": "dest-atop",
+      xor: "xor",
+      add: "add",
+      saturate: "saturate",
+      multiply: "multiply",
+      screen: "screen",
+      overlay: "overlay",
+      darken: "darken",
+      lighten: "lighten",
+      "colour-dodge": "colour-dodge",
+      "color-dodge": "colour-dodge",
+      "colour-burn": "colour-burn",
+      "color-burn": "colour-burn",
+      "hard-light": "hard-light",
+      "soft-light": "soft-light",
+      difference: "difference",
+      exclusion: "exclusion"
+    };
+    function composite(images) {
+      if (!Array.isArray(images)) {
+        throw is.invalidParameterError("images to composite", "array", images);
+      }
+      this.options.composite = images.map((image) => {
+        if (!is.object(image)) {
+          throw is.invalidParameterError("image to composite", "object", image);
+        }
+        const inputOptions = this._inputOptionsFromObject(image);
+        const composite2 = {
+          input: this._createInputDescriptor(image.input, inputOptions, { allowStream: false }),
+          blend: "over",
+          tile: false,
+          left: 0,
+          top: 0,
+          hasOffset: false,
+          gravity: 0,
+          premultiplied: false
+        };
+        if (is.defined(image.blend)) {
+          if (is.string(blend[image.blend])) {
+            composite2.blend = blend[image.blend];
+          } else {
+            throw is.invalidParameterError("blend", "valid blend name", image.blend);
+          }
+        }
+        if (is.defined(image.tile)) {
+          if (is.bool(image.tile)) {
+            composite2.tile = image.tile;
+          } else {
+            throw is.invalidParameterError("tile", "boolean", image.tile);
+          }
+        }
+        if (is.defined(image.left)) {
+          if (is.integer(image.left)) {
+            composite2.left = image.left;
+          } else {
+            throw is.invalidParameterError("left", "integer", image.left);
+          }
+        }
+        if (is.defined(image.top)) {
+          if (is.integer(image.top)) {
+            composite2.top = image.top;
+          } else {
+            throw is.invalidParameterError("top", "integer", image.top);
+          }
+        }
+        if (is.defined(image.top) !== is.defined(image.left)) {
+          throw new Error("Expected both left and top to be set");
+        } else {
+          composite2.hasOffset = is.integer(image.top) && is.integer(image.left);
+        }
+        if (is.defined(image.gravity)) {
+          if (is.integer(image.gravity) && is.inRange(image.gravity, 0, 8)) {
+            composite2.gravity = image.gravity;
+          } else if (is.string(image.gravity) && is.integer(this.constructor.gravity[image.gravity])) {
+            composite2.gravity = this.constructor.gravity[image.gravity];
+          } else {
+            throw is.invalidParameterError("gravity", "valid gravity", image.gravity);
+          }
+        }
+        if (is.defined(image.premultiplied)) {
+          if (is.bool(image.premultiplied)) {
+            composite2.premultiplied = image.premultiplied;
+          } else {
+            throw is.invalidParameterError("premultiplied", "boolean", image.premultiplied);
+          }
+        }
+        return composite2;
+      });
+      return this;
+    }
+    module2.exports = (Sharp) => {
+      Sharp.prototype.composite = composite;
+      Sharp.blend = blend;
+    };
+  }
+});
+
+// node_modules/sharp/lib/operation.js
+var require_operation = __commonJS({
+  "node_modules/sharp/lib/operation.js"(exports, module2) {
+    var is = require_is();
+    var vipsPrecision = {
+      integer: "integer",
+      float: "float",
+      approximate: "approximate"
+    };
+    function rotate(angle, options) {
+      if (!is.defined(angle)) {
+        return this.autoOrient();
+      }
+      if (this.options.angle || this.options.rotationAngle) {
+        this.options.debuglog("ignoring previous rotate options");
+        this.options.angle = 0;
+        this.options.rotationAngle = 0;
+      }
+      if (is.integer(angle) && !(angle % 90)) {
+        this.options.angle = angle;
+      } else if (is.number(angle)) {
+        this.options.rotationAngle = angle;
+        if (is.object(options) && options.background) {
+          this._setBackgroundColourOption("rotationBackground", options.background);
+        }
+      } else {
+        throw is.invalidParameterError("angle", "numeric", angle);
+      }
+      return this;
+    }
+    function autoOrient() {
+      this.options.input.autoOrient = true;
+      return this;
+    }
+    function flip(flip2) {
+      this.options.flip = is.bool(flip2) ? flip2 : true;
+      return this;
+    }
+    function flop(flop2) {
+      this.options.flop = is.bool(flop2) ? flop2 : true;
+      return this;
+    }
+    function affine(matrix, options) {
+      const flatMatrix = [].concat(...matrix);
+      if (flatMatrix.length === 4 && flatMatrix.every(is.number)) {
+        this.options.affineMatrix = flatMatrix;
+      } else {
+        throw is.invalidParameterError("matrix", "1x4 or 2x2 array", matrix);
+      }
+      if (is.defined(options)) {
+        if (is.object(options)) {
+          this._setBackgroundColourOption("affineBackground", options.background);
+          if (is.defined(options.idx)) {
+            if (is.number(options.idx)) {
+              this.options.affineIdx = options.idx;
+            } else {
+              throw is.invalidParameterError("options.idx", "number", options.idx);
+            }
+          }
+          if (is.defined(options.idy)) {
+            if (is.number(options.idy)) {
+              this.options.affineIdy = options.idy;
+            } else {
+              throw is.invalidParameterError("options.idy", "number", options.idy);
+            }
+          }
+          if (is.defined(options.odx)) {
+            if (is.number(options.odx)) {
+              this.options.affineOdx = options.odx;
+            } else {
+              throw is.invalidParameterError("options.odx", "number", options.odx);
+            }
+          }
+          if (is.defined(options.ody)) {
+            if (is.number(options.ody)) {
+              this.options.affineOdy = options.ody;
+            } else {
+              throw is.invalidParameterError("options.ody", "number", options.ody);
+            }
+          }
+          if (is.defined(options.interpolator)) {
+            if (is.inArray(options.interpolator, Object.values(this.constructor.interpolators))) {
+              this.options.affineInterpolator = options.interpolator;
+            } else {
+              throw is.invalidParameterError("options.interpolator", "valid interpolator name", options.interpolator);
+            }
+          }
+        } else {
+          throw is.invalidParameterError("options", "object", options);
+        }
+      }
+      return this;
+    }
+    function sharpen(options, flat, jagged) {
+      if (!is.defined(options)) {
+        this.options.sharpenSigma = -1;
+      } else if (is.bool(options)) {
+        this.options.sharpenSigma = options ? -1 : 0;
+      } else if (is.number(options) && is.inRange(options, 0.01, 1e4)) {
+        this.options.sharpenSigma = options;
+        if (is.defined(flat)) {
+          if (is.number(flat) && is.inRange(flat, 0, 1e4)) {
+            this.options.sharpenM1 = flat;
+          } else {
+            throw is.invalidParameterError("flat", "number between 0 and 10000", flat);
+          }
+        }
+        if (is.defined(jagged)) {
+          if (is.number(jagged) && is.inRange(jagged, 0, 1e4)) {
+            this.options.sharpenM2 = jagged;
+          } else {
+            throw is.invalidParameterError("jagged", "number between 0 and 10000", jagged);
+          }
+        }
+      } else if (is.plainObject(options)) {
+        if (is.number(options.sigma) && is.inRange(options.sigma, 1e-6, 10)) {
+          this.options.sharpenSigma = options.sigma;
+        } else {
+          throw is.invalidParameterError("options.sigma", "number between 0.000001 and 10", options.sigma);
+        }
+        if (is.defined(options.m1)) {
+          if (is.number(options.m1) && is.inRange(options.m1, 0, 1e6)) {
+            this.options.sharpenM1 = options.m1;
+          } else {
+            throw is.invalidParameterError("options.m1", "number between 0 and 1000000", options.m1);
+          }
+        }
+        if (is.defined(options.m2)) {
+          if (is.number(options.m2) && is.inRange(options.m2, 0, 1e6)) {
+            this.options.sharpenM2 = options.m2;
+          } else {
+            throw is.invalidParameterError("options.m2", "number between 0 and 1000000", options.m2);
+          }
+        }
+        if (is.defined(options.x1)) {
+          if (is.number(options.x1) && is.inRange(options.x1, 0, 1e6)) {
+            this.options.sharpenX1 = options.x1;
+          } else {
+            throw is.invalidParameterError("options.x1", "number between 0 and 1000000", options.x1);
+          }
+        }
+        if (is.defined(options.y2)) {
+          if (is.number(options.y2) && is.inRange(options.y2, 0, 1e6)) {
+            this.options.sharpenY2 = options.y2;
+          } else {
+            throw is.invalidParameterError("options.y2", "number between 0 and 1000000", options.y2);
+          }
+        }
+        if (is.defined(options.y3)) {
+          if (is.number(options.y3) && is.inRange(options.y3, 0, 1e6)) {
+            this.options.sharpenY3 = options.y3;
+          } else {
+            throw is.invalidParameterError("options.y3", "number between 0 and 1000000", options.y3);
+          }
+        }
+      } else {
+        throw is.invalidParameterError("sigma", "number between 0.01 and 10000", options);
+      }
+      return this;
+    }
+    function median(size) {
+      if (!is.defined(size)) {
+        this.options.medianSize = 3;
+      } else if (is.integer(size) && is.inRange(size, 1, 1e3)) {
+        this.options.medianSize = size;
+      } else {
+        throw is.invalidParameterError("size", "integer between 1 and 1000", size);
+      }
+      return this;
+    }
+    function blur(options) {
+      let sigma;
+      if (is.number(options)) {
+        sigma = options;
+      } else if (is.plainObject(options)) {
+        if (!is.number(options.sigma)) {
+          throw is.invalidParameterError("options.sigma", "number between 0.3 and 1000", sigma);
+        }
+        sigma = options.sigma;
+        if ("precision" in options) {
+          if (is.string(vipsPrecision[options.precision])) {
+            this.options.precision = vipsPrecision[options.precision];
+          } else {
+            throw is.invalidParameterError("precision", "one of: integer, float, approximate", options.precision);
+          }
+        }
+        if ("minAmplitude" in options) {
+          if (is.number(options.minAmplitude) && is.inRange(options.minAmplitude, 1e-3, 1)) {
+            this.options.minAmpl = options.minAmplitude;
+          } else {
+            throw is.invalidParameterError("minAmplitude", "number between 0.001 and 1", options.minAmplitude);
+          }
+        }
+      }
+      if (!is.defined(options)) {
+        this.options.blurSigma = -1;
+      } else if (is.bool(options)) {
+        this.options.blurSigma = options ? -1 : 0;
+      } else if (is.number(sigma) && is.inRange(sigma, 0.3, 1e3)) {
+        this.options.blurSigma = sigma;
+      } else {
+        throw is.invalidParameterError("sigma", "number between 0.3 and 1000", sigma);
+      }
+      return this;
+    }
+    function dilate(width) {
+      if (!is.defined(width)) {
+        this.options.dilateWidth = 1;
+      } else if (is.integer(width) && width > 0) {
+        this.options.dilateWidth = width;
+      } else {
+        throw is.invalidParameterError("dilate", "positive integer", dilate);
+      }
+      return this;
+    }
+    function erode(width) {
+      if (!is.defined(width)) {
+        this.options.erodeWidth = 1;
+      } else if (is.integer(width) && width > 0) {
+        this.options.erodeWidth = width;
+      } else {
+        throw is.invalidParameterError("erode", "positive integer", erode);
+      }
+      return this;
+    }
+    function flatten(options) {
+      this.options.flatten = is.bool(options) ? options : true;
+      if (is.object(options)) {
+        this._setBackgroundColourOption("flattenBackground", options.background);
+      }
+      return this;
+    }
+    function unflatten() {
+      this.options.unflatten = true;
+      return this;
+    }
+    function gamma(gamma2, gammaOut) {
+      if (!is.defined(gamma2)) {
+        this.options.gamma = 2.2;
+      } else if (is.number(gamma2) && is.inRange(gamma2, 1, 3)) {
+        this.options.gamma = gamma2;
+      } else {
+        throw is.invalidParameterError("gamma", "number between 1.0 and 3.0", gamma2);
+      }
+      if (!is.defined(gammaOut)) {
+        this.options.gammaOut = this.options.gamma;
+      } else if (is.number(gammaOut) && is.inRange(gammaOut, 1, 3)) {
+        this.options.gammaOut = gammaOut;
+      } else {
+        throw is.invalidParameterError("gammaOut", "number between 1.0 and 3.0", gammaOut);
+      }
+      return this;
+    }
+    function negate(options) {
+      this.options.negate = is.bool(options) ? options : true;
+      if (is.plainObject(options) && "alpha" in options) {
+        if (!is.bool(options.alpha)) {
+          throw is.invalidParameterError("alpha", "should be boolean value", options.alpha);
+        } else {
+          this.options.negateAlpha = options.alpha;
+        }
+      }
+      return this;
+    }
+    function normalise(options) {
+      if (is.plainObject(options)) {
+        if (is.defined(options.lower)) {
+          if (is.number(options.lower) && is.inRange(options.lower, 0, 99)) {
+            this.options.normaliseLower = options.lower;
+          } else {
+            throw is.invalidParameterError("lower", "number between 0 and 99", options.lower);
+          }
+        }
+        if (is.defined(options.upper)) {
+          if (is.number(options.upper) && is.inRange(options.upper, 1, 100)) {
+            this.options.normaliseUpper = options.upper;
+          } else {
+            throw is.invalidParameterError("upper", "number between 1 and 100", options.upper);
+          }
+        }
+      }
+      if (this.options.normaliseLower >= this.options.normaliseUpper) {
+        throw is.invalidParameterError(
+          "range",
+          "lower to be less than upper",
+          `${this.options.normaliseLower} >= ${this.options.normaliseUpper}`
+        );
+      }
+      this.options.normalise = true;
+      return this;
+    }
+    function normalize(options) {
+      return this.normalise(options);
+    }
+    function clahe(options) {
+      if (is.plainObject(options)) {
+        if (is.integer(options.width) && options.width > 0) {
+          this.options.claheWidth = options.width;
+        } else {
+          throw is.invalidParameterError("width", "integer greater than zero", options.width);
+        }
+        if (is.integer(options.height) && options.height > 0) {
+          this.options.claheHeight = options.height;
+        } else {
+          throw is.invalidParameterError("height", "integer greater than zero", options.height);
+        }
+        if (is.defined(options.maxSlope)) {
+          if (is.integer(options.maxSlope) && is.inRange(options.maxSlope, 0, 100)) {
+            this.options.claheMaxSlope = options.maxSlope;
+          } else {
+            throw is.invalidParameterError("maxSlope", "integer between 0 and 100", options.maxSlope);
+          }
+        }
+      } else {
+        throw is.invalidParameterError("options", "plain object", options);
+      }
+      return this;
+    }
+    function convolve(kernel) {
+      if (!is.object(kernel) || !Array.isArray(kernel.kernel) || !is.integer(kernel.width) || !is.integer(kernel.height) || !is.inRange(kernel.width, 3, 1001) || !is.inRange(kernel.height, 3, 1001) || kernel.height * kernel.width !== kernel.kernel.length) {
+        throw new Error("Invalid convolution kernel");
+      }
+      if (!is.integer(kernel.scale)) {
+        kernel.scale = kernel.kernel.reduce((a, b) => a + b, 0);
+      }
+      if (kernel.scale < 1) {
+        kernel.scale = 1;
+      }
+      if (!is.integer(kernel.offset)) {
+        kernel.offset = 0;
+      }
+      this.options.convKernel = kernel;
+      return this;
+    }
+    function threshold(threshold2, options) {
+      if (!is.defined(threshold2)) {
+        this.options.threshold = 128;
+      } else if (is.bool(threshold2)) {
+        this.options.threshold = threshold2 ? 128 : 0;
+      } else if (is.integer(threshold2) && is.inRange(threshold2, 0, 255)) {
+        this.options.threshold = threshold2;
+      } else {
+        throw is.invalidParameterError("threshold", "integer between 0 and 255", threshold2);
+      }
+      if (!is.object(options) || options.greyscale === true || options.grayscale === true) {
+        this.options.thresholdGrayscale = true;
+      } else {
+        this.options.thresholdGrayscale = false;
+      }
+      return this;
+    }
+    function boolean(operand, operator, options) {
+      this.options.boolean = this._createInputDescriptor(operand, options);
+      if (is.string(operator) && is.inArray(operator, ["and", "or", "eor"])) {
+        this.options.booleanOp = operator;
+      } else {
+        throw is.invalidParameterError("operator", "one of: and, or, eor", operator);
+      }
+      return this;
+    }
+    function linear(a, b) {
+      if (!is.defined(a) && is.number(b)) {
+        a = 1;
+      } else if (is.number(a) && !is.defined(b)) {
+        b = 0;
+      }
+      if (!is.defined(a)) {
+        this.options.linearA = [];
+      } else if (is.number(a)) {
+        this.options.linearA = [a];
+      } else if (Array.isArray(a) && a.length && a.every(is.number)) {
+        this.options.linearA = a;
+      } else {
+        throw is.invalidParameterError("a", "number or array of numbers", a);
+      }
+      if (!is.defined(b)) {
+        this.options.linearB = [];
+      } else if (is.number(b)) {
+        this.options.linearB = [b];
+      } else if (Array.isArray(b) && b.length && b.every(is.number)) {
+        this.options.linearB = b;
+      } else {
+        throw is.invalidParameterError("b", "number or array of numbers", b);
+      }
+      if (this.options.linearA.length !== this.options.linearB.length) {
+        throw new Error("Expected a and b to be arrays of the same length");
+      }
+      return this;
+    }
+    function recomb(inputMatrix) {
+      if (!Array.isArray(inputMatrix)) {
+        throw is.invalidParameterError("inputMatrix", "array", inputMatrix);
+      }
+      if (inputMatrix.length !== 3 && inputMatrix.length !== 4) {
+        throw is.invalidParameterError("inputMatrix", "3x3 or 4x4 array", inputMatrix.length);
+      }
+      const recombMatrix = inputMatrix.flat().map(Number);
+      if (recombMatrix.length !== 9 && recombMatrix.length !== 16) {
+        throw is.invalidParameterError("inputMatrix", "cardinality of 9 or 16", recombMatrix.length);
+      }
+      this.options.recombMatrix = recombMatrix;
+      return this;
+    }
+    function modulate(options) {
+      if (!is.plainObject(options)) {
+        throw is.invalidParameterError("options", "plain object", options);
+      }
+      if ("brightness" in options) {
+        if (is.number(options.brightness) && options.brightness >= 0) {
+          this.options.brightness = options.brightness;
+        } else {
+          throw is.invalidParameterError("brightness", "number above zero", options.brightness);
+        }
+      }
+      if ("saturation" in options) {
+        if (is.number(options.saturation) && options.saturation >= 0) {
+          this.options.saturation = options.saturation;
+        } else {
+          throw is.invalidParameterError("saturation", "number above zero", options.saturation);
+        }
+      }
+      if ("hue" in options) {
+        if (is.integer(options.hue)) {
+          this.options.hue = options.hue % 360;
+        } else {
+          throw is.invalidParameterError("hue", "number", options.hue);
+        }
+      }
+      if ("lightness" in options) {
+        if (is.number(options.lightness)) {
+          this.options.lightness = options.lightness;
+        } else {
+          throw is.invalidParameterError("lightness", "number", options.lightness);
+        }
+      }
+      return this;
+    }
+    module2.exports = (Sharp) => {
+      Object.assign(Sharp.prototype, {
+        autoOrient,
+        rotate,
+        flip,
+        flop,
+        affine,
+        sharpen,
+        erode,
+        dilate,
+        median,
+        blur,
+        flatten,
+        unflatten,
+        gamma,
+        negate,
+        normalise,
+        normalize,
+        clahe,
+        convolve,
+        threshold,
+        boolean,
+        linear,
+        recomb,
+        modulate
+      });
+    };
+  }
+});
+
+// node_modules/sharp/lib/colour.js
+var require_colour = __commonJS({
+  "node_modules/sharp/lib/colour.js"(exports, module2) {
+    var color = require("@img/colour");
+    var is = require_is();
+    var colourspace = {
+      multiband: "multiband",
+      "b-w": "b-w",
+      bw: "b-w",
+      cmyk: "cmyk",
+      srgb: "srgb"
+    };
+    function tint(tint2) {
+      this._setBackgroundColourOption("tint", tint2);
+      return this;
+    }
+    function greyscale(greyscale2) {
+      this.options.greyscale = is.bool(greyscale2) ? greyscale2 : true;
+      return this;
+    }
+    function grayscale(grayscale2) {
+      return this.greyscale(grayscale2);
+    }
+    function pipelineColourspace(colourspace2) {
+      if (!is.string(colourspace2)) {
+        throw is.invalidParameterError("colourspace", "string", colourspace2);
+      }
+      this.options.colourspacePipeline = colourspace2;
+      return this;
+    }
+    function pipelineColorspace(colorspace) {
+      return this.pipelineColourspace(colorspace);
+    }
+    function toColourspace(colourspace2) {
+      if (!is.string(colourspace2)) {
+        throw is.invalidParameterError("colourspace", "string", colourspace2);
+      }
+      this.options.colourspace = colourspace2;
+      return this;
+    }
+    function toColorspace(colorspace) {
+      return this.toColourspace(colorspace);
+    }
+    function _getBackgroundColourOption(value) {
+      if (is.object(value) || is.string(value) && value.length >= 3 && value.length <= 200) {
+        const colour = color(value);
+        return [
+          colour.red(),
+          colour.green(),
+          colour.blue(),
+          Math.round(colour.alpha() * 255)
+        ];
+      } else {
+        throw is.invalidParameterError("background", "object or string", value);
+      }
+    }
+    function _setBackgroundColourOption(key, value) {
+      if (is.defined(value)) {
+        this.options[key] = _getBackgroundColourOption(value);
+      }
+    }
+    module2.exports = (Sharp) => {
+      Object.assign(Sharp.prototype, {
+        // Public
+        tint,
+        greyscale,
+        grayscale,
+        pipelineColourspace,
+        pipelineColorspace,
+        toColourspace,
+        toColorspace,
+        // Private
+        _getBackgroundColourOption,
+        _setBackgroundColourOption
+      });
+      Sharp.colourspace = colourspace;
+      Sharp.colorspace = colourspace;
+    };
+  }
+});
+
+// node_modules/sharp/lib/channel.js
+var require_channel = __commonJS({
+  "node_modules/sharp/lib/channel.js"(exports, module2) {
+    var is = require_is();
+    var bool = {
+      and: "and",
+      or: "or",
+      eor: "eor"
+    };
+    function removeAlpha() {
+      this.options.removeAlpha = true;
+      return this;
+    }
+    function ensureAlpha(alpha) {
+      if (is.defined(alpha)) {
+        if (is.number(alpha) && is.inRange(alpha, 0, 1)) {
+          this.options.ensureAlpha = alpha;
+        } else {
+          throw is.invalidParameterError("alpha", "number between 0 and 1", alpha);
+        }
+      } else {
+        this.options.ensureAlpha = 1;
+      }
+      return this;
+    }
+    function extractChannel(channel) {
+      const channelMap = { red: 0, green: 1, blue: 2, alpha: 3 };
+      if (Object.keys(channelMap).includes(channel)) {
+        channel = channelMap[channel];
+      }
+      if (is.integer(channel) && is.inRange(channel, 0, 4)) {
+        this.options.extractChannel = channel;
+      } else {
+        throw is.invalidParameterError("channel", "integer or one of: red, green, blue, alpha", channel);
+      }
+      return this;
+    }
+    function joinChannel(images, options) {
+      if (Array.isArray(images)) {
+        images.forEach(function(image) {
+          this.options.joinChannelIn.push(this._createInputDescriptor(image, options));
+        }, this);
+      } else {
+        this.options.joinChannelIn.push(this._createInputDescriptor(images, options));
+      }
+      return this;
+    }
+    function bandbool(boolOp) {
+      if (is.string(boolOp) && is.inArray(boolOp, ["and", "or", "eor"])) {
+        this.options.bandBoolOp = boolOp;
+      } else {
+        throw is.invalidParameterError("boolOp", "one of: and, or, eor", boolOp);
+      }
+      return this;
+    }
+    module2.exports = (Sharp) => {
+      Object.assign(Sharp.prototype, {
+        // Public instance functions
+        removeAlpha,
+        ensureAlpha,
+        extractChannel,
+        joinChannel,
+        bandbool
+      });
+      Sharp.bool = bool;
+    };
+  }
+});
+
+// node_modules/sharp/lib/output.js
+var require_output = __commonJS({
+  "node_modules/sharp/lib/output.js"(exports, module2) {
+    var path = require("node:path");
+    var is = require_is();
+    var sharp5 = require_sharp();
+    var formats = /* @__PURE__ */ new Map([
+      ["heic", "heif"],
+      ["heif", "heif"],
+      ["avif", "avif"],
+      ["jpeg", "jpeg"],
+      ["jpg", "jpeg"],
+      ["jpe", "jpeg"],
+      ["tile", "tile"],
+      ["dz", "tile"],
+      ["png", "png"],
+      ["raw", "raw"],
+      ["tiff", "tiff"],
+      ["tif", "tiff"],
+      ["webp", "webp"],
+      ["gif", "gif"],
+      ["jp2", "jp2"],
+      ["jpx", "jp2"],
+      ["j2k", "jp2"],
+      ["j2c", "jp2"],
+      ["jxl", "jxl"]
+    ]);
+    var jp2Regex = /\.(jp[2x]|j2[kc])$/i;
+    var errJp2Save = () => new Error("JP2 output requires libvips with support for OpenJPEG");
+    var bitdepthFromColourCount = (colours) => 1 << 31 - Math.clz32(Math.ceil(Math.log2(colours)));
+    function toFile(fileOut, callback) {
+      let err2;
+      if (!is.string(fileOut)) {
+        err2 = new Error("Missing output file path");
+      } else if (is.string(this.options.input.file) && path.resolve(this.options.input.file) === path.resolve(fileOut)) {
+        err2 = new Error("Cannot use same file for input and output");
+      } else if (jp2Regex.test(path.extname(fileOut)) && !this.constructor.format.jp2k.output.file) {
+        err2 = errJp2Save();
+      }
+      if (err2) {
+        if (is.fn(callback)) {
+          callback(err2);
+        } else {
+          return Promise.reject(err2);
+        }
+      } else {
+        this.options.fileOut = fileOut;
+        const stack = Error();
+        return this._pipeline(callback, stack);
+      }
+      return this;
+    }
+    function toBuffer(options, callback) {
+      if (is.object(options)) {
+        this._setBooleanOption("resolveWithObject", options.resolveWithObject);
+      } else if (this.options.resolveWithObject) {
+        this.options.resolveWithObject = false;
+      }
+      this.options.fileOut = "";
+      const stack = Error();
+      return this._pipeline(is.fn(options) ? options : callback, stack);
+    }
+    function keepExif() {
+      this.options.keepMetadata |= 1;
+      return this;
+    }
+    function withExif(exif) {
+      if (is.object(exif)) {
+        for (const [ifd, entries] of Object.entries(exif)) {
+          if (is.object(entries)) {
+            for (const [k, v] of Object.entries(entries)) {
+              if (is.string(v)) {
+                this.options.withExif[`exif-${ifd.toLowerCase()}-${k}`] = v;
+              } else {
+                throw is.invalidParameterError(`${ifd}.${k}`, "string", v);
+              }
+            }
+          } else {
+            throw is.invalidParameterError(ifd, "object", entries);
+          }
+        }
+      } else {
+        throw is.invalidParameterError("exif", "object", exif);
+      }
+      this.options.withExifMerge = false;
+      return this.keepExif();
+    }
+    function withExifMerge(exif) {
+      this.withExif(exif);
+      this.options.withExifMerge = true;
+      return this;
+    }
+    function keepIccProfile() {
+      this.options.keepMetadata |= 8;
+      return this;
+    }
+    function withIccProfile(icc, options) {
+      if (is.string(icc)) {
+        this.options.withIccProfile = icc;
+      } else {
+        throw is.invalidParameterError("icc", "string", icc);
+      }
+      this.keepIccProfile();
+      if (is.object(options)) {
+        if (is.defined(options.attach)) {
+          if (is.bool(options.attach)) {
+            if (!options.attach) {
+              this.options.keepMetadata &= ~8;
+            }
+          } else {
+            throw is.invalidParameterError("attach", "boolean", options.attach);
+          }
+        }
+      }
+      return this;
+    }
+    function keepXmp() {
+      this.options.keepMetadata |= 2;
+      return this;
+    }
+    function withXmp(xmp) {
+      if (is.string(xmp) && xmp.length > 0) {
+        this.options.withXmp = xmp;
+        this.options.keepMetadata |= 2;
+      } else {
+        throw is.invalidParameterError("xmp", "non-empty string", xmp);
+      }
+      return this;
+    }
+    function keepMetadata() {
+      this.options.keepMetadata = 31;
+      return this;
+    }
+    function withMetadata(options) {
+      this.keepMetadata();
+      this.withIccProfile("srgb");
+      if (is.object(options)) {
+        if (is.defined(options.orientation)) {
+          if (is.integer(options.orientation) && is.inRange(options.orientation, 1, 8)) {
+            this.options.withMetadataOrientation = options.orientation;
+          } else {
+            throw is.invalidParameterError("orientation", "integer between 1 and 8", options.orientation);
+          }
+        }
+        if (is.defined(options.density)) {
+          if (is.number(options.density) && options.density > 0) {
+            this.options.withMetadataDensity = options.density;
+          } else {
+            throw is.invalidParameterError("density", "positive number", options.density);
+          }
+        }
+        if (is.defined(options.icc)) {
+          this.withIccProfile(options.icc);
+        }
+        if (is.defined(options.exif)) {
+          this.withExifMerge(options.exif);
+        }
+      }
+      return this;
+    }
+    function toFormat(format, options) {
+      const actualFormat = formats.get((is.object(format) && is.string(format.id) ? format.id : format).toLowerCase());
+      if (!actualFormat) {
+        throw is.invalidParameterError("format", `one of: ${[...formats.keys()].join(", ")}`, format);
+      }
+      return this[actualFormat](options);
+    }
+    function jpeg(options) {
+      if (is.object(options)) {
+        if (is.defined(options.quality)) {
+          if (is.integer(options.quality) && is.inRange(options.quality, 1, 100)) {
+            this.options.jpegQuality = options.quality;
+          } else {
+            throw is.invalidParameterError("quality", "integer between 1 and 100", options.quality);
+          }
+        }
+        if (is.defined(options.progressive)) {
+          this._setBooleanOption("jpegProgressive", options.progressive);
+        }
+        if (is.defined(options.chromaSubsampling)) {
+          if (is.string(options.chromaSubsampling) && is.inArray(options.chromaSubsampling, ["4:2:0", "4:4:4"])) {
+            this.options.jpegChromaSubsampling = options.chromaSubsampling;
+          } else {
+            throw is.invalidParameterError("chromaSubsampling", "one of: 4:2:0, 4:4:4", options.chromaSubsampling);
+          }
+        }
+        const optimiseCoding = is.bool(options.optimizeCoding) ? options.optimizeCoding : options.optimiseCoding;
+        if (is.defined(optimiseCoding)) {
+          this._setBooleanOption("jpegOptimiseCoding", optimiseCoding);
+        }
+        if (is.defined(options.mozjpeg)) {
+          if (is.bool(options.mozjpeg)) {
+            if (options.mozjpeg) {
+              this.options.jpegTrellisQuantisation = true;
+              this.options.jpegOvershootDeringing = true;
+              this.options.jpegOptimiseScans = true;
+              this.options.jpegProgressive = true;
+              this.options.jpegQuantisationTable = 3;
+            }
+          } else {
+            throw is.invalidParameterError("mozjpeg", "boolean", options.mozjpeg);
+          }
+        }
+        const trellisQuantisation = is.bool(options.trellisQuantization) ? options.trellisQuantization : options.trellisQuantisation;
+        if (is.defined(trellisQuantisation)) {
+          this._setBooleanOption("jpegTrellisQuantisation", trellisQuantisation);
+        }
+        if (is.defined(options.overshootDeringing)) {
+          this._setBooleanOption("jpegOvershootDeringing", options.overshootDeringing);
+        }
+        const optimiseScans = is.bool(options.optimizeScans) ? options.optimizeScans : options.optimiseScans;
+        if (is.defined(optimiseScans)) {
+          this._setBooleanOption("jpegOptimiseScans", optimiseScans);
+          if (optimiseScans) {
+            this.options.jpegProgressive = true;
+          }
+        }
+        const quantisationTable = is.number(options.quantizationTable) ? options.quantizationTable : options.quantisationTable;
+        if (is.defined(quantisationTable)) {
+          if (is.integer(quantisationTable) && is.inRange(quantisationTable, 0, 8)) {
+            this.options.jpegQuantisationTable = quantisationTable;
+          } else {
+            throw is.invalidParameterError("quantisationTable", "integer between 0 and 8", quantisationTable);
+          }
+        }
+      }
+      return this._updateFormatOut("jpeg", options);
+    }
+    function png(options) {
+      if (is.object(options)) {
+        if (is.defined(options.progressive)) {
+          this._setBooleanOption("pngProgressive", options.progressive);
+        }
+        if (is.defined(options.compressionLevel)) {
+          if (is.integer(options.compressionLevel) && is.inRange(options.compressionLevel, 0, 9)) {
+            this.options.pngCompressionLevel = options.compressionLevel;
+          } else {
+            throw is.invalidParameterError("compressionLevel", "integer between 0 and 9", options.compressionLevel);
+          }
+        }
+        if (is.defined(options.adaptiveFiltering)) {
+          this._setBooleanOption("pngAdaptiveFiltering", options.adaptiveFiltering);
+        }
+        const colours = options.colours || options.colors;
+        if (is.defined(colours)) {
+          if (is.integer(colours) && is.inRange(colours, 2, 256)) {
+            this.options.pngBitdepth = bitdepthFromColourCount(colours);
+          } else {
+            throw is.invalidParameterError("colours", "integer between 2 and 256", colours);
+          }
+        }
+        if (is.defined(options.palette)) {
+          this._setBooleanOption("pngPalette", options.palette);
+        } else if ([options.quality, options.effort, options.colours, options.colors, options.dither].some(is.defined)) {
+          this._setBooleanOption("pngPalette", true);
+        }
+        if (this.options.pngPalette) {
+          if (is.defined(options.quality)) {
+            if (is.integer(options.quality) && is.inRange(options.quality, 0, 100)) {
+              this.options.pngQuality = options.quality;
+            } else {
+              throw is.invalidParameterError("quality", "integer between 0 and 100", options.quality);
+            }
+          }
+          if (is.defined(options.effort)) {
+            if (is.integer(options.effort) && is.inRange(options.effort, 1, 10)) {
+              this.options.pngEffort = options.effort;
+            } else {
+              throw is.invalidParameterError("effort", "integer between 1 and 10", options.effort);
+            }
+          }
+          if (is.defined(options.dither)) {
+            if (is.number(options.dither) && is.inRange(options.dither, 0, 1)) {
+              this.options.pngDither = options.dither;
+            } else {
+              throw is.invalidParameterError("dither", "number between 0.0 and 1.0", options.dither);
+            }
+          }
+        }
+      }
+      return this._updateFormatOut("png", options);
+    }
+    function webp(options) {
+      if (is.object(options)) {
+        if (is.defined(options.quality)) {
+          if (is.integer(options.quality) && is.inRange(options.quality, 1, 100)) {
+            this.options.webpQuality = options.quality;
+          } else {
+            throw is.invalidParameterError("quality", "integer between 1 and 100", options.quality);
+          }
+        }
+        if (is.defined(options.alphaQuality)) {
+          if (is.integer(options.alphaQuality) && is.inRange(options.alphaQuality, 0, 100)) {
+            this.options.webpAlphaQuality = options.alphaQuality;
+          } else {
+            throw is.invalidParameterError("alphaQuality", "integer between 0 and 100", options.alphaQuality);
+          }
+        }
+        if (is.defined(options.lossless)) {
+          this._setBooleanOption("webpLossless", options.lossless);
+        }
+        if (is.defined(options.nearLossless)) {
+          this._setBooleanOption("webpNearLossless", options.nearLossless);
+        }
+        if (is.defined(options.smartSubsample)) {
+          this._setBooleanOption("webpSmartSubsample", options.smartSubsample);
+        }
+        if (is.defined(options.smartDeblock)) {
+          this._setBooleanOption("webpSmartDeblock", options.smartDeblock);
+        }
+        if (is.defined(options.preset)) {
+          if (is.string(options.preset) && is.inArray(options.preset, ["default", "photo", "picture", "drawing", "icon", "text"])) {
+            this.options.webpPreset = options.preset;
+          } else {
+            throw is.invalidParameterError("preset", "one of: default, photo, picture, drawing, icon, text", options.preset);
+          }
+        }
+        if (is.defined(options.effort)) {
+          if (is.integer(options.effort) && is.inRange(options.effort, 0, 6)) {
+            this.options.webpEffort = options.effort;
+          } else {
+            throw is.invalidParameterError("effort", "integer between 0 and 6", options.effort);
+          }
+        }
+        if (is.defined(options.minSize)) {
+          this._setBooleanOption("webpMinSize", options.minSize);
+        }
+        if (is.defined(options.mixed)) {
+          this._setBooleanOption("webpMixed", options.mixed);
+        }
+      }
+      trySetAnimationOptions(options, this.options);
+      return this._updateFormatOut("webp", options);
+    }
+    function gif(options) {
+      if (is.object(options)) {
+        if (is.defined(options.reuse)) {
+          this._setBooleanOption("gifReuse", options.reuse);
+        }
+        if (is.defined(options.progressive)) {
+          this._setBooleanOption("gifProgressive", options.progressive);
+        }
+        const colours = options.colours || options.colors;
+        if (is.defined(colours)) {
+          if (is.integer(colours) && is.inRange(colours, 2, 256)) {
+            this.options.gifBitdepth = bitdepthFromColourCount(colours);
+          } else {
+            throw is.invalidParameterError("colours", "integer between 2 and 256", colours);
+          }
+        }
+        if (is.defined(options.effort)) {
+          if (is.number(options.effort) && is.inRange(options.effort, 1, 10)) {
+            this.options.gifEffort = options.effort;
+          } else {
+            throw is.invalidParameterError("effort", "integer between 1 and 10", options.effort);
+          }
+        }
+        if (is.defined(options.dither)) {
+          if (is.number(options.dither) && is.inRange(options.dither, 0, 1)) {
+            this.options.gifDither = options.dither;
+          } else {
+            throw is.invalidParameterError("dither", "number between 0.0 and 1.0", options.dither);
+          }
+        }
+        if (is.defined(options.interFrameMaxError)) {
+          if (is.number(options.interFrameMaxError) && is.inRange(options.interFrameMaxError, 0, 32)) {
+            this.options.gifInterFrameMaxError = options.interFrameMaxError;
+          } else {
+            throw is.invalidParameterError("interFrameMaxError", "number between 0.0 and 32.0", options.interFrameMaxError);
+          }
+        }
+        if (is.defined(options.interPaletteMaxError)) {
+          if (is.number(options.interPaletteMaxError) && is.inRange(options.interPaletteMaxError, 0, 256)) {
+            this.options.gifInterPaletteMaxError = options.interPaletteMaxError;
+          } else {
+            throw is.invalidParameterError("interPaletteMaxError", "number between 0.0 and 256.0", options.interPaletteMaxError);
+          }
+        }
+        if (is.defined(options.keepDuplicateFrames)) {
+          if (is.bool(options.keepDuplicateFrames)) {
+            this._setBooleanOption("gifKeepDuplicateFrames", options.keepDuplicateFrames);
+          } else {
+            throw is.invalidParameterError("keepDuplicateFrames", "boolean", options.keepDuplicateFrames);
+          }
+        }
+      }
+      trySetAnimationOptions(options, this.options);
+      return this._updateFormatOut("gif", options);
+    }
+    function jp2(options) {
+      if (!this.constructor.format.jp2k.output.buffer) {
+        throw errJp2Save();
+      }
+      if (is.object(options)) {
+        if (is.defined(options.quality)) {
+          if (is.integer(options.quality) && is.inRange(options.quality, 1, 100)) {
+            this.options.jp2Quality = options.quality;
+          } else {
+            throw is.invalidParameterError("quality", "integer between 1 and 100", options.quality);
+          }
+        }
+        if (is.defined(options.lossless)) {
+          if (is.bool(options.lossless)) {
+            this.options.jp2Lossless = options.lossless;
+          } else {
+            throw is.invalidParameterError("lossless", "boolean", options.lossless);
+          }
+        }
+        if (is.defined(options.tileWidth)) {
+          if (is.integer(options.tileWidth) && is.inRange(options.tileWidth, 1, 32768)) {
+            this.options.jp2TileWidth = options.tileWidth;
+          } else {
+            throw is.invalidParameterError("tileWidth", "integer between 1 and 32768", options.tileWidth);
+          }
+        }
+        if (is.defined(options.tileHeight)) {
+          if (is.integer(options.tileHeight) && is.inRange(options.tileHeight, 1, 32768)) {
+            this.options.jp2TileHeight = options.tileHeight;
+          } else {
+            throw is.invalidParameterError("tileHeight", "integer between 1 and 32768", options.tileHeight);
+          }
+        }
+        if (is.defined(options.chromaSubsampling)) {
+          if (is.string(options.chromaSubsampling) && is.inArray(options.chromaSubsampling, ["4:2:0", "4:4:4"])) {
+            this.options.jp2ChromaSubsampling = options.chromaSubsampling;
+          } else {
+            throw is.invalidParameterError("chromaSubsampling", "one of: 4:2:0, 4:4:4", options.chromaSubsampling);
+          }
+        }
+      }
+      return this._updateFormatOut("jp2", options);
+    }
+    function trySetAnimationOptions(source, target) {
+      if (is.object(source) && is.defined(source.loop)) {
+        if (is.integer(source.loop) && is.inRange(source.loop, 0, 65535)) {
+          target.loop = source.loop;
+        } else {
+          throw is.invalidParameterError("loop", "integer between 0 and 65535", source.loop);
+        }
+      }
+      if (is.object(source) && is.defined(source.delay)) {
+        if (is.integer(source.delay) && is.inRange(source.delay, 0, 65535)) {
+          target.delay = [source.delay];
+        } else if (Array.isArray(source.delay) && source.delay.every(is.integer) && source.delay.every((v) => is.inRange(v, 0, 65535))) {
+          target.delay = source.delay;
+        } else {
+          throw is.invalidParameterError("delay", "integer or an array of integers between 0 and 65535", source.delay);
+        }
+      }
+    }
+    function tiff(options) {
+      if (is.object(options)) {
+        if (is.defined(options.quality)) {
+          if (is.integer(options.quality) && is.inRange(options.quality, 1, 100)) {
+            this.options.tiffQuality = options.quality;
+          } else {
+            throw is.invalidParameterError("quality", "integer between 1 and 100", options.quality);
+          }
+        }
+        if (is.defined(options.bitdepth)) {
+          if (is.integer(options.bitdepth) && is.inArray(options.bitdepth, [1, 2, 4, 8])) {
+            this.options.tiffBitdepth = options.bitdepth;
+          } else {
+            throw is.invalidParameterError("bitdepth", "1, 2, 4 or 8", options.bitdepth);
+          }
+        }
+        if (is.defined(options.tile)) {
+          this._setBooleanOption("tiffTile", options.tile);
+        }
+        if (is.defined(options.tileWidth)) {
+          if (is.integer(options.tileWidth) && options.tileWidth > 0) {
+            this.options.tiffTileWidth = options.tileWidth;
+          } else {
+            throw is.invalidParameterError("tileWidth", "integer greater than zero", options.tileWidth);
+          }
+        }
+        if (is.defined(options.tileHeight)) {
+          if (is.integer(options.tileHeight) && options.tileHeight > 0) {
+            this.options.tiffTileHeight = options.tileHeight;
+          } else {
+            throw is.invalidParameterError("tileHeight", "integer greater than zero", options.tileHeight);
+          }
+        }
+        if (is.defined(options.miniswhite)) {
+          this._setBooleanOption("tiffMiniswhite", options.miniswhite);
+        }
+        if (is.defined(options.pyramid)) {
+          this._setBooleanOption("tiffPyramid", options.pyramid);
+        }
+        if (is.defined(options.xres)) {
+          if (is.number(options.xres) && options.xres > 0) {
+            this.options.tiffXres = options.xres;
+          } else {
+            throw is.invalidParameterError("xres", "number greater than zero", options.xres);
+          }
+        }
+        if (is.defined(options.yres)) {
+          if (is.number(options.yres) && options.yres > 0) {
+            this.options.tiffYres = options.yres;
+          } else {
+            throw is.invalidParameterError("yres", "number greater than zero", options.yres);
+          }
+        }
+        if (is.defined(options.compression)) {
+          if (is.string(options.compression) && is.inArray(options.compression, ["none", "jpeg", "deflate", "packbits", "ccittfax4", "lzw", "webp", "zstd", "jp2k"])) {
+            this.options.tiffCompression = options.compression;
+          } else {
+            throw is.invalidParameterError("compression", "one of: none, jpeg, deflate, packbits, ccittfax4, lzw, webp, zstd, jp2k", options.compression);
+          }
+        }
+        if (is.defined(options.bigtiff)) {
+          this._setBooleanOption("tiffBigtiff", options.bigtiff);
+        }
+        if (is.defined(options.predictor)) {
+          if (is.string(options.predictor) && is.inArray(options.predictor, ["none", "horizontal", "float"])) {
+            this.options.tiffPredictor = options.predictor;
+          } else {
+            throw is.invalidParameterError("predictor", "one of: none, horizontal, float", options.predictor);
+          }
+        }
+        if (is.defined(options.resolutionUnit)) {
+          if (is.string(options.resolutionUnit) && is.inArray(options.resolutionUnit, ["inch", "cm"])) {
+            this.options.tiffResolutionUnit = options.resolutionUnit;
+          } else {
+            throw is.invalidParameterError("resolutionUnit", "one of: inch, cm", options.resolutionUnit);
+          }
+        }
+      }
+      return this._updateFormatOut("tiff", options);
+    }
+    function avif(options) {
+      return this.heif({ ...options, compression: "av1" });
+    }
+    function heif(options) {
+      if (is.object(options)) {
+        if (is.string(options.compression) && is.inArray(options.compression, ["av1", "hevc"])) {
+          this.options.heifCompression = options.compression;
+        } else {
+          throw is.invalidParameterError("compression", "one of: av1, hevc", options.compression);
+        }
+        if (is.defined(options.quality)) {
+          if (is.integer(options.quality) && is.inRange(options.quality, 1, 100)) {
+            this.options.heifQuality = options.quality;
+          } else {
+            throw is.invalidParameterError("quality", "integer between 1 and 100", options.quality);
+          }
+        }
+        if (is.defined(options.lossless)) {
+          if (is.bool(options.lossless)) {
+            this.options.heifLossless = options.lossless;
+          } else {
+            throw is.invalidParameterError("lossless", "boolean", options.lossless);
+          }
+        }
+        if (is.defined(options.effort)) {
+          if (is.integer(options.effort) && is.inRange(options.effort, 0, 9)) {
+            this.options.heifEffort = options.effort;
+          } else {
+            throw is.invalidParameterError("effort", "integer between 0 and 9", options.effort);
+          }
+        }
+        if (is.defined(options.chromaSubsampling)) {
+          if (is.string(options.chromaSubsampling) && is.inArray(options.chromaSubsampling, ["4:2:0", "4:4:4"])) {
+            this.options.heifChromaSubsampling = options.chromaSubsampling;
+          } else {
+            throw is.invalidParameterError("chromaSubsampling", "one of: 4:2:0, 4:4:4", options.chromaSubsampling);
+          }
+        }
+        if (is.defined(options.bitdepth)) {
+          if (is.integer(options.bitdepth) && is.inArray(options.bitdepth, [8, 10, 12])) {
+            if (options.bitdepth !== 8 && this.constructor.versions.heif) {
+              throw is.invalidParameterError("bitdepth when using prebuilt binaries", 8, options.bitdepth);
+            }
+            this.options.heifBitdepth = options.bitdepth;
+          } else {
+            throw is.invalidParameterError("bitdepth", "8, 10 or 12", options.bitdepth);
+          }
+        }
+      } else {
+        throw is.invalidParameterError("options", "Object", options);
+      }
+      return this._updateFormatOut("heif", options);
+    }
+    function jxl(options) {
+      if (is.object(options)) {
+        if (is.defined(options.quality)) {
+          if (is.integer(options.quality) && is.inRange(options.quality, 1, 100)) {
+            this.options.jxlDistance = options.quality >= 30 ? 0.1 + (100 - options.quality) * 0.09 : 53 / 3e3 * options.quality * options.quality - 23 / 20 * options.quality + 25;
+          } else {
+            throw is.invalidParameterError("quality", "integer between 1 and 100", options.quality);
+          }
+        } else if (is.defined(options.distance)) {
+          if (is.number(options.distance) && is.inRange(options.distance, 0, 15)) {
+            this.options.jxlDistance = options.distance;
+          } else {
+            throw is.invalidParameterError("distance", "number between 0.0 and 15.0", options.distance);
+          }
+        }
+        if (is.defined(options.decodingTier)) {
+          if (is.integer(options.decodingTier) && is.inRange(options.decodingTier, 0, 4)) {
+            this.options.jxlDecodingTier = options.decodingTier;
+          } else {
+            throw is.invalidParameterError("decodingTier", "integer between 0 and 4", options.decodingTier);
+          }
+        }
+        if (is.defined(options.lossless)) {
+          if (is.bool(options.lossless)) {
+            this.options.jxlLossless = options.lossless;
+          } else {
+            throw is.invalidParameterError("lossless", "boolean", options.lossless);
+          }
+        }
+        if (is.defined(options.effort)) {
+          if (is.integer(options.effort) && is.inRange(options.effort, 1, 9)) {
+            this.options.jxlEffort = options.effort;
+          } else {
+            throw is.invalidParameterError("effort", "integer between 1 and 9", options.effort);
+          }
+        }
+      }
+      trySetAnimationOptions(options, this.options);
+      return this._updateFormatOut("jxl", options);
+    }
+    function raw(options) {
+      if (is.object(options)) {
+        if (is.defined(options.depth)) {
+          if (is.string(options.depth) && is.inArray(
+            options.depth,
+            ["char", "uchar", "short", "ushort", "int", "uint", "float", "complex", "double", "dpcomplex"]
+          )) {
+            this.options.rawDepth = options.depth;
+          } else {
+            throw is.invalidParameterError("depth", "one of: char, uchar, short, ushort, int, uint, float, complex, double, dpcomplex", options.depth);
+          }
+        }
+      }
+      return this._updateFormatOut("raw");
+    }
+    function tile(options) {
+      if (is.object(options)) {
+        if (is.defined(options.size)) {
+          if (is.integer(options.size) && is.inRange(options.size, 1, 8192)) {
+            this.options.tileSize = options.size;
+          } else {
+            throw is.invalidParameterError("size", "integer between 1 and 8192", options.size);
+          }
+        }
+        if (is.defined(options.overlap)) {
+          if (is.integer(options.overlap) && is.inRange(options.overlap, 0, 8192)) {
+            if (options.overlap > this.options.tileSize) {
+              throw is.invalidParameterError("overlap", `<= size (${this.options.tileSize})`, options.overlap);
+            }
+            this.options.tileOverlap = options.overlap;
+          } else {
+            throw is.invalidParameterError("overlap", "integer between 0 and 8192", options.overlap);
+          }
+        }
+        if (is.defined(options.container)) {
+          if (is.string(options.container) && is.inArray(options.container, ["fs", "zip"])) {
+            this.options.tileContainer = options.container;
+          } else {
+            throw is.invalidParameterError("container", "one of: fs, zip", options.container);
+          }
+        }
+        if (is.defined(options.layout)) {
+          if (is.string(options.layout) && is.inArray(options.layout, ["dz", "google", "iiif", "iiif3", "zoomify"])) {
+            this.options.tileLayout = options.layout;
+          } else {
+            throw is.invalidParameterError("layout", "one of: dz, google, iiif, iiif3, zoomify", options.layout);
+          }
+        }
+        if (is.defined(options.angle)) {
+          if (is.integer(options.angle) && !(options.angle % 90)) {
+            this.options.tileAngle = options.angle;
+          } else {
+            throw is.invalidParameterError("angle", "positive/negative multiple of 90", options.angle);
+          }
+        }
+        this._setBackgroundColourOption("tileBackground", options.background);
+        if (is.defined(options.depth)) {
+          if (is.string(options.depth) && is.inArray(options.depth, ["onepixel", "onetile", "one"])) {
+            this.options.tileDepth = options.depth;
+          } else {
+            throw is.invalidParameterError("depth", "one of: onepixel, onetile, one", options.depth);
+          }
+        }
+        if (is.defined(options.skipBlanks)) {
+          if (is.integer(options.skipBlanks) && is.inRange(options.skipBlanks, -1, 65535)) {
+            this.options.tileSkipBlanks = options.skipBlanks;
+          } else {
+            throw is.invalidParameterError("skipBlanks", "integer between -1 and 255/65535", options.skipBlanks);
+          }
+        } else if (is.defined(options.layout) && options.layout === "google") {
+          this.options.tileSkipBlanks = 5;
+        }
+        const centre = is.bool(options.center) ? options.center : options.centre;
+        if (is.defined(centre)) {
+          this._setBooleanOption("tileCentre", centre);
+        }
+        if (is.defined(options.id)) {
+          if (is.string(options.id)) {
+            this.options.tileId = options.id;
+          } else {
+            throw is.invalidParameterError("id", "string", options.id);
+          }
+        }
+        if (is.defined(options.basename)) {
+          if (is.string(options.basename)) {
+            this.options.tileBasename = options.basename;
+          } else {
+            throw is.invalidParameterError("basename", "string", options.basename);
+          }
+        }
+      }
+      if (is.inArray(this.options.formatOut, ["jpeg", "png", "webp"])) {
+        this.options.tileFormat = this.options.formatOut;
+      } else if (this.options.formatOut !== "input") {
+        throw is.invalidParameterError("format", "one of: jpeg, png, webp", this.options.formatOut);
+      }
+      return this._updateFormatOut("dz");
+    }
+    function timeout(options) {
+      if (!is.plainObject(options)) {
+        throw is.invalidParameterError("options", "object", options);
+      }
+      if (is.integer(options.seconds) && is.inRange(options.seconds, 0, 3600)) {
+        this.options.timeoutSeconds = options.seconds;
+      } else {
+        throw is.invalidParameterError("seconds", "integer between 0 and 3600", options.seconds);
+      }
+      return this;
+    }
+    function _updateFormatOut(formatOut, options) {
+      if (!(is.object(options) && options.force === false)) {
+        this.options.formatOut = formatOut;
+      }
+      return this;
+    }
+    function _setBooleanOption(key, val) {
+      if (is.bool(val)) {
+        this.options[key] = val;
+      } else {
+        throw is.invalidParameterError(key, "boolean", val);
+      }
+    }
+    function _read() {
+      if (!this.options.streamOut) {
+        this.options.streamOut = true;
+        const stack = Error();
+        this._pipeline(void 0, stack);
+      }
+    }
+    function _pipeline(callback, stack) {
+      if (typeof callback === "function") {
+        if (this._isStreamInput()) {
+          this.on("finish", () => {
+            this._flattenBufferIn();
+            sharp5.pipeline(this.options, (err2, data, info) => {
+              if (err2) {
+                callback(is.nativeError(err2, stack));
+              } else {
+                callback(null, data, info);
+              }
+            });
+          });
+        } else {
+          sharp5.pipeline(this.options, (err2, data, info) => {
+            if (err2) {
+              callback(is.nativeError(err2, stack));
+            } else {
+              callback(null, data, info);
+            }
+          });
+        }
+        return this;
+      } else if (this.options.streamOut) {
+        if (this._isStreamInput()) {
+          this.once("finish", () => {
+            this._flattenBufferIn();
+            sharp5.pipeline(this.options, (err2, data, info) => {
+              if (err2) {
+                this.emit("error", is.nativeError(err2, stack));
+              } else {
+                this.emit("info", info);
+                this.push(data);
+              }
+              this.push(null);
+              this.on("end", () => this.emit("close"));
+            });
+          });
+          if (this.streamInFinished) {
+            this.emit("finish");
+          }
+        } else {
+          sharp5.pipeline(this.options, (err2, data, info) => {
+            if (err2) {
+              this.emit("error", is.nativeError(err2, stack));
+            } else {
+              this.emit("info", info);
+              this.push(data);
+            }
+            this.push(null);
+            this.on("end", () => this.emit("close"));
+          });
+        }
+        return this;
+      } else {
+        if (this._isStreamInput()) {
+          return new Promise((resolve3, reject) => {
+            this.once("finish", () => {
+              this._flattenBufferIn();
+              sharp5.pipeline(this.options, (err2, data, info) => {
+                if (err2) {
+                  reject(is.nativeError(err2, stack));
+                } else {
+                  if (this.options.resolveWithObject) {
+                    resolve3({ data, info });
+                  } else {
+                    resolve3(data);
+                  }
+                }
+              });
+            });
+          });
+        } else {
+          return new Promise((resolve3, reject) => {
+            sharp5.pipeline(this.options, (err2, data, info) => {
+              if (err2) {
+                reject(is.nativeError(err2, stack));
+              } else {
+                if (this.options.resolveWithObject) {
+                  resolve3({ data, info });
+                } else {
+                  resolve3(data);
+                }
+              }
+            });
+          });
+        }
+      }
+    }
+    module2.exports = (Sharp) => {
+      Object.assign(Sharp.prototype, {
+        // Public
+        toFile,
+        toBuffer,
+        keepExif,
+        withExif,
+        withExifMerge,
+        keepIccProfile,
+        withIccProfile,
+        keepXmp,
+        withXmp,
+        keepMetadata,
+        withMetadata,
+        toFormat,
+        jpeg,
+        jp2,
+        png,
+        webp,
+        tiff,
+        avif,
+        heif,
+        jxl,
+        gif,
+        raw,
+        tile,
+        timeout,
+        // Private
+        _updateFormatOut,
+        _setBooleanOption,
+        _read,
+        _pipeline
+      });
+    };
+  }
+});
+
+// node_modules/sharp/lib/utility.js
+var require_utility = __commonJS({
+  "node_modules/sharp/lib/utility.js"(exports, module2) {
+    var events = require("node:events");
+    var detectLibc = require_detect_libc();
+    var is = require_is();
+    var { runtimePlatformArch } = require_libvips();
+    var sharp5 = require_sharp();
+    var runtimePlatform = runtimePlatformArch();
+    var libvipsVersion = sharp5.libvipsVersion();
+    var format = sharp5.format();
+    format.heif.output.alias = ["avif", "heic"];
+    format.jpeg.output.alias = ["jpe", "jpg"];
+    format.tiff.output.alias = ["tif"];
+    format.jp2k.output.alias = ["j2c", "j2k", "jp2", "jpx"];
+    var interpolators = {
+      /** [Nearest neighbour interpolation](http://en.wikipedia.org/wiki/Nearest-neighbor_interpolation). Suitable for image enlargement only. */
+      nearest: "nearest",
+      /** [Bilinear interpolation](http://en.wikipedia.org/wiki/Bilinear_interpolation). Faster than bicubic but with less smooth results. */
+      bilinear: "bilinear",
+      /** [Bicubic interpolation](http://en.wikipedia.org/wiki/Bicubic_interpolation) (the default). */
+      bicubic: "bicubic",
+      /** [LBB interpolation](https://github.com/libvips/libvips/blob/master/libvips/resample/lbb.cpp#L100). Prevents some "[acutance](http://en.wikipedia.org/wiki/Acutance)" but typically reduces performance by a factor of 2. */
+      locallyBoundedBicubic: "lbb",
+      /** [Nohalo interpolation](http://eprints.soton.ac.uk/268086/). Prevents acutance but typically reduces performance by a factor of 3. */
+      nohalo: "nohalo",
+      /** [VSQBS interpolation](https://github.com/libvips/libvips/blob/master/libvips/resample/vsqbs.cpp#L48). Prevents "staircasing" when enlarging. */
+      vertexSplitQuadraticBasisSpline: "vsqbs"
+    };
+    var versions = {
+      vips: libvipsVersion.semver
+    };
+    if (!libvipsVersion.isGlobal) {
+      if (!libvipsVersion.isWasm) {
+        try {
+          versions = require(`@img/sharp-${runtimePlatform}/versions`);
+        } catch (_) {
+          try {
+            versions = require(`@img/sharp-libvips-${runtimePlatform}/versions`);
+          } catch (_2) {
+          }
+        }
+      } else {
+        try {
+          versions = require("@img/sharp-wasm32/versions");
+        } catch (_) {
+        }
+      }
+    }
+    versions.sharp = require_package().version;
+    if (versions.heif && format.heif) {
+      format.heif.input.fileSuffix = [".avif"];
+      format.heif.output.alias = ["avif"];
+    }
+    function cache(options) {
+      if (is.bool(options)) {
+        if (options) {
+          return sharp5.cache(50, 20, 100);
+        } else {
+          return sharp5.cache(0, 0, 0);
+        }
+      } else if (is.object(options)) {
+        return sharp5.cache(options.memory, options.files, options.items);
+      } else {
+        return sharp5.cache();
+      }
+    }
+    cache(true);
+    function concurrency(concurrency2) {
+      return sharp5.concurrency(is.integer(concurrency2) ? concurrency2 : null);
+    }
+    if (detectLibc.familySync() === detectLibc.GLIBC && !sharp5._isUsingJemalloc()) {
+      sharp5.concurrency(1);
+    } else if (detectLibc.familySync() === detectLibc.MUSL && sharp5.concurrency() === 1024) {
+      sharp5.concurrency(require("node:os").availableParallelism());
+    }
+    var queue = new events.EventEmitter();
+    function counters() {
+      return sharp5.counters();
+    }
+    function simd(simd2) {
+      return sharp5.simd(is.bool(simd2) ? simd2 : null);
+    }
+    function block(options) {
+      if (is.object(options)) {
+        if (Array.isArray(options.operation) && options.operation.every(is.string)) {
+          sharp5.block(options.operation, true);
+        } else {
+          throw is.invalidParameterError("operation", "Array<string>", options.operation);
+        }
+      } else {
+        throw is.invalidParameterError("options", "object", options);
+      }
+    }
+    function unblock(options) {
+      if (is.object(options)) {
+        if (Array.isArray(options.operation) && options.operation.every(is.string)) {
+          sharp5.block(options.operation, false);
+        } else {
+          throw is.invalidParameterError("operation", "Array<string>", options.operation);
+        }
+      } else {
+        throw is.invalidParameterError("options", "object", options);
+      }
+    }
+    module2.exports = (Sharp) => {
+      Sharp.cache = cache;
+      Sharp.concurrency = concurrency;
+      Sharp.counters = counters;
+      Sharp.simd = simd;
+      Sharp.format = format;
+      Sharp.interpolators = interpolators;
+      Sharp.versions = versions;
+      Sharp.queue = queue;
+      Sharp.block = block;
+      Sharp.unblock = unblock;
+    };
+  }
+});
+
+// node_modules/sharp/lib/index.js
 var require_lib = __commonJS({
+  "node_modules/sharp/lib/index.js"(exports, module2) {
+    var Sharp = require_constructor();
+    require_input()(Sharp);
+    require_resize()(Sharp);
+    require_composite()(Sharp);
+    require_operation()(Sharp);
+    require_colour()(Sharp);
+    require_channel()(Sharp);
+    require_output()(Sharp);
+    require_utility()(Sharp);
+    module2.exports = Sharp;
+  }
+});
+
+// node_modules/@mongodb-js/zstd/lib/index.js
+var require_lib2 = __commonJS({
   "node_modules/@mongodb-js/zstd/lib/index.js"(exports) {
     "use strict";
     var { promisify } = require("util");
@@ -3696,7 +8645,7 @@ function crc32(buf, previous = 0) {
 var import_cli_progress = __toESM(require_cli_progress(), 1);
 var import_fs2 = require("fs");
 var import_png_chunks_extract = __toESM(require_png_chunks_extract(), 1);
-var import_sharp2 = __toESM(require("sharp"), 1);
+var import_sharp2 = __toESM(require_lib(), 1);
 
 // node_modules/roxify/dist/pack.js
 var import_fs = require("fs");
@@ -3931,7 +8880,7 @@ function tryDecryptIfNeeded(buf, passphrase) {
 
 // node_modules/roxify/dist/utils/reconstitution.js
 var import_path2 = require("path");
-var import_sharp = __toESM(require("sharp"), 1);
+var import_sharp = __toESM(require_lib(), 1);
 async function cropAndReconstitute(input, debugDir) {
   async function loadRaw(imgInput) {
     const { data, info: info2 } = await (0, import_sharp.default)(imgInput).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -4173,7 +9122,7 @@ async function cropAndReconstitute(input, debugDir) {
 }
 
 // node_modules/roxify/dist/utils/zstd.js
-var import_zstd = __toESM(require_lib(), 1);
+var import_zstd = __toESM(require_lib2(), 1);
 var import_os = require("os");
 async function parallelZstdCompress(payload, level = 19, onProgress) {
   const chunkSize = 8 * 1024 * 1024;
@@ -4874,7 +9823,7 @@ async function decodePngToBinary(input, opts = {}) {
 // node_modules/roxify/dist/utils/encoder.js
 var import_cli_progress2 = __toESM(require_cli_progress(), 1);
 var import_crypto2 = require("crypto");
-var import_sharp3 = __toESM(require("sharp"), 1);
+var import_sharp3 = __toESM(require_lib(), 1);
 var zlib3 = __toESM(require("zlib"), 1);
 
 // node_modules/roxify/dist/utils/optimization.js
@@ -5890,7 +10839,7 @@ async function encodeBinaryToPng(input, opts = {}) {
 
 // node_modules/roxify/dist/utils/inspection.js
 var import_png_chunks_extract3 = __toESM(require_png_chunks_extract(), 1);
-var import_sharp4 = __toESM(require("sharp"), 1);
+var import_sharp4 = __toESM(require_lib(), 1);
 var zlib4 = __toESM(require("zlib"), 1);
 async function listFilesInPng(pngBuf, opts = {}) {
   try {
@@ -6284,7 +11233,7 @@ async function hasPassphraseInPng(pngBuf) {
     } catch (e) {
     }
     try {
-      const sharpLib = await import("sharp");
+      const sharpLib = await Promise.resolve().then(() => __toESM(require_lib(), 1));
       const { data } = await sharpLib.default(pngBuf).raw().toBuffer({ resolveWithObject: true });
       const rawRGB = Buffer.from(data);
       const markerLen = MARKER_COLORS.length * 3;
@@ -6333,7 +11282,7 @@ async function hasPassphraseInPng(pngBuf) {
 }
 
 // node_modules/roxify/dist/minpng.js
-var import_zstd4 = __toESM(require_lib(), 1);
+var import_zstd4 = __toESM(require_lib2(), 1);
 var import_png_chunks_encode2 = __toESM(require_png_chunks_encode(), 1);
 var PIXEL_MAGIC2 = Buffer.from("MNPG");
 var MARKER_START2 = [
@@ -6899,6 +11848,84 @@ main().catch((err2) => {
   process.exit(1);
 });
 /*! Bundled license information:
+
+sharp/lib/is.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/libvips.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/sharp.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/constructor.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/input.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/resize.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/composite.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/operation.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/colour.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/channel.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/output.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/utility.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
+
+sharp/lib/index.js:
+  (*!
+    Copyright 2013 Lovell Fuller and others.
+    SPDX-License-Identifier: Apache-2.0
+  *)
 
 amdefine/amdefine.js:
   (** vim: et:ts=4:sw=4:sts=4

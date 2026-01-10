@@ -24,19 +24,6 @@ namespace Pyxelze
 
         private string? archiveExtractedRoot = null;
 
-        // Logging for Drag & Drop diagnostics
-        private readonly string dndLogPath = Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log");
-
-        private void Log(string fmt, params object[] args)
-        {
-            try
-            {
-                var line = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] " + string.Format(fmt, args);
-                File.AppendAllText(dndLogPath, line + Environment.NewLine);
-            }
-            catch { }
-        }
-
         // Column width adjustment
         private bool adjustingColumns = false;
 
@@ -59,26 +46,6 @@ namespace Pyxelze
             {
                 LoadArchive(archivePath);
             }
-
-            // First-run: propose d'activer l'intégration Explorateur si elle n'est pas installée
-            try
-            {
-                using (var userKey = Registry.CurrentUser.CreateSubKey("Software\\Pyxelze"))
-                {
-                    var disabled = userKey.GetValue("IntegrationPromptDisabled");
-                    if (disabled == null || (int)disabled == 0)
-                    {
-                        bool installed = IsContextMenuInstalled();
-                        if (!installed)
-                        {
-                            var res = MessageBox.Show("Voulez-vous activer l'intégration Explorateur (clic droit) maintenant?\nOui = activer, Non = ne plus demander, Annuler = me rappeler plus tard.", "Intégration Explorateur", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
-                            if (res == DialogResult.Yes) RegisterShellExtension();
-                            else if (res == DialogResult.No) userKey.SetValue("IntegrationPromptDisabled", 1, RegistryValueKind.DWord);
-                        }
-                    }
-                }
-            }
-            catch { }
         }
 
         private void SetupInterface()
@@ -98,20 +65,6 @@ namespace Pyxelze
             fileMenu.DropDownItems.Add("Ouvrir...", null, (s, e) => OpenArchiveDialog());
             fileMenu.DropDownItems.Add("Quitter", null, (s, e) => Close());
             menuStrip.Items.Add(fileMenu);
-
-            var toolsMenu = new ToolStripMenuItem("Outils");
-            toolsMenu.DropDownItems.Add("Activer intégration Explorateur (Admin)", null, (s, e) => RegisterShellExtension());
-            toolsMenu.DropDownItems.Add("Désactiver intégration Explorateur (Admin)", null, (s, e) => UnregisterShellExtension());
-            toolsMenu.DropDownItems.Add("Ouvrir log DnD", null, (s, e) =>
-            {
-                try
-                {
-                    if (File.Exists(dndLogPath)) Process.Start("notepad.exe", dndLogPath);
-                    else MessageBox.Show("Aucun log trouvé : " + dndLogPath);
-                }
-                catch (Exception ex) { MessageBox.Show("Impossible d'ouvrir le log: " + ex.Message); }
-            });
-            menuStrip.Items.Add(toolsMenu);
 
             var viewMenu = new ToolStripMenuItem("Affichage");
             var darkModeItem = new ToolStripMenuItem("Mode sombre") { CheckOnClick = true, Checked = ThemeManager.DarkMode };
@@ -406,7 +359,6 @@ readme.txt (100 bytes)
                             else
                             {
                                 statusLabelProgress.Text = "Erreur mise en cache";
-                                Log("Mise en cache failed: {0}", p.StandardError.ReadToEnd());
                             }
                             Task.Delay(2000).ContinueWith(_ => this.Invoke((Action)(() => statusLabelProgress.Visible = false)));
                         }));
@@ -417,7 +369,6 @@ readme.txt (100 bytes)
                     this.Invoke((Action)(() =>
                     {
                         statusLabelProgress.Text = "Erreur: " + ex.Message;
-                        Log("ExtractFullArchive exception: {0}", ex.Message);
                     }));
                 }
             });
@@ -666,7 +617,6 @@ readme.txt (100 bytes)
         private void ListView_ItemDrag(object? sender, ItemDragEventArgs e)
         {
             if (listView.SelectedItems.Count == 0) return;
-            Log("ListView_ItemDrag: {0} items selected", listView.SelectedItems.Count);
 
             var dragSelection = listView.SelectedItems.Cast<ListViewItem>().Select(i => i.Tag).OfType<VirtualFile>().ToList();
             if (dragSelection.Count == 0) return;
@@ -679,8 +629,6 @@ readme.txt (100 bytes)
 
             var dragTempRoot = Path.Combine(Path.GetTempPath(), "pyxelze_drag_" + Guid.NewGuid().ToString());
 
-            Log("Preparing lazy drag for {0} files", dragSelection.Count);
-
             var dragDataObject = new LazyDataObject(this, currentArchive, dragSelection, allFiles, dragTempRoot, archiveExtractedRoot);
             try
             {
@@ -688,24 +636,19 @@ readme.txt (100 bytes)
             }
             catch { }
 
-            Log("Calling DoDragDrop");
             try
             {
                 DoDragDrop(dragDataObject, DragDropEffects.Copy);
-                Log("DoDragDrop returned");
             }
-            catch (Exception ex)
-            {
-                Log("DoDragDrop threw: {0}", ex.Message);
-            }
+            catch { }
             finally
             {
                 try
                 {
                     if (Directory.Exists(dragTempRoot))
                     {
-                        try { Directory.Delete(dragTempRoot, true); Log("Cleaned temp folder {0}", dragTempRoot); }
-                        catch (Exception ex) { Log("Failed to clean temp folder: {0}", ex.Message); }
+                        try { Directory.Delete(dragTempRoot, true); }
+                        catch { }
                     }
                 }
                 catch { }
@@ -792,7 +735,6 @@ readme.txt (100 bytes)
 
             try
             {
-                Log("ExtractFileSingle start: {0} -> {1}", internalPath, outputPath);
                 var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{Path.GetDirectoryName(outputPath)}\" --files \"{internalPath}\"");
 
                 using (var p = Process.Start(psi))
@@ -800,13 +742,11 @@ readme.txt (100 bytes)
                     string stdout = p!.StandardOutput.ReadToEnd();
                     string stderr = p.StandardError.ReadToEnd();
                     p.WaitForExit();
-                    Log("ExtractFileSingle done: {0} exit={1}", internalPath, p.ExitCode);
                     return p.ExitCode == 0;
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Log("ExtractFileSingle exception for {0}: {1}", internalPath, ex.Message);
                 return false;
             }
 
@@ -828,14 +768,15 @@ readme.txt (100 bytes)
                 {
                     using (var key = Registry.ClassesRoot.CreateSubKey(@"*\\shell\\Pyxelze"))
                     {
-                        key.SetValue("", "Pyxelze");
+                        key.SetValue("", "");
+                        key.SetValue("MUIVerb", "Pyxelze");
                         key.SetValue("Icon", exePath);
-                        key.SetValue("SubCommands", "");
+                        key.SetValue("SubCommands", "open;decode");
                         using (var shellKey = key.CreateSubKey(@"shell"))
                         {
                             using (var openKey = shellKey.CreateSubKey("open"))
                             {
-                                openKey.SetValue("", "Ouvrir l'archive");
+                                openKey.SetValue("MUIVerb", "Ouvrir l'archive");
                                 openKey.SetValue("Icon", exePath);
                                 using (var cmdKey = openKey.CreateSubKey("command"))
                                 {
@@ -844,7 +785,7 @@ readme.txt (100 bytes)
                             }
                             using (var decodeKey = shellKey.CreateSubKey("decode"))
                             {
-                                decodeKey.SetValue("", "Décoder l'archive ROX");
+                                decodeKey.SetValue("MUIVerb", "Décoder l'archive ROX");
                                 decodeKey.SetValue("Icon", exePath);
                                 using (var cmdKey = decodeKey.CreateSubKey("command"))
                                 {
@@ -856,14 +797,15 @@ readme.txt (100 bytes)
 
                     using (var dirKey = Registry.ClassesRoot.CreateSubKey(@"Directory\\shell\\Pyxelze"))
                     {
-                        dirKey.SetValue("", "Pyxelze");
+                        dirKey.SetValue("", "");
+                        dirKey.SetValue("MUIVerb", "Pyxelze");
                         dirKey.SetValue("Icon", exePath);
-                        dirKey.SetValue("SubCommands", "");
+                        dirKey.SetValue("SubCommands", "encode");
                         using (var shellKey = dirKey.CreateSubKey(@"shell"))
                         {
                             using (var encodeKey = shellKey.CreateSubKey("encode"))
                             {
-                                encodeKey.SetValue("", "Encoder en archive ROX");
+                                encodeKey.SetValue("MUIVerb", "Encoder en archive ROX");
                                 encodeKey.SetValue("Icon", exePath);
                                 using (var cmdKey = encodeKey.CreateSubKey("command"))
                                 {

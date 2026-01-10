@@ -1,8 +1,0 @@
-﻿.\rox.exe : Failed to start roxify: Invalid host defined options
-Au caractère Ligne:1 : 79
-+ ... reau\Pyxelze-Light\Pyxelze\tools\roxify\dist'; .\rox.exe 2>&1 | Out-F ...
-+                                                    ~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (Failed to start...defined options:String) [] 
-   , RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 

@@ -1,6 +1,0 @@
-D:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\publish_test\Pyxelze.exe
-D:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\publish_test\appIcon.ico
-D:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\publish_test\Pyxelze.dll
-D:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\publish_test\Pyxelze.deps.json
-D:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\publish_test\Pyxelze.runtimeconfig.json
-D:\Users\yohan\Bureau\Pyxelze-Light\Pyxelze\publish_test\Pyxelze.pdb
