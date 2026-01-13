@@ -3,7 +3,7 @@
   "version": "0.0.0-local",
   "bin": "index.js",
   "dependencies": {
-    "roxify": "latest"
+    "roxify": "1.5.4"
   },
   "devDependencies": {
     "esbuild": "^0.18.11",
