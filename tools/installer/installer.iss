@@ -18,7 +18,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 
 [Files]
-Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs; Excludes: "\tools\roxify\node_modules,\tools\roxify\node_modules\*,\tools\roxify\roxify,\tools\roxify\roxify\*"
+Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs; Excludes: "\tools\roxify\roxify,\tools\roxify\roxify\*,\win-x64,\win-x64\*"
 
 [Icons]
 Name: "{group}\Pyxelze"; Filename: "{app}\Pyxelze.exe"
