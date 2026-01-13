@@ -23,9 +23,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 
 // node_modules/roxify/dist/cli.js
-var import_fs4 = require("fs");
+var import_fs5 = require("fs");
 var import_promises2 = require("fs/promises");
-var import_path4 = require("path");
+var import_path6 = require("path");
 
 // node_modules/roxify/dist/utils/constants.js
 var CHUNK_TYPE = "rXDT";
@@ -55,8 +55,7 @@ var MARKER_COLORS = [
 var MARKER_START = MARKER_COLORS;
 var MARKER_END = [...MARKER_COLORS].reverse();
 var COMPRESSION_MARKERS = {
-  zstd: [{ r: 0, g: 255, b: 0 }],
-  lzma: [{ r: 255, g: 255, b: 0 }]
+  zstd: [{ r: 0, g: 255, b: 0 }]
 };
 
 // node_modules/roxify/dist/utils/crc.js
@@ -81,7 +80,8 @@ function crc32(buf, previous = 0) {
 }
 
 // node_modules/roxify/dist/utils/decoder.js
-var import_fs2 = require("fs");
+var import_fs3 = require("fs");
+var import_path4 = require("path");
 
 // node_modules/roxify/dist/pack.js
 var import_fs = require("fs");
@@ -271,12 +271,42 @@ var import_crypto = require("crypto");
 
 // node_modules/roxify/dist/utils/native.js
 var import_module = require("module");
+var import_os = require("os");
 var import_path2 = require("path");
 var import_url = require("url");
 var __filename = __filename;
 var __dirname = __dirname;
 var require2 = require;
-var native = require((0, import_path2.join)(__dirname, "../node_modules/roxify/libroxify_native.node"));
+function getNativePath() {
+  const platformMap = {
+    linux: "x86_64-unknown-linux-gnu",
+    darwin: (0, import_os.arch)() === "arm64" ? "aarch64-apple-darwin" : "x86_64-apple-darwin",
+    win32: "x86_64-pc-windows-msvc"
+  };
+  const extMap = {
+    linux: "so",
+    darwin: "dylib",
+    win32: "dll"
+  };
+  const currentPlatform = (0, import_os.platform)();
+  const target = platformMap[currentPlatform];
+  const ext = extMap[currentPlatform];
+  if (!target || !ext) {
+    throw new Error(`Unsupported platform: ${currentPlatform}`);
+  }
+  const prebuiltPath = (0, import_path2.join)(__dirname, "../../libroxify_native.node");
+  const targetPath = (0, import_path2.join)(__dirname, `../../libroxify_native-${target}.${ext}`);
+  try {
+    return require2.resolve(prebuiltPath);
+  } catch {
+    try {
+      return require2.resolve(targetPath);
+    } catch {
+      throw new Error(`Native module not found for ${currentPlatform}-${(0, import_os.arch)()}. Expected: ${prebuiltPath} or ${targetPath}`);
+    }
+  }
+}
+var native = require2(getNativePath());
 
 // node_modules/roxify/dist/utils/helpers.js
 var nativeDeltaEncode = null;
@@ -364,8 +394,29 @@ function tryDecryptIfNeeded(buf, passphrase) {
 }
 
 // node_modules/roxify/dist/utils/reconstitution.js
+var import_fs2 = require("fs");
+var import_path3 = require("path");
 async function cropAndReconstitute(input, debugDir) {
-  return input;
+  const out = Buffer.from(native.cropAndReconstitute(input));
+  if (debugDir) {
+    try {
+      const meta = native.sharpMetadata(input);
+      const doubled = native.sharpResizeImage(input, meta.width * 2, meta.height * 2, "nearest");
+      console.log("DEBUG: writing doubled.png to", debugDir);
+      (0, import_fs2.writeFileSync)((0, import_path3.join)(debugDir, "doubled.png"), Buffer.from(doubled));
+    } catch (e) {
+      console.log("DEBUG: failed to write doubled.png", e?.message ?? e);
+    }
+    try {
+      console.log("DEBUG: writing reconstructed.png and reconstructed-pixels.bin to", debugDir);
+      (0, import_fs2.writeFileSync)((0, import_path3.join)(debugDir, "reconstructed.png"), out);
+      const raw = native.sharpToRaw(out);
+      (0, import_fs2.writeFileSync)((0, import_path3.join)(debugDir, "reconstructed-pixels.bin"), Buffer.from(raw.pixels));
+    } catch (e) {
+      console.log("DEBUG: failed to write reconstructed artifacts", e?.message ?? e);
+    }
+  }
+  return out;
 }
 
 // node_modules/roxify/dist/utils/zstd.js
@@ -490,27 +541,7 @@ async function tryZstdDecompress(payload, onProgress) {
 
 // node_modules/roxify/dist/utils/decoder.js
 async function tryDecompress(payload, onProgress) {
-  try {
-    return await parallelZstdDecompress(payload, onProgress);
-  } catch (e) {
-    try {
-      const mod = await import("lzma-purejs");
-      const decompressFn = mod && (mod.decompress || mod.LZMA && mod.LZMA.decompress);
-      if (!decompressFn)
-        throw new Error("No lzma decompress");
-      const dec = await new Promise((resolve3, reject) => {
-        try {
-          decompressFn(Buffer.from(payload), (out) => resolve3(out));
-        } catch (err) {
-          reject(err);
-        }
-      });
-      const dBuf = Buffer.isBuffer(dec) ? dec : Buffer.from(dec);
-      return dBuf;
-    } catch (e3) {
-      throw e;
-    }
-  }
+  return await parallelZstdDecompress(payload, onProgress);
 }
 async function decodePngToBinary(input, opts = {}) {
   let pngBuf;
@@ -519,7 +550,7 @@ async function decodePngToBinary(input, opts = {}) {
   } else {
     try {
       if (native?.sharpMetadata) {
-        const inputBuf = (0, import_fs2.readFileSync)(input);
+        const inputBuf = (0, import_fs3.readFileSync)(input);
         const metadata = native.sharpMetadata(inputBuf);
         const rawBytesEstimate = metadata.width * metadata.height * 4;
         const MAX_RAW_BYTES = 200 * 1024 * 1024;
@@ -529,11 +560,11 @@ async function decodePngToBinary(input, opts = {}) {
           pngBuf = inputBuf;
         }
       } else {
-        pngBuf = (0, import_fs2.readFileSync)(input);
+        pngBuf = (0, import_fs3.readFileSync)(input);
       }
     } catch (e) {
       try {
-        pngBuf = (0, import_fs2.readFileSync)(input);
+        pngBuf = (0, import_fs3.readFileSync)(input);
       } catch (e2) {
         throw e;
       }
@@ -779,8 +810,17 @@ async function decodePngToBinary(input, opts = {}) {
       logicalHeight = currentHeight;
       logicalData = rawRGB;
     } else {
+      if (process.env.ROX_DEBUG || opts.debugDir) {
+        console.log("DEBUG: about to call cropAndReconstitute, debugDir=", opts.debugDir);
+      }
       const reconstructed = await cropAndReconstitute(processedBuf, opts.debugDir);
+      if (process.env.ROX_DEBUG || opts.debugDir) {
+        console.log("DEBUG: cropAndReconstitute returned, reconstructed len=", reconstructed.length);
+      }
       const rawData = native.sharpToRaw(reconstructed);
+      if (process.env.ROX_DEBUG || opts.debugDir) {
+        console.log("DEBUG: rawData from reconstructed:", rawData.width, "x", rawData.height, "pixels=", Math.floor(rawData.pixels.length / 3));
+      }
       logicalWidth = rawData.width;
       logicalHeight = rawData.height;
       logicalData = Buffer.from(rawData.pixels);
@@ -1007,6 +1047,15 @@ async function decodePngToBinary(input, opts = {}) {
         const markerEndBytes = colorsToBytes(MARKER_END);
         console.log("DEBUG: MARKER_END index:", pixelBytes.indexOf(markerEndBytes));
       }
+      if (opts.debugDir) {
+        try {
+          console.log("DEBUG: writing extracted pixel bytes to", opts.debugDir);
+          (0, import_fs3.writeFileSync)((0, import_path4.join)(opts.debugDir, "extracted-pixel-bytes.bin"), pixelBytes);
+          (0, import_fs3.writeFileSync)((0, import_path4.join)(opts.debugDir, "extracted-pixel-head.hex"), pixelBytes.slice(0, 512).toString("hex"));
+        } catch (e) {
+          console.log("DEBUG: failed writing extracted bytes", e?.message ?? e);
+        }
+      }
     }
     try {
       let idx = 0;
@@ -1066,7 +1115,174 @@ async function decodePngToBinary(input, opts = {}) {
           const errMsg = e instanceof Error ? e.message : String(e);
           if (opts.passphrase)
             throw new IncorrectPassphraseError(`Incorrect passphrase (screenshot mode, zstd failed: ` + errMsg + ")");
-          throw new DataFormatError(`Screenshot mode zstd decompression failed: ` + errMsg);
+          try {
+            if (process.env.ROX_DEBUG)
+              console.log("DEBUG: decompress failed, attempting cropAndReconstitute fallback");
+            const reconstructed = await cropAndReconstitute(processedBuf, opts.debugDir);
+            const raw2 = native.sharpToRaw(reconstructed);
+            let logicalData2 = Buffer.from(raw2.pixels);
+            let logicalWidth2 = raw2.width;
+            let logicalHeight2 = raw2.height;
+            let startIdx2 = -1;
+            const totalPixels2 = logicalData2.length / 3 | 0;
+            for (let i2 = 0; i2 <= totalPixels2 - MARKER_START.length; i2++) {
+              let match2 = true;
+              for (let mi2 = 0; mi2 < MARKER_START.length && match2; mi2++) {
+                const offset2 = (i2 + mi2) * 3;
+                if (logicalData2[offset2] !== MARKER_START[mi2].r || logicalData2[offset2 + 1] !== MARKER_START[mi2].g || logicalData2[offset2 + 2] !== MARKER_START[mi2].b) {
+                  match2 = false;
+                }
+              }
+              if (match2) {
+                startIdx2 = i2;
+                break;
+              }
+            }
+            if (startIdx2 === -1) {
+              let found2D2 = false;
+              for (let y = 0; y < logicalHeight2 && !found2D2; y++) {
+                for (let x = 0; x <= logicalWidth2 - MARKER_START.length && !found2D2; x++) {
+                  let match = true;
+                  for (let mi = 0; mi < MARKER_START.length && match; mi++) {
+                    const idx2 = (y * logicalWidth2 + (x + mi)) * 3;
+                    if (idx2 + 2 >= logicalData2.length || logicalData2[idx2] !== MARKER_START[mi].r || logicalData2[idx2 + 1] !== MARKER_START[mi].g || logicalData2[idx2 + 2] !== MARKER_START[mi].b) {
+                      match = false;
+                    }
+                  }
+                  if (match) {
+                    let endX = x + MARKER_START.length - 1;
+                    let endY = y;
+                    for (let scanY = y; scanY < logicalHeight2; scanY++) {
+                      let rowHasData = false;
+                      for (let scanX = x; scanX < logicalWidth2; scanX++) {
+                        const scanIdx = (scanY * logicalWidth2 + scanX) * 3;
+                        if (scanIdx + 2 < logicalData2.length) {
+                          const r = logicalData2[scanIdx];
+                          const g = logicalData2[scanIdx + 1];
+                          const b = logicalData2[scanIdx + 2];
+                          const isBackground = r === 100 && g === 120 && b === 110 || r === 0 && g === 0 && b === 0 || r >= 50 && r <= 220 && g >= 50 && g <= 220 && b >= 50 && b <= 220 && Math.abs(r - g) < 70 && Math.abs(r - b) < 70 && Math.abs(g - b) < 70;
+                          if (!isBackground) {
+                            rowHasData = true;
+                            if (scanX > endX)
+                              endX = scanX;
+                          }
+                        }
+                      }
+                      if (rowHasData) {
+                        endY = scanY;
+                      } else if (scanY > y) {
+                        break;
+                      }
+                    }
+                    const rectWidth = endX - x + 1;
+                    const rectHeight = endY - y + 1;
+                    const newDataLen = rectWidth * rectHeight * 3;
+                    const newData = Buffer.allocUnsafe(newDataLen);
+                    let writeIdx = 0;
+                    for (let ry = y; ry <= endY; ry++) {
+                      for (let rx = x; rx <= endX; rx++) {
+                        const idx2 = (ry * logicalWidth2 + rx) * 3;
+                        newData[writeIdx++] = logicalData2[idx2];
+                        newData[writeIdx++] = logicalData2[idx2 + 1];
+                        newData[writeIdx++] = logicalData2[idx2 + 2];
+                      }
+                    }
+                    logicalData2 = newData;
+                    logicalWidth2 = rectWidth;
+                    logicalHeight2 = rectHeight;
+                    startIdx2 = 0;
+                    found2D2 = true;
+                  }
+                }
+              }
+              if (!found2D2)
+                throw new DataFormatError("Screenshot fallback failed: START not found");
+            }
+            const curTotalPixels2 = logicalData2.length / 3 | 0;
+            const lastLineStart2 = (logicalHeight2 - 1) * logicalWidth2;
+            const endMarkerStartCol2 = logicalWidth2 - MARKER_END.length;
+            let endStartPixel2 = -1;
+            if (lastLineStart2 + endMarkerStartCol2 < curTotalPixels2) {
+              let matchEnd2 = true;
+              for (let mi = 0; mi < MARKER_END.length && matchEnd2; mi++) {
+                const pixelIdx = lastLineStart2 + endMarkerStartCol2 + mi;
+                if (pixelIdx >= curTotalPixels2) {
+                  matchEnd2 = false;
+                  break;
+                }
+                const offset = pixelIdx * 3;
+                if (logicalData2[offset] !== MARKER_END[mi].r || logicalData2[offset + 1] !== MARKER_END[mi].g || logicalData2[offset + 2] !== MARKER_END[mi].b) {
+                  matchEnd2 = false;
+                }
+              }
+              if (matchEnd2) {
+                endStartPixel2 = lastLineStart2 + endMarkerStartCol2 - startIdx2;
+                if (process.env.ROX_DEBUG) {
+                  console.log("DEBUG: Found END marker in fallback at last line");
+                }
+              }
+            }
+            if (endStartPixel2 === -1) {
+              if (process.env.ROX_DEBUG) {
+                console.log("DEBUG: END marker not found in fallback; using end of grid");
+              }
+              endStartPixel2 = curTotalPixels2 - startIdx2;
+            }
+            const dataPixelCount2 = endStartPixel2 - (MARKER_START.length + 1);
+            const pixelBytes2 = Buffer.allocUnsafe(dataPixelCount2 * 3);
+            for (let i2 = 0; i2 < dataPixelCount2; i2++) {
+              const srcOffset = (startIdx2 + MARKER_START.length + 1 + i2) * 3;
+              const dstOffset = i2 * 3;
+              pixelBytes2[dstOffset] = logicalData2[srcOffset];
+              pixelBytes2[dstOffset + 1] = logicalData2[srcOffset + 1];
+              pixelBytes2[dstOffset + 2] = logicalData2[srcOffset + 2];
+            }
+            const foundPX = pixelBytes2.indexOf(PIXEL_MAGIC);
+            if (process.env.ROX_DEBUG)
+              console.log("DEBUG: PIXEL_MAGIC index in fallback:", foundPX);
+            if (pixelBytes2.length >= PIXEL_MAGIC.length) {
+              let ii = 0;
+              const at0 = pixelBytes2.slice(0, PIXEL_MAGIC.length).equals(PIXEL_MAGIC);
+              if (at0)
+                ii = PIXEL_MAGIC.length;
+              else {
+                const found = pixelBytes2.indexOf(PIXEL_MAGIC);
+                if (found !== -1)
+                  ii = found + PIXEL_MAGIC.length;
+              }
+              if (ii > 0) {
+                const version2 = pixelBytes2[ii++];
+                const nameLen2 = pixelBytes2[ii++];
+                const payloadLen2 = pixelBytes2.readUInt32BE(ii + nameLen2);
+                const rawPayload2 = pixelBytes2.slice(ii + nameLen2 + 4, ii + nameLen2 + 4 + payloadLen2);
+                let payload2 = tryDecryptIfNeeded(rawPayload2, opts.passphrase);
+                payload2 = await tryDecompress(payload2, (info) => {
+                  if (opts.onProgress)
+                    opts.onProgress(info);
+                });
+                if (!payload2.slice(0, MAGIC.length).equals(MAGIC)) {
+                  throw new DataFormatError("Screenshot fallback failed: missing ROX1 magic after decompression");
+                }
+                payload2 = payload2.slice(MAGIC.length);
+                if (opts.files) {
+                  const unpacked2 = unpackBuffer(payload2, opts.files);
+                  if (unpacked2) {
+                    if (opts.onProgress)
+                      opts.onProgress({ phase: "done" });
+                    progressBar?.stop();
+                    return { files: unpacked2.files, meta: { name } };
+                  }
+                }
+                if (opts.onProgress)
+                  opts.onProgress({ phase: "done" });
+                progressBar?.stop();
+                return { buf: payload2, meta: { name } };
+              }
+            }
+            throw new DataFormatError("Screenshot mode zstd decompression failed: " + errMsg);
+          } catch (e2) {
+            throw new DataFormatError(`Screenshot mode zstd decompression failed: ` + errMsg);
+          }
         }
         if (!payload.slice(0, MAGIC.length).equals(MAGIC)) {
           throw new DataFormatError("Invalid ROX format (pixel mode: missing ROX1 magic after decompression)");
@@ -1968,23 +2184,23 @@ var Presets = {
 
 // node_modules/roxify/dist/utils/rust-cli-wrapper.js
 var import_child_process = require("child_process");
-var import_fs3 = require("fs");
-var import_path3 = require("path");
+var import_fs4 = require("fs");
+var import_path5 = require("path");
 var import_url2 = require("url");
 var __filename2 = __filename;
-var __dirname2 = (0, import_path3.dirname)(__filename2);
+var __dirname2 = (0, import_path5.dirname)(__filename2);
 function findRustBinary() {
   const candidates = [];
   const binNames = process.platform === "win32" ? ["roxify-cli.exe", "roxify_cli.exe", "roxify_native.exe"] : ["roxify-cli", "roxify_cli", "roxify_native"];
   const relativeDirs = [
-    (0, import_path3.join)(__dirname2, "..", "..", "target", "release"),
-    (0, import_path3.join)(__dirname2, "..", "..", "dist"),
-    (0, import_path3.join)(__dirname2, ".."),
-    (0, import_path3.join)(__dirname2, "..", "..")
+    (0, import_path5.join)(__dirname2, "..", "..", "target", "release"),
+    (0, import_path5.join)(__dirname2, "..", "..", "dist"),
+    (0, import_path5.join)(__dirname2, ".."),
+    (0, import_path5.join)(__dirname2, "..", "..")
   ];
   for (const dir of relativeDirs) {
     for (const name of binNames) {
-      candidates.push((0, import_path3.join)(dir, name));
+      candidates.push((0, import_path5.join)(dir, name));
     }
   }
   if (process.platform !== "win32") {
@@ -1993,7 +2209,7 @@ function findRustBinary() {
   }
   for (const p of candidates) {
     try {
-      if ((0, import_fs3.existsSync)(p))
+      if ((0, import_fs4.existsSync)(p))
         return p;
     } catch (e) {
     }
@@ -2004,7 +2220,7 @@ function findRustBinary() {
     for (const name of binNames) {
       try {
         const out = execSync(`${which} ${name}`, { encoding: "utf-8" }).split("\n")[0].trim();
-        if (out && (0, import_fs3.existsSync)(out))
+        if (out && (0, import_fs4.existsSync)(out))
           return out;
       } catch (e) {
       }
@@ -2052,9 +2268,9 @@ async function encodeWithRustCLI(inputPath, outputPath, compressionLevel = 3, pa
 // node_modules/roxify/dist/cli.js
 var VERSION = "1.4.0";
 async function readLargeFile(filePath) {
-  const st = (0, import_fs4.statSync)(filePath);
+  const st = (0, import_fs5.statSync)(filePath);
   if (st.size <= 2 * 1024 * 1024 * 1024) {
-    return (0, import_fs4.readFileSync)(filePath);
+    return (0, import_fs5.readFileSync)(filePath);
   }
   const chunkSize = 64 * 1024 * 1024;
   const chunks = [];
@@ -2202,18 +2418,18 @@ async function encodeCommand(args) {
   } catch (e) {
     safeCwd = "/";
   }
-  const resolvedInputs = inputPaths.map((p) => (0, import_path4.resolve)(safeCwd, p));
-  let outputName = inputPaths.length === 1 ? (0, import_path4.basename)(firstInput) : "archive";
-  if (inputPaths.length === 1 && !(0, import_fs4.statSync)(resolvedInputs[0]).isDirectory()) {
+  const resolvedInputs = inputPaths.map((p) => (0, import_path6.resolve)(safeCwd, p));
+  let outputName = inputPaths.length === 1 ? (0, import_path6.basename)(firstInput) : "archive";
+  if (inputPaths.length === 1 && !(0, import_fs5.statSync)(resolvedInputs[0]).isDirectory()) {
     outputName = outputName.replace(/(\.[^.]+)?$/, ".png");
   } else {
     outputName += ".png";
   }
   let resolvedOutput;
   try {
-    resolvedOutput = (0, import_path4.resolve)(safeCwd, parsed.output || outputPath || outputName);
+    resolvedOutput = (0, import_path6.resolve)(safeCwd, parsed.output || outputPath || outputName);
   } catch (e) {
-    resolvedOutput = (0, import_path4.join)("/", parsed.output || outputPath || outputName);
+    resolvedOutput = (0, import_path6.join)("/", parsed.output || outputPath || outputName);
   }
   if (isRustBinaryAvailable() && !parsed.forceTs) {
     try {
@@ -2232,7 +2448,7 @@ async function encodeCommand(args) {
         });
       }, 500);
       const encryptType = parsed.encrypt === "xor" ? "xor" : "aes";
-      const fileName = (0, import_path4.basename)(inputPaths[0]);
+      const fileName = (0, import_path6.basename)(inputPaths[0]);
       await encodeWithRustCLI(inputPaths.length === 1 ? resolvedInputs[0] : resolvedInputs[0], resolvedOutput, 12, parsed.passphrase, encryptType, fileName);
       clearInterval(progressInterval);
       const encodeTime = Date.now() - startTime;
@@ -2341,13 +2557,13 @@ Success!`);
       }));
     } else {
       const resolvedInput = resolvedInputs[0];
-      const st = (0, import_fs4.statSync)(resolvedInput);
+      const st = (0, import_fs5.statSync)(resolvedInput);
       if (st.isDirectory()) {
         currentEncodeStep = "Reading files";
-        const { index, stream, totalSize } = await packPathsGenerator([resolvedInput], (0, import_path4.dirname)(resolvedInput), onProgress);
+        const { index, stream, totalSize } = await packPathsGenerator([resolvedInput], (0, import_path6.dirname)(resolvedInput), onProgress);
         inputData = stream;
         inputSizeVal = totalSize;
-        displayName = parsed.outputName || (0, import_path4.basename)(resolvedInput);
+        displayName = parsed.outputName || (0, import_path6.basename)(resolvedInput);
         options.includeFileList = true;
         options.fileList = index.map((e) => ({
           name: e.path,
@@ -2356,9 +2572,9 @@ Success!`);
       } else {
         inputData = await readLargeFile(resolvedInput);
         inputSizeVal = inputData.length;
-        displayName = (0, import_path4.basename)(resolvedInput);
+        displayName = (0, import_path6.basename)(resolvedInput);
         options.includeFileList = true;
-        options.fileList = [{ name: (0, import_path4.basename)(resolvedInput), size: st.size }];
+        options.fileList = [{ name: (0, import_path6.basename)(resolvedInput), size: st.size }];
       }
     }
     options.name = displayName;
@@ -2424,7 +2640,7 @@ Success!`);
       });
       encodeBar.stop();
     }
-    (0, import_fs4.writeFileSync)(resolvedOutput, output);
+    (0, import_fs5.writeFileSync)(resolvedOutput, output);
     const outputSize = (output.length / 1024 / 1024).toFixed(2);
     const inputSize = (inputSizeVal / 1024 / 1024).toFixed(2);
     const ratio = (output.length / inputSizeVal * 100).toFixed(1);
@@ -2452,7 +2668,7 @@ async function decodeCommand(args) {
     console.log("Usage: npx rox decode <input> [output] [options]");
     process.exit(1);
   }
-  const resolvedInput = (0, import_path4.resolve)(inputPath);
+  const resolvedInput = (0, import_path6.resolve)(inputPath);
   const resolvedOutput = parsed.output || outputPath || "decoded.bin";
   try {
     const options = {};
@@ -2460,7 +2676,7 @@ async function decodeCommand(args) {
       options.passphrase = parsed.passphrase;
     }
     if (parsed.debug) {
-      options.debugDir = (0, import_path4.dirname)(resolvedInput);
+      options.debugDir = (0, import_path6.dirname)(resolvedInput);
     }
     if (parsed.files) {
       options.files = parsed.files;
@@ -2528,10 +2744,10 @@ async function decodeCommand(args) {
       extractBar.start(totalBytes, 0, { step: "Writing files", elapsed: "0" });
       let written = 0;
       for (const file of result.files) {
-        const fullPath = (0, import_path4.join)(baseDir, file.path);
-        const dir = (0, import_path4.dirname)(fullPath);
-        (0, import_fs4.mkdirSync)(dir, { recursive: true });
-        (0, import_fs4.writeFileSync)(fullPath, file.buf);
+        const fullPath = (0, import_path6.join)(baseDir, file.path);
+        const dir = (0, import_path6.dirname)(fullPath);
+        (0, import_fs5.mkdirSync)(dir, { recursive: true });
+        (0, import_fs5.writeFileSync)(fullPath, file.buf);
         written += file.buf.length;
         extractBar.update(written, {
           step: `Writing ${file.path}`,
@@ -2545,17 +2761,17 @@ async function decodeCommand(args) {
       extractBar.stop();
       console.log(`
 Success!`);
-      console.log(`Unpacked ${result.files.length} files to directory : ${(0, import_path4.resolve)(baseDir)}`);
+      console.log(`Unpacked ${result.files.length} files to directory : ${(0, import_path6.resolve)(baseDir)}`);
       console.log(`Time: ${decodeTime}ms`);
     } else if (result.buf) {
       const unpacked = unpackBuffer(result.buf);
       if (unpacked) {
         const baseDir = parsed.output || outputPath || ".";
         for (const file of unpacked.files) {
-          const fullPath = (0, import_path4.join)(baseDir, file.path);
-          const dir = (0, import_path4.dirname)(fullPath);
-          (0, import_fs4.mkdirSync)(dir, { recursive: true });
-          (0, import_fs4.writeFileSync)(fullPath, file.buf);
+          const fullPath = (0, import_path6.join)(baseDir, file.path);
+          const dir = (0, import_path6.dirname)(fullPath);
+          (0, import_fs5.mkdirSync)(dir, { recursive: true });
+          (0, import_fs5.writeFileSync)(fullPath, file.buf);
         }
         console.log(`
 Success!`);
@@ -2566,7 +2782,7 @@ Success!`);
         if (!parsed.output && !outputPath && result.meta?.name) {
           finalOutput = result.meta.name;
         }
-        (0, import_fs4.writeFileSync)(finalOutput, result.buf);
+        (0, import_fs5.writeFileSync)(finalOutput, result.buf);
         console.log(`
 Success!`);
         if (result.meta?.name) {
@@ -2612,9 +2828,9 @@ async function listCommand(args) {
     console.log("Usage: npx rox list <input>");
     process.exit(1);
   }
-  const resolvedInput = (0, import_path4.resolve)(inputPath);
+  const resolvedInput = (0, import_path6.resolve)(inputPath);
   try {
-    const inputBuffer = (0, import_fs4.readFileSync)(resolvedInput);
+    const inputBuffer = (0, import_fs5.readFileSync)(resolvedInput);
     const fileList = await listFilesInPng(inputBuffer, {
       includeSizes: parsed.sizes !== false
     });
@@ -2648,9 +2864,9 @@ async function havePassphraseCommand(args) {
     console.log("Usage: npx rox havepassphrase <input>");
     process.exit(1);
   }
-  const resolvedInput = (0, import_path4.resolve)(inputPath);
+  const resolvedInput = (0, import_path6.resolve)(inputPath);
   try {
-    const inputBuffer = (0, import_fs4.readFileSync)(resolvedInput);
+    const inputBuffer = (0, import_fs5.readFileSync)(resolvedInput);
     const has = await hasPassphraseInPng(inputBuffer);
     console.log(has ? "Passphrase detected." : "No passphrase detected.");
   } catch (err) {
