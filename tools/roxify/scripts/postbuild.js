@@ -21,6 +21,20 @@ const root = path.resolve(__dirname, '..');
 const dist = path.join(root, 'dist');
 
 try {
+  const winNativeDll =
+    '/home/yohan/roxify/target/x86_64-pc-windows-gnu/release/roxify_native.dll';
+  const nativeNodePath = path.join(
+    root,
+    'node_modules',
+    'roxify',
+    'libroxify_native.node',
+  );
+
+  if (fs.existsSync(winNativeDll) && fs.existsSync(nativeNodePath)) {
+    fs.copyFileSync(winNativeDll, nativeNodePath);
+    console.log('Replaced native module with Windows DLL');
+  }
+
   const nativeExts = new Set(['.node', '.dll', '.so', '.dylib']);
   function walkAndCopy(dir) {
     if (!fs.existsSync(dir)) return;
@@ -39,6 +53,17 @@ try {
   }
 
   walkAndCopy(path.join(root, 'node_modules'));
+
+  const nativeNode = path.join(
+    root,
+    'node_modules',
+    'roxify',
+    'libroxify_native.node',
+  );
+  if (fs.existsSync(nativeNode)) {
+    fs.copyFileSync(nativeNode, path.join(dist, 'libroxify_native.node'));
+    console.log('Copied libroxify_native.node to dist root for bundle access');
+  }
 
   const roxifyDist = path.join(root, 'node_modules', 'roxify', 'dist');
   if (fs.existsSync(roxifyDist)) {
