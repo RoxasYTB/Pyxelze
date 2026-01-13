@@ -39,6 +39,22 @@ process.on('unhandledRejection', (reason) => {
 
       const localBundle = path.join(exeDir, 'build', 'rox-bundle.cjs');
       if (fs.existsSync(localBundle)) {
+        const nodeExec = path.join(exeDir, 'node.exe');
+        const hasNodeExe = fs.existsSync(nodeExec);
+
+        if (hasNodeExe) {
+          const { spawnSync } = require('child_process');
+          const child = spawnSync(nodeExec, [localBundle, ...args], {
+            stdio: 'inherit',
+            env: {
+              ...process.env,
+              NODE_PATH: path.join(exeDir, 'node_modules'),
+            },
+          });
+          process.exitCode = child.status || (child.signal && 1);
+          return;
+        }
+
         try {
           const cli = require(localBundle);
           if (typeof cli === 'function') {
@@ -271,6 +287,39 @@ process.on('unhandledRejection', (reason) => {
       console.error('execPath:', process.execPath);
       console.error('cwd:', process.cwd());
       console.error('env.NODE_ENV:', process.env.NODE_ENV);
+
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const exeDir = path.dirname(process.execPath || process.argv[0]);
+        const diag = [];
+        diag.push(
+          'Failed to start roxify: ' +
+            (err && err.message ? err.message : String(err)),
+        );
+        try {
+          diag.push('Error inspect: ' + util.inspect(err, { depth: null }));
+        } catch (e) {}
+        if (err && err.stack) diag.push('Stack: ' + err.stack);
+        try {
+          diag.push(
+            'err.name: ' +
+              (err && err.name) +
+              ' err.code: ' +
+              (err && err.code),
+          );
+        } catch (e) {}
+        diag.push('process.argv: ' + JSON.stringify(process.argv));
+        diag.push('execPath: ' + process.execPath);
+        diag.push('cwd: ' + process.cwd());
+        diag.push('env.NODE_ENV: ' + process.env.NODE_ENV);
+        if (process.env && process.env.PATH)
+          diag.push('PATH: ' + process.env.PATH);
+        try {
+          const logFile = path.join(exeDir, 'rox.err.txt');
+          fs.writeFileSync(logFile, diag.join('\n\n'));
+        } catch (e) {}
+      } catch (e) {}
     } catch (e) {
       try {
         console.error(
@@ -284,4 +333,3 @@ process.on('unhandledRejection', (reason) => {
     process.exitCode = 1;
   }
 })();
-

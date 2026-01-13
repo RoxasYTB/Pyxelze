@@ -6,22 +6,20 @@
     "roxify": "latest"
   },
   "devDependencies": {
-    "pkg": "^5.8.1",
-    "esbuild": "^0.18.11"
+    "esbuild": "^0.18.11",
+    "pkg": "^5.8.1"
   },
   "scripts": {
-    "bundle:rox": "node ./node_modules/esbuild/bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --external:@img/* --outfile=build/rox-bundle.cjs",
-    "build:exe": "node ./node_modules/esbuild/bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --external:@img/* --outfile=build/rox-bundle.cjs && node ./scripts/postbuild.js",
+    "bundle:rox": "node_modules/.bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --outfile=build/rox-bundle.cjs && node build/postbuild-auto.js",
+    "build:exe": "node_modules/.bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --outfile=build/rox-bundle.cjs && node build/postbuild-auto.js && node ./scripts/postbuild.js && node ./scripts/download-node.js",
     "postinstall": "node ./scripts/fix-cli-progress-presets.js",
-    "postbuild:exe": "node ./scripts/postbuild.js"
+    "postbuild:exe": "node ./scripts/postbuild.js",
+    "clean": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true}); require('fs').rmSync('build', {recursive:true, force:true});\""
   },
   "pkg": {
     "assets": [
       "node_modules/roxify/**/*",
-      "build/**/*",
-      "node_modules/@mongodb-js/zstd/build/**/*",
-      "node_modules/sharp/vendor/**/*",
-      "node_modules/sharp/build/Release/**/*"
+      "build/**/*"
     ]
   }
 }
