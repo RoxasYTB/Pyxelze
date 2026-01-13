@@ -52,6 +52,13 @@ namespace Pyxelze
         {
             try
             {
+                string roxError;
+                if (!RoxRunner.TryCheckRox(out roxError))
+                {
+                    MessageBox.Show("Rox n'est pas disponible ou a échoué:\n" + roxError + "\nAssurez-vous d'exécuter 'tools\\roxify\\install-rox.cmd' et consultez 'tools\\roxify\\rox.err.txt' pour plus de détails.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
                 string exePath = Application.ExecutablePath;
 
                 using (var key = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(@"*\shell\Pyxelze"))
@@ -145,11 +152,32 @@ namespace Pyxelze
                     p!.WaitForExit();
                     if (p.ExitCode == 0)
                     {
-                        MessageBox.Show($"Extraction réussie vers :\n{outputDir}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        var enumerator = Directory.EnumerateFileSystemEntries(outputDir).GetEnumerator();
+                        bool hasEntries = enumerator.MoveNext();
+                        if (!hasEntries)
+                        {
+                            var err = p.StandardError.ReadToEnd();
+                            if (string.IsNullOrEmpty(err))
+                            {
+                                string roxError;
+                                if (!RoxRunner.TryCheckRox(out roxError)) err = roxError;
+                            }
+                            MessageBox.Show($"Erreur lors de l'extraction : aucun fichier créé.\n{err}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                        else
+                        {
+                            MessageBox.Show($"Extraction réussie vers :\n{outputDir}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
                     }
                     else
                     {
-                        MessageBox.Show($"Erreur lors de l'extraction.\n{p.StandardError.ReadToEnd()}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        var err = p.StandardError.ReadToEnd();
+                        if (string.IsNullOrEmpty(err))
+                        {
+                            string roxError;
+                            if (!RoxRunner.TryCheckRox(out roxError)) err = roxError;
+                        }
+                        MessageBox.Show($"Erreur lors de l'extraction.\n{err}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -177,11 +205,30 @@ namespace Pyxelze
                     p!.WaitForExit();
                     if (p.ExitCode == 0)
                     {
-                        MessageBox.Show($"Compression réussie :\n{outputFile}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        if (!File.Exists(outputFile))
+                        {
+                            var err = p.StandardError.ReadToEnd();
+                            if (string.IsNullOrEmpty(err))
+                            {
+                                string roxError;
+                                if (!RoxRunner.TryCheckRox(out roxError)) err = roxError;
+                            }
+                            MessageBox.Show($"Erreur lors de la compression : le fichier de sortie n'a pas été créé.\n{err}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                        else
+                        {
+                            MessageBox.Show($"Compression réussie :\n{outputFile}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
                     }
                     else
                     {
-                        MessageBox.Show($"Erreur lors de la compression.\n{p.StandardError.ReadToEnd()}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        var err = p.StandardError.ReadToEnd();
+                        if (string.IsNullOrEmpty(err))
+                        {
+                            string roxError;
+                            if (!RoxRunner.TryCheckRox(out roxError)) err = roxError;
+                        }
+                        MessageBox.Show($"Erreur lors de la compression.\n{err}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }

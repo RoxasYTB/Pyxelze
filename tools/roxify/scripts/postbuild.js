@@ -21,17 +21,6 @@ const root = path.resolve(__dirname, '..');
 const dist = path.join(root, 'dist');
 
 try {
-  const sharpModule = path.join(root, 'node_modules', 'sharp');
-  const sharpVendor = path.join(sharpModule, 'vendor');
-  const sharpBuild = path.join(sharpModule, 'build', 'Release');
-
-  if (copyDir(sharpVendor, path.join(dist, 'sharp', 'vendor'))) {
-    console.log('Copied sharp vendor files to dist/sharp/vendor');
-  }
-  if (copyDir(sharpBuild, path.join(dist, 'sharp', 'build', 'Release'))) {
-    console.log('Copied sharp build/Release files to dist/sharp/build/Release');
-  }
-
   const nativeExts = new Set(['.node', '.dll', '.so', '.dylib']);
   function walkAndCopy(dir) {
     if (!fs.existsSync(dir)) return;
@@ -103,16 +92,7 @@ try {
     );
   }
 
-  const depsToCopy = [
-    '@mongodb-js',
-    '@img',
-    'fflate',
-    'lzma-purejs',
-    'png-chunks-encode',
-    'png-chunks-extract',
-    'cli-progress',
-    'sharp',
-  ];
+  const depsToCopy = [];
   for (const dep of depsToCopy) {
     const src = path.join(root, 'node_modules', dep);
     const dest = path.join(dist, 'node_modules', dep);
@@ -184,15 +164,6 @@ try {
       }
     } catch (e) {}
   }
-
-  try {
-    const srcNodeModules = path.join(root, 'node_modules');
-    const destNodeModules = path.join(dist, 'node_modules');
-    if (fs.existsSync(srcNodeModules)) {
-      copyDir(srcNodeModules, destNodeModules);
-      console.log('Copied full node_modules into dist/node_modules');
-    }
-  } catch (e) {}
 } catch (err) {
   console.error(
     'postbuild copy error:',
@@ -202,4 +173,3 @@ try {
 }
 
 console.log('postbuild: done');
-

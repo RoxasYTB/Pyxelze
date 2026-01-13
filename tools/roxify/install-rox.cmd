@@ -22,5 +22,10 @@ if defined UPATH (
   echo PATH initialized with %APPDIR% for current user.
 )
 
+rem verify rox works
+"%APPDIR%\rox.cmd" --version >nul 2> "%APPDIR%\rox.err.txt" || (
+  echo WARNING: rox failed to run, voir "%APPDIR%\rox.err.txt"
+)
+
 endlocal
 exit /b 0

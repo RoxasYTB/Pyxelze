@@ -20,16 +20,16 @@ if "%NODE_EXE%"=="" (
 
 rem Prefer roxify's ESM CLI (works with copied node_modules), fallback to bundled CJS
 if exist "%SCRIPT_DIR%roxify\dist\cli.js" (
-  %NODE_EXE% "%SCRIPT_DIR%roxify\dist\cli.js" %*
+  "%NODE_EXE%" "%SCRIPT_DIR%roxify\dist\cli.js" %*
 ) else if exist "%SCRIPT_DIR%dist\roxify\dist\cli.js" (
-  %NODE_EXE% "%SCRIPT_DIR%dist\roxify\dist\cli.js" %*
+  "%NODE_EXE%" "%SCRIPT_DIR%dist\roxify\dist\cli.js" %*
 ) else if exist "%SCRIPT_DIR%dist\build\rox-bundle.cjs" (
-  %NODE_EXE% "%SCRIPT_DIR%dist\build\rox-bundle.cjs" %*
+  "%NODE_EXE%" "%SCRIPT_DIR%dist\build\rox-bundle.cjs" %*
 ) else if exist "%SCRIPT_DIR%build\rox-bundle.cjs" (
-  %NODE_EXE% "%SCRIPT_DIR%build\rox-bundle.cjs" %*
+  "%NODE_EXE%" "%SCRIPT_DIR%build\rox-bundle.cjs" %*
 ) else (
   if exist "%SCRIPT_DIR%rox-bundle.cjs" (
-    %NODE_EXE% "%SCRIPT_DIR%rox-bundle.cjs" %*
+    "%NODE_EXE%" "%SCRIPT_DIR%rox-bundle.cjs" %*
   ) else (
   echo rox CLI not found in %SCRIPT_DIR% (expected build\rox-bundle.cjs or roxify\dist\cli.js)
   exit /b 1

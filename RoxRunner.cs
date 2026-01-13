@@ -18,13 +18,13 @@ internal static class RoxRunner
                   _roxExePath = roxExe;
             }
 
-            var nodeExe = Path.Combine(appDir, "roxify", "node.exe");
+            var nodeExe = Path.Combine(appDir, "tools", "roxify", "node.exe");
             if (File.Exists(nodeExe))
             {
                   _nodeExePath = nodeExe;
             }
 
-            var bundle = Path.Combine(appDir, "roxify", "build", "rox-bundle.cjs");
+            var bundle = Path.Combine(appDir, "tools", "roxify", "build", "rox-bundle.cjs");
             if (File.Exists(bundle))
             {
                   _bundlePath = bundle;
@@ -68,6 +68,45 @@ internal static class RoxRunner
                   RedirectStandardOutput = true,
                   RedirectStandardError = true
             };
+      }
+
+      public static bool TryCheckRox(out string error)
+      {
+            error = string.Empty;
+            try
+            {
+                  var psi = CreateRoxProcess("--version");
+                  using (var p = Process.Start(psi))
+                  {
+                        p!.WaitForExit(5000);
+                        var stderr = p.StandardError.ReadToEnd();
+                        if (p.ExitCode == 0)
+                        {
+                              return true;
+                        }
+                        error = !string.IsNullOrEmpty(stderr) ? stderr : $"Process exited with code {p.ExitCode}";
+                        try
+                        {
+                              var roxExe = _roxExePath ?? _bundlePath ?? _nodeExePath ?? string.Empty;
+                              if (!string.IsNullOrEmpty(roxExe))
+                              {
+                                    var log = Path.Combine(Path.GetDirectoryName(roxExe) ?? string.Empty, "rox.err.txt");
+                                    if (File.Exists(log))
+                                    {
+                                          var t = File.ReadAllText(log);
+                                          error += "\nLogs:\n" + t;
+                                    }
+                              }
+                        }
+                        catch { }
+                        return false;
+                  }
+            }
+            catch (Exception ex)
+            {
+                  error = ex.Message;
+                  return false;
+            }
       }
 
       public static bool IsRoxAvailable()

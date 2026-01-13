@@ -44,7 +44,7 @@
                   Condition="Exists('$(ProjectDir)tools\roxify\dist')"
                   DestinationFiles="@(RoxifyDistFiles->'$(OutDir)tools\roxify\%(RecursiveDir)%(Filename)%(Extension)')" />
       </Target>
-      <Target Name="PublishRoxify" BeforeTargets="Publish">
+      <Target Name="PublishRoxify" BeforeTargets="Publish" Condition="'$(OS)' == 'Windows_NT'">
             <!-- Ensure the production release folder exists and is up-to-date -->
             <Exec Command="call &quot;$(ProjectDir)make_release.cmd&quot;"
                   WorkingDirectory="$(ProjectDir)" ContinueOnError="false" />
