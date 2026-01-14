@@ -25,3 +25,5 @@ tools/roxify/node_modules/
 tools/roxify/dist/
 release/roxify/
 node_modules/
+# Exclude local modules and build artifacts
+node_modules/
