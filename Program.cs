@@ -52,13 +52,6 @@ namespace Pyxelze
         {
             try
             {
-                string roxError;
-                if (!RoxRunner.TryCheckRox(out roxError))
-                {
-                    MessageBox.Show("Rox n'est pas disponible ou a échoué:\n" + roxError + "\nAssurez-vous d'exécuter 'tools\\roxify\\install-rox.cmd' et consultez 'tools\\roxify\\rox.err.txt' pour plus de détails.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
                 string exePath = Application.ExecutablePath;
 
                 using (var key = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(@"*\shell\Pyxelze"))

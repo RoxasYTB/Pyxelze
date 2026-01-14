@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
       <PropertyGroup>
+            <EnableWindowsTargeting>true</EnableWindowsTargeting>
             <OutputType>WinExe</OutputType>
             <TargetFramework>net7.0-windows</TargetFramework>
             <UseWindowsForms>true</UseWindowsForms>
@@ -34,8 +35,6 @@
                   ContinueOnError="true" />
             <Exec Command="npm run build:exe" WorkingDirectory="$(ProjectDir)tools\roxify"
                   ContinueOnError="true" />
-            <!-- Copy the entire roxify dist into the project's output so users without Node can use
-            the CLI -->
             <ItemGroup>
                   <RoxifyDistFiles Include="$(ProjectDir)tools\roxify\dist\**\*.*"
                         Condition="Exists('$(ProjectDir)tools\roxify\dist')" />
@@ -44,30 +43,34 @@
                   Condition="Exists('$(ProjectDir)tools\roxify\dist')"
                   DestinationFiles="@(RoxifyDistFiles->'$(OutDir)tools\roxify\%(RecursiveDir)%(Filename)%(Extension)')" />
       </Target>
-      <Target Name="PublishRoxify" BeforeTargets="Publish" Condition="'$(OS)' == 'Windows_NT'">
-            <!-- Ensure the production release folder exists and is up-to-date -->
-            <Exec Command="call &quot;$(ProjectDir)make_release.cmd&quot;"
+      <Target Name="CopyRoxifyToBuild" AfterTargets="Build">
+            <PropertyGroup>
+                  <RoxExeSource>
+                        $(ProjectDir)..\..\roxify\target\x86_64-pc-windows-gnu\release\roxify_native.exe</RoxExeSource>
+                  <RoxExeDest>$(OutDir)roxify\roxify_native.exe</RoxExeDest>
+            </PropertyGroup>
+            <MakeDir Directories="$(OutDir)roxify" />
+            <Copy SourceFiles="$(RoxExeSource)" DestinationFiles="$(RoxExeDest)"
+                  Condition="Exists('$(RoxExeSource)')" />
+      </Target>
+      <Target Name="PublishRoxify" BeforeTargets="Publish">
+            <Exec Command="bash -c 'wine cmd /c make_release.cmd'"
                   WorkingDirectory="$(ProjectDir)" ContinueOnError="false" />
 
-            <!-- Copy rox.exe to the root of the publish directory so it's directly accessible -->
             <PropertyGroup>
-                  <RoxExeSource>$(ProjectDir)release\roxify\rox.exe</RoxExeSource>
-                  <RoxExeDest>$(PublishDir)rox.exe</RoxExeDest>
+                  <RoxExeSource>$(ProjectDir)release\roxify\roxify_native.exe</RoxExeSource>
+                  <RoxExeDest>$(PublishDir)roxify\roxify_native.exe</RoxExeDest>
             </PropertyGroup>
 
             <Message Importance="high"
-                  Text="Including rox.exe in publish: $(RoxExeSource) -> $(RoxExeDest)" />
+                  Text="Including roxify_native.exe in publish: $(RoxExeSource) -> $(RoxExeDest)" />
 
+            <MakeDir Directories="$(PublishDir)roxify" />
             <Copy SourceFiles="$(RoxExeSource)" DestinationFiles="$(RoxExeDest)"
                   Condition="Exists('$(RoxExeSource)') And '$(PublishDir)' != ''" />
+            <Copy SourceFiles="$(ProjectDir)release\roxify\roxify_native.cmd"
+                  DestinationFiles="$(PublishDir)roxify\roxify_native.cmd"
+                  Condition="Exists('$(ProjectDir)release\roxify\roxify_native.cmd') And '$(PublishDir)' != ''" />
 
-            <!-- Also include the whole release folder under the published app for completeness -->
-            <ItemGroup>
-                  <RoxifyReleaseFiles Include="$(ProjectDir)release\roxify\**\*.*"
-                        Condition="Exists('$(ProjectDir)release\roxify')" />
-            </ItemGroup>
-            <Copy SourceFiles="@(RoxifyReleaseFiles)"
-                  DestinationFiles="@(RoxifyReleaseFiles->'$(PublishDir)roxify\%(RecursiveDir)%(Filename)%(Extension)')"
-                  Condition="Exists('$(ProjectDir)release\roxify') And '$(PublishDir)' != ''" />
       </Target>
 </Project>

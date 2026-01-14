@@ -20,9 +20,11 @@ function copyDir(src, dest) {
 const root = path.resolve(__dirname, '..');
 const dist = path.join(root, 'dist');
 
+console.log('Starting optimized postbuild...');
+
+fs.mkdirSync(dist, { recursive: true });
+
 try {
-  const winNativeDll =
-    '/home/yohan/roxify/target/x86_64-pc-windows-gnu/release/roxify_native.dll';
   const nativeNodePath = path.join(
     root,
     'node_modules',
@@ -30,29 +32,87 @@ try {
     'libroxify_native.node',
   );
 
-  if (fs.existsSync(winNativeDll) && fs.existsSync(nativeNodePath)) {
-    fs.copyFileSync(winNativeDll, nativeNodePath);
-    console.log('Replaced native module with Windows DLL');
-  }
+  const roxifyRoot = '/home/yohan/roxify';
+  const possibleDirs = [
+    path.join(roxifyRoot, 'target', 'x86_64-pc-windows-gnu', 'release'),
+    path.join(roxifyRoot, 'target', 'x86_64-pc-windows-msvc', 'release'),
+    path.join(roxifyRoot, 'target', 'release'),
+  ];
 
-  const nativeExts = new Set(['.node', '.dll', '.so', '.dylib']);
-  function walkAndCopy(dir) {
-    if (!fs.existsSync(dir)) return;
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const p = path.join(dir, entry.name);
-      if (entry.isDirectory()) walkAndCopy(p);
-      else if (nativeExts.has(path.extname(entry.name).toLowerCase())) {
-        const rel = path.relative(root, p);
-        const dest = path.join(dist, rel);
-        fs.mkdirSync(path.dirname(dest), { recursive: true });
-        fs.copyFileSync(p, dest);
-        console.log('Copied native', rel, 'to dist');
+  const possibleBinaries = [];
+  for (const dir of possibleDirs) {
+    try {
+      if (!fs.existsSync(dir)) continue;
+      const entries = fs.readdirSync(dir);
+      for (const e of entries) {
+        if (/^roxify_native\.(dll|so|dylib|node)$/i.test(e)) {
+          possibleBinaries.push(path.join(dir, e));
+        }
       }
-    }
+    } catch (e) {}
   }
 
-  walkAndCopy(path.join(root, 'node_modules'));
+  if (possibleBinaries.length) {
+    const found = possibleBinaries[0];
+    fs.mkdirSync(path.dirname(nativeNodePath), { recursive: true });
+    fs.copyFileSync(found, nativeNodePath);
+    console.log('Copied built native module from', found, 'to', nativeNodePath);
+  }
+
+  // Also try to locate the rust CLI binary (roxify_native) and copy it into dist when available
+  const possibleCliNames = ['roxify_native.exe', 'roxify-cli.exe'];
+  const possibleCliPaths = [];
+  for (const dir of possibleDirs) {
+    try {
+      if (!fs.existsSync(dir)) continue;
+      const entries = fs.readdirSync(dir);
+      for (const e of entries) {
+        if (possibleCliNames.includes(e)) {
+          possibleCliPaths.push(path.join(dir, e));
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (possibleCliPaths.length) {
+    const cliFound = possibleCliPaths[0];
+    const cliDestName = 'roxify_native.exe';
+    fs.copyFileSync(cliFound, path.join(dist, cliDestName));
+    try {
+      fs.chmodSync(path.join(dist, cliDestName), 0o755);
+    } catch (e) {}
+    console.log(
+      'Copied rust CLI binary from',
+      cliFound,
+      'to',
+      path.join(dist, cliDestName),
+    );
+  } else {
+    console.log('No local rust CLI binary found to copy into dist');
+  }
+
+  // Copy rox.exe (TypeScript CLI standalone)
+  const roxExePath = path.join(roxifyRoot, 'dist', 'rox.exe');
+  if (fs.existsSync(roxExePath)) {
+    const roxDestPath = path.join(dist, 'rox.exe');
+    fs.copyFileSync(roxExePath, roxDestPath);
+    try {
+      fs.chmodSync(roxDestPath, 0o755);
+    } catch (e) {}
+    console.log(
+      'Copied TypeScript CLI standalone from',
+      roxExePath,
+      'to',
+      roxDestPath,
+    );
+  } else {
+    console.error(
+      'ERROR: rox.exe not found. Run: cd ' +
+        roxifyRoot +
+        ' && npm run build:pkg',
+    );
+    process.exit(1);
+  }
 
   const nativeNode = path.join(
     root,
@@ -62,133 +122,25 @@ try {
   );
   if (fs.existsSync(nativeNode)) {
     fs.copyFileSync(nativeNode, path.join(dist, 'libroxify_native.node'));
-    console.log('Copied libroxify_native.node to dist root for bundle access');
-  }
-
-  const roxifyDist = path.join(root, 'node_modules', 'roxify', 'dist');
-  if (fs.existsSync(roxifyDist)) {
-    copyDir(roxifyDist, path.join(dist, 'roxify', 'dist'));
-    console.log('Copied roxify dist into dist/roxify/dist');
-  }
-
-  const roxifyPkg = path.join(root, 'node_modules', 'roxify', 'package.json');
-  if (fs.existsSync(roxifyPkg)) {
-    fs.copyFileSync(roxifyPkg, path.join(dist, 'roxify', 'package.json'));
-    console.log('Copied roxify package.json into dist/roxify');
+    console.log('Copied libroxify_native.node to dist root');
+  } else {
+    console.warn('WARNING: libroxify_native.node not found!');
   }
 
   try {
-    const installerScript = path.join(root, 'install-rox.cmd');
-    if (fs.existsSync(installerScript)) {
-      fs.copyFileSync(installerScript, path.join(dist, 'install-rox.cmd'));
-      console.log('Copied install-rox.cmd into dist');
-    }
     const roxCmdSrc = path.join(root, 'rox.cmd');
     if (fs.existsSync(roxCmdSrc)) {
       fs.copyFileSync(roxCmdSrc, path.join(dist, 'rox.cmd'));
-      console.log('Copied rox.cmd into dist');
+      console.log('Copied rox.cmd');
     }
   } catch (e) {}
 
-  try {
-    const cliWrapperPath = path.join(dist, 'roxify', 'dist', 'cli_wrapper.js');
-    const wrapperContent = `import('./cli.js').then(mod => {
-  try {
-    const run = mod && (mod.default || mod);
-    if (typeof run === 'function') {
-      const res = run(process.argv.slice(2));
-      if (res && typeof res.then === 'function') res.catch(e => { require('fs').writeFileSync('${path
-        .join(dist, 'failure.log')
-        .replace(/\\/g, '\\\\')}', String(e.stack || e)); process.exit(1); });
-    }
-  } catch (e) { require('fs').writeFileSync('${path
-    .join(dist, 'failure.log')
-    .replace(/\\/g, '\\\\')}', String(e.stack || e)); process.exit(1); }
-}).catch(e => { require('fs').writeFileSync('${path
-      .join(dist, 'failure.log')
-      .replace(/\\/g, '\\\\')}', String(e.stack || e)); process.exit(1); });
-`;
-    fs.writeFileSync(cliWrapperPath, wrapperContent, 'utf8');
-    console.log('Wrote CLI wrapper to', cliWrapperPath);
-  } catch (e) {
-    console.error(
-      'Failed to write cli_wrapper:',
-      e && e.message ? e.message : e,
-    );
-  }
-
-  const depsToCopy = [];
-  for (const dep of depsToCopy) {
-    const src = path.join(root, 'node_modules', dep);
-    const dest = path.join(dist, 'node_modules', dep);
-    if (fs.existsSync(src)) {
-      copyDir(src, dest);
-      console.log('Copied dependency', dep, 'to dist/node_modules');
-    }
-  }
-
-  try {
-    const zstdRelease = path.join(
-      dist,
-      'node_modules',
-      '@mongodb-js',
-      'zstd',
-      'build',
-      'Release',
-      'zstd.node',
-    );
-    const zstdDebugDir = path.join(
-      dist,
-      'node_modules',
-      '@mongodb-js',
-      'zstd',
-      'build',
-      'Debug',
-    );
-    if (
-      fs.existsSync(zstdRelease) &&
-      !fs.existsSync(path.join(zstdDebugDir, 'zstd.node'))
-    ) {
-      fs.mkdirSync(zstdDebugDir, { recursive: true });
-      fs.copyFileSync(zstdRelease, path.join(zstdDebugDir, 'zstd.node'));
-      console.log(
-        'Copied zstd Release binary into build/Debug to satisfy require(../build/Debug/zstd.node)',
-      );
-    }
-  } catch (e) {}
-
-  const bundleSrc = path.join(root, 'build', 'rox-bundle.cjs');
-  if (fs.existsSync(bundleSrc)) {
-    const bundleDest = path.join(dist, 'build');
-    copyDir(path.dirname(bundleSrc), bundleDest);
-    console.log('Copied bundle to dist/build');
-    try {
-      const zstdInNodeModules = path.join(
-        dist,
-        'node_modules',
-        '@mongodb-js',
-        'zstd',
-        'build',
-        'Release',
-        'zstd.node',
-      );
-      const buildReleaseDir = path.join(dist, 'build', 'Release');
-      const buildDebugDir = path.join(dist, 'build', 'Debug');
-      if (fs.existsSync(zstdInNodeModules)) {
-        fs.mkdirSync(buildReleaseDir, { recursive: true });
-        fs.copyFileSync(
-          zstdInNodeModules,
-          path.join(buildReleaseDir, 'zstd.node'),
-        );
-        fs.mkdirSync(buildDebugDir, { recursive: true });
-        fs.copyFileSync(
-          zstdInNodeModules,
-          path.join(buildDebugDir, 'zstd.node'),
-        );
-        console.log('Copied zstd into dist/build/Release and dist/build/Debug');
-      }
-    } catch (e) {}
-  }
+  console.log('\n=== Optimized dist structure ===');
+  console.log('dist/');
+  console.log('  libroxify_native.node  (native module)');
+  console.log('  roxify_native          (Rust CLI binary)');
+  console.log('  rox.cmd                (launcher)');
+  console.log('\nMinimal installer - only Rust binaries!\n');
 } catch (err) {
   console.error(
     'postbuild copy error:',

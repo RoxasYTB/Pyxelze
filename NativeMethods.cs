@@ -29,6 +29,8 @@ namespace Pyxelze
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool DestroyIcon(IntPtr hIcon);
 
+        private const uint SHGFI_TYPENAME = 0x400;
+
         public static Icon GetIcon(string path, bool isFolder, bool large = false)
         {
             SHFILEINFO shinfo = new SHFILEINFO();
@@ -62,6 +64,19 @@ namespace Pyxelze
             Icon icon = (Icon)Icon.FromHandle(shinfo.hIcon).Clone();
             DestroyIcon(shinfo.hIcon);
             return icon;
+        }
+
+        public static string GetFileTypeName(string fileName)
+        {
+            SHFILEINFO shinfo = new SHFILEINFO();
+            uint flags = SHGFI_TYPENAME | SHGFI_USEFILEATTRIBUTES;
+
+            string ext = Path.GetExtension(fileName);
+            string lookupPath = string.IsNullOrEmpty(ext) ? "file" : "file" + ext;
+
+            SHGetFileInfo(lookupPath, FILE_ATTRIBUTE_NORMAL, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
+
+            return string.IsNullOrWhiteSpace(shinfo.szTypeName) ? "Fichier" : shinfo.szTypeName;
         }
     }
 }

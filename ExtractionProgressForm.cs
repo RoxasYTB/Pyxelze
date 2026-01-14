@@ -20,7 +20,7 @@ namespace Pyxelze
                   this.StartPosition = FormStartPosition.CenterParent;
                   this.Width = 420;
                   this.Height = 120;
-                  this.Text = "Mise en cache en cours";
+                  this.Text = "Extraction en cours";
 
                   this.BackColor = ThemeManager.WindowBack;
                   this.ForeColor = ThemeManager.WindowFore;
@@ -33,7 +33,7 @@ namespace Pyxelze
                   lbl.Height = 20;
                   lbl.Top = 10;
                   lbl.Left = 10;
-                  lbl.Text = "Préparation...";
+                  lbl.Text = "Extraction des fichiers...";
                   this.Controls.Add(lbl);
 
                   bar = new ProgressBar();
@@ -67,7 +67,7 @@ namespace Pyxelze
                         return;
                   }
                   bar.Value = Math.Min(current, bar.Maximum);
-                  lbl.Text = $"Mise en cache: {current}/{bar.Maximum} fichiers";
+                  lbl.Text = $"Extraction: {current}/{bar.Maximum} fichier(s)";
                   Application.DoEvents();
             }
 

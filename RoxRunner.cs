@@ -7,12 +7,13 @@ internal static class RoxRunner
       private static string? _roxExePath;
       private static string? _nodeExePath;
       private static string? _bundlePath;
+      private static string? _roxCliExe;
 
       static RoxRunner()
       {
             var appDir = AppDomain.CurrentDomain.BaseDirectory;
 
-            var roxExe = Path.Combine(appDir, "rox.exe");
+            var roxExe = Path.Combine(appDir, "roxify", "roxify_native.exe");
             if (File.Exists(roxExe))
             {
                   _roxExePath = roxExe;
@@ -29,10 +30,32 @@ internal static class RoxRunner
             {
                   _bundlePath = bundle;
             }
+
+            // Prefer a packaged rox CLI if present (some builds provide a standalone rox.exe)
+            var roxCliA = Path.Combine(appDir, "tools", "roxify", "rox.exe");
+            var roxCliB = Path.Combine(appDir, "tools", "roxify", "dist", "rox.exe");
+            if (File.Exists(roxCliA)) _roxCliExe = roxCliA;
+            else if (File.Exists(roxCliB)) _roxCliExe = roxCliB;
       }
 
       public static ProcessStartInfo CreateRoxProcess(string arguments)
       {
+            var argTrim = (arguments ?? string.Empty).TrimStart();
+
+            // If we have a packaged rox CLI, use it for commands that are only supported by the JS CLI (e.g. decode)
+            if (!string.IsNullOrEmpty(_roxCliExe) && (argTrim.StartsWith("decode", StringComparison.OrdinalIgnoreCase)))
+            {
+                  return new ProcessStartInfo
+                  {
+                        FileName = _roxCliExe,
+                        Arguments = arguments,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true
+                  };
+            }
+
             if (!string.IsNullOrEmpty(_roxExePath))
             {
                   return new ProcessStartInfo
@@ -78,13 +101,34 @@ internal static class RoxRunner
                   var psi = CreateRoxProcess("--version");
                   using (var p = Process.Start(psi))
                   {
-                        p!.WaitForExit(5000);
+                        if (p == null)
+                        {
+                              error = "Impossible de démarrer le processus roxify";
+                              return false;
+                        }
+
+                        bool exited = p.WaitForExit(5000);
+                        if (!exited)
+                        {
+                              try { p.Kill(); } catch { }
+                              error = "Timeout: roxify n'a pas répondu dans les 5 secondes";
+                              return false;
+                        }
+
+                        var stdout = p.StandardOutput.ReadToEnd();
                         var stderr = p.StandardError.ReadToEnd();
+
                         if (p.ExitCode == 0)
                         {
                               return true;
                         }
+
                         error = !string.IsNullOrEmpty(stderr) ? stderr : $"Process exited with code {p.ExitCode}";
+                        if (!string.IsNullOrEmpty(stdout))
+                        {
+                              error += "\nOutput: " + stdout;
+                        }
+
                         try
                         {
                               var roxExe = _roxExePath ?? _bundlePath ?? _nodeExePath ?? string.Empty;
@@ -104,7 +148,11 @@ internal static class RoxRunner
             }
             catch (Exception ex)
             {
-                  error = ex.Message;
+                  error = $"Erreur lors du lancement de roxify: {ex.Message}";
+                  if (!string.IsNullOrEmpty(_roxExePath))
+                  {
+                        error += $"\nChemin roxify: {_roxExePath}";
+                  }
                   return false;
             }
       }
@@ -113,5 +161,12 @@ internal static class RoxRunner
       {
             return !string.IsNullOrEmpty(_roxExePath)
                    || (!string.IsNullOrEmpty(_nodeExePath) && !string.IsNullOrEmpty(_bundlePath));
+      }
+
+      public static string? GetRoxDirectory()
+      {
+            var exe = _roxExePath ?? _bundlePath ?? _nodeExePath ?? string.Empty;
+            if (string.IsNullOrEmpty(exe)) return null;
+            return Path.GetDirectoryName(exe);
       }
 }

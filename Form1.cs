@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 using System.Drawing.Drawing2D;
+using System.Text.Json;
 
 namespace Pyxelze
 {
@@ -14,15 +15,14 @@ namespace Pyxelze
         private string currentPath = "";
         private string currentArchive = "";
         private ImageList smallImageList = null!;
-        private Dictionary<string, Image> iconSourceCache = new Dictionary<string, Image>(StringComparer.OrdinalIgnoreCase);
+        private FileIconManager? iconManager;
+        private FileAssociationWatcher? associationWatcher;
         private ContextMenuStrip contextMenu = null!;
         private StatusStrip statusStrip = null!;
         private ToolStripStatusLabel statusLabelFileCount = null!;
         private ToolStripStatusLabel statusLabelSelection = null!;
         private ToolStripProgressBar statusProgressBar = null!;
         private ToolStripStatusLabel statusLabelProgress = null!;
-
-        private string? archiveExtractedRoot = null;
 
         // Column width adjustment
         private bool adjustingColumns = false;
@@ -120,6 +120,7 @@ namespace Pyxelze
             contextMenu.Items.Add(new ToolStripSeparator());
             contextMenu.Items.Add("Extraire vers...", null, (s, e) => ExtractSelected());
             contextMenu.Items.Add("Extraire ici", null, (s, e) => ExtractToCurrentLocation());
+            contextMenu.Opening += ContextMenu_Opening;
             listView.ContextMenuStrip = contextMenu;
 
 
@@ -127,6 +128,9 @@ namespace Pyxelze
             smallImageList.ColorDepth = ColorDepth.Depth32Bit;
             smallImageList.ImageSize = new Size(20, 20);
             listView.SmallImageList = smallImageList;
+
+            iconManager = new FileIconManager(smallImageList, OnIconChanged);
+            associationWatcher = new FileAssociationWatcher(iconManager);
 
             listView.DrawColumnHeader += ListView_DrawColumnHeader;
             listView.DrawItem += ListView_DrawItem;
@@ -208,8 +212,23 @@ namespace Pyxelze
 
                 using (var p = Process.Start(psi))
                 {
-                    string output = p!.StandardOutput.ReadToEnd();
-                    p.WaitForExit();
+                    // Read output/error asynchronously and wait with timeout to avoid UI hang
+                    var outTask = Task.Run(() => p!.StandardOutput.ReadToEnd());
+                    var errTask = Task.Run(() => p.StandardError.ReadToEnd());
+
+                    const int timeoutMs = 10000; // 10 seconds
+                    bool exited = p.WaitForExit(timeoutMs);
+                    if (!exited)
+                    {
+                        try { p.Kill(); } catch { }
+                        MessageBox.Show($"Erreur: la commande rox a expiré après {timeoutMs / 1000}s. La commande peut être bloquée ou le binaire est incompatible.", "Erreur rox", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    // ensure tasks completed
+                    Task.WaitAll(new[] { outTask, errTask }, 1000);
+                    var output = outTask.Result ?? string.Empty;
+                    var stderr = errTask.Result ?? string.Empty;
 
                     if (p.ExitCode == 0)
                     {
@@ -217,13 +236,26 @@ namespace Pyxelze
                     }
                     else
                     {
-                        MessageBox.Show("Erreur lors de la lecture de l'archive.\n" + p.StandardError.ReadToEnd());
+                        // try to show rox.err.txt if present next to the binary
+                        string extra = string.Empty;
+                        try
+                        {
+                            var roxDir = RoxRunner.GetRoxDirectory();
+                            if (!string.IsNullOrEmpty(roxDir))
+                            {
+                                var log = Path.Combine(roxDir, "rox.err.txt");
+                                if (File.Exists(log)) extra = "\nLogs:\n" + File.ReadAllText(log);
+                            }
+                        }
+                        catch { }
+
+                        MessageBox.Show("Erreur lors de la lecture de l'archive.\n" + stderr + extra, "Erreur rox", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Impossible de lancer rox: " + ex.Message);
+                MessageBox.Show("Impossible de lancer rox: " + ex.Message, "Erreur rox", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 ParseData(@"
 test_oom_data/file_0.bin (10485760 bytes)
 test_oom_data/file_1.png (1024 bytes)
@@ -237,68 +269,105 @@ readme.txt (100 bytes)
                 statusProgressBar.Visible = false;
             }
 
-            ExtractFullArchive();
-
             RefreshView();
         }
 
         private void ParseData(string data)
         {
-            var lines = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            var regex = new Regex(@"(.*)\s\((\d+)\sbytes\)$");
+            if (string.IsNullOrWhiteSpace(data)) return;
 
-            foreach (var line in lines)
+            data = data.Trim();
+            if (data.StartsWith("[") && data.EndsWith("]"))
             {
-                var trimmed = line.Trim();
-                if (trimmed.StartsWith("Files in")) continue;
-
-                var match = regex.Match(trimmed);
-                if (match.Success)
+                try
                 {
-                    string fullPath = match.Groups[1].Value.Trim().Replace("\\", "/");
-                    allFiles.Add(new VirtualFile
+                    var files = JsonSerializer.Deserialize<List<JsonElement>>(data);
+                    if (files != null)
                     {
-                        FullPath = fullPath,
-                        Name = Path.GetFileName(fullPath),
-                        Size = long.Parse(match.Groups[2].Value),
-                        IsFolder = false
-                    });
-
-                    string? dir = Path.GetDirectoryName(fullPath)?.Replace("\\", "/");
-                    while (!string.IsNullOrEmpty(dir))
-                    {
-                        if (!allFiles.Any(f => f.FullPath == dir))
+                        foreach (var file in files)
                         {
-                            allFiles.Add(new VirtualFile { FullPath = dir, Name = Path.GetFileName(dir) ?? "", IsFolder = true });
+                            string name = file.GetProperty("name").GetString() ?? "";
+                            long size = file.GetProperty("size").GetInt64();
+
+                            allFiles.Add(new VirtualFile
+                            {
+                                FullPath = name,
+                                Name = Path.GetFileName(name),
+                                Size = size,
+                                IsFolder = false
+                            });
+
+                            string? dir = Path.GetDirectoryName(name)?.Replace("\\", "/");
+                            while (!string.IsNullOrEmpty(dir))
+                            {
+                                if (!allFiles.Any(f => f.FullPath == dir))
+                                {
+                                    allFiles.Add(new VirtualFile { FullPath = dir, Name = Path.GetFileName(dir) ?? "", IsFolder = true });
+                                }
+                                dir = Path.GetDirectoryName(dir)?.Replace("\\", "/");
+                            }
                         }
-                        dir = Path.GetDirectoryName(dir)?.Replace("\\", "/");
+                    }
+                }
+                catch
+                {
+                }
+            }
+            else
+            {
+                var lines = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var regex = new Regex(@"(.*)\s\((\d+)\sbytes\)$");
+
+                foreach (var line in lines)
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.StartsWith("Files in")) continue;
+
+                    var match = regex.Match(trimmed);
+                    if (match.Success)
+                    {
+                        string fullPath = match.Groups[1].Value.Trim().Replace("\\", "/");
+                        allFiles.Add(new VirtualFile
+                        {
+                            FullPath = fullPath,
+                            Name = Path.GetFileName(fullPath),
+                            Size = long.Parse(match.Groups[2].Value),
+                            IsFolder = false
+                        });
+
+                        string? dir = Path.GetDirectoryName(fullPath)?.Replace("\\", "/");
+                        while (!string.IsNullOrEmpty(dir))
+                        {
+                            if (!allFiles.Any(f => f.FullPath == dir))
+                            {
+                                allFiles.Add(new VirtualFile { FullPath = dir, Name = Path.GetFileName(dir) ?? "", IsFolder = true });
+                            }
+                            dir = Path.GetDirectoryName(dir)?.Replace("\\", "/");
+                        }
                     }
                 }
             }
-            // Populate view after parsing
             RefreshView();
+        }
+
+        private void OnIconChanged(string iconKey)
+        {
+            if (listView.InvokeRequired)
+            {
+                listView.Invoke(() => OnIconChanged(iconKey));
+                return;
+            }
+
+            listView.Invalidate();
         }
 
         private void RefreshView()
         {
             listView.BeginUpdate();
             listView.Items.Clear();
-            iconSourceCache.Clear();
 
-            if (!smallImageList.Images.ContainsKey("folder"))
-            {
-                var folderSrc = IconHelper.GetSourceBitmap("C:\\DummyFolder", true, new Size(32, 32));
-                iconSourceCache["folder"] = folderSrc;
-                var folderIcon = IconHelper.ResizeTo(folderSrc, new Size(20, 20));
-                smallImageList.Images.Add("folder", folderIcon);
-            }
-            if (!smallImageList.Images.ContainsKey("file"))
-            {
-                var fileSrc = IconHelper.GetSourceBitmap("file.txt", false, new Size(32, 32));
-                iconSourceCache["file"] = fileSrc;
-                var fileIcon = IconHelper.ResizeTo(fileSrc, new Size(20, 20));
-                smallImageList.Images.Add("file", fileIcon);
-            }
+            iconManager?.EnsureIconLoaded("C:\\DummyFolder", true);
+            iconManager?.EnsureIconLoaded("file.txt", false);
 
             if (!string.IsNullOrEmpty(currentPath))
             {
@@ -319,60 +388,7 @@ readme.txt (100 bytes)
             UpdateSelectionStatus();
         }
 
-        private void ExtractFullArchive()
-        {
-            if (string.IsNullOrEmpty(currentArchive)) return;
 
-            string cacheKey = Path.GetFileName(currentArchive) + "_" + new FileInfo(currentArchive).LastWriteTimeUtc.Ticks;
-            archiveExtractedRoot = Path.Combine(Path.GetTempPath(), "pyxelze_cache_" + cacheKey.GetHashCode().ToString("X8"));
-
-            if (Directory.Exists(archiveExtractedRoot))
-            {
-                statusLabelProgress.Visible = true;
-                statusLabelProgress.Text = "Cache déjà présent";
-                Task.Delay(1000).ContinueWith(_ => this.Invoke((Action)(() => statusLabelProgress.Visible = false)));
-                return;
-            }
-
-            Directory.CreateDirectory(archiveExtractedRoot);
-
-            statusLabelProgress.Visible = true;
-            statusLabelProgress.Text = "Mise en cache en cours...";
-            Application.DoEvents();
-
-            Task.Run(() =>
-            {
-                try
-                {
-                    var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{archiveExtractedRoot}\"");
-
-                    using (var p = Process.Start(psi))
-                    {
-                        p!.WaitForExit();
-
-                        this.Invoke((Action)(() =>
-                        {
-                            if (p.ExitCode == 0)
-                            {
-                                statusLabelProgress.Text = "Mise en cache terminée";
-                            }
-                            else
-                            {
-                                statusLabelProgress.Text = "Erreur mise en cache";
-                            }
-                            Task.Delay(2000).ContinueWith(_ => this.Invoke((Action)(() => statusLabelProgress.Visible = false)));
-                        }));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    this.Invoke((Action)(() =>
-                    {
-                        statusLabelProgress.Text = "Erreur: " + ex.Message;
-                    }));
-                }
-            });
-        }
 
         private void UpdateFileCountStatus()
         {
@@ -389,23 +405,8 @@ readme.txt (100 bytes)
 
         private void AddItem(VirtualFile file)
         {
-            string iconKey = file.IsFolder ? "folder" : Path.GetExtension(file.Name).ToLower();
-            if (!smallImageList.Images.ContainsKey(iconKey))
-            {
-                try
-                {
-                    var src = IconHelper.GetSourceBitmap(file.Name, file.IsFolder, new Size(32, 32));
-                    iconSourceCache[iconKey] = src;
-                    smallImageList.Images.Add(iconKey, IconHelper.ResizeTo(src, smallImageList.ImageSize));
-                }
-                catch
-                {
-                    // Fallback to generic file icon if something goes wrong
-                    var src = IconHelper.GetSourceBitmap("file.txt", false, new Size(32, 32));
-                    iconSourceCache[iconKey] = src;
-                    smallImageList.Images.Add(iconKey, IconHelper.ResizeTo(src, smallImageList.ImageSize));
-                }
-            }
+            iconManager?.EnsureIconLoaded(file.Name, file.IsFolder);
+            string iconKey = iconManager?.GetIconKey(file.Name, file.IsFolder) ?? "file";
 
             // Column 0: Name (Text) + Icon (ImageKey)
             var item = new ListViewItem(file.Name, iconKey);
@@ -413,12 +414,12 @@ readme.txt (100 bytes)
             if (!file.IsFolder)
             {
                 item.SubItems.Add(FormatSize(file.Size));
-                item.SubItems.Add(Path.GetExtension(file.Name).ToUpper() + " Fichier");
+                item.SubItems.Add(NativeMethods.GetFileTypeName(file.Name));
             }
             else
             {
                 item.SubItems.Add("");
-                item.SubItems.Add("Dossier");
+                item.SubItems.Add("Dossier de fichiers");
             }
             item.Tag = file;
             listView.Items.Add(item);
@@ -562,7 +563,7 @@ readme.txt (100 bytes)
                 Image? img = null;
                 string key = "folder";
                 if (item.Tag?.ToString() == "UP") key = "folder";
-                else if (vf != null) key = vf.IsFolder ? "folder" : Path.GetExtension(vf.Name).ToLower();
+                else if (vf != null) key = iconManager?.GetIconKey(vf.Name, vf.IsFolder) ?? "file";
 
                 if (smallImageList.Images.ContainsKey(key)) img = smallImageList.Images[key];
                 else if (smallImageList.Images.ContainsKey("file")) img = smallImageList.Images["file"];
@@ -616,20 +617,19 @@ readme.txt (100 bytes)
 
         private void ListView_ItemDrag(object? sender, ItemDragEventArgs e)
         {
+            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"\n\n[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ========== DRAG START ==========\n"); } catch { }
+
             if (listView.SelectedItems.Count == 0) return;
 
             var dragSelection = listView.SelectedItems.Cast<ListViewItem>().Select(i => i.Tag).OfType<VirtualFile>().ToList();
             if (dragSelection.Count == 0) return;
 
-            if (string.IsNullOrEmpty(archiveExtractedRoot) || !Directory.Exists(archiveExtractedRoot))
-            {
-                MessageBox.Show("Archive non mise en cache. Veuillez patienter.");
-                return;
-            }
+            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Selected {dragSelection.Count} items\n"); } catch { }
 
             var dragTempRoot = Path.Combine(Path.GetTempPath(), "pyxelze_drag_" + Guid.NewGuid().ToString());
+            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Temp root: {dragTempRoot}\n"); } catch { }
 
-            var dragDataObject = new LazyDataObject(this, currentArchive, dragSelection, allFiles, dragTempRoot, archiveExtractedRoot);
+            var dragDataObject = new LazyDataObject(this, currentArchive, dragSelection, allFiles, dragTempRoot);
             try
             {
                 dragDataObject.SetData("Preferred DropEffect", new System.IO.MemoryStream(BitConverter.GetBytes((uint)DragDropEffects.Copy)));
@@ -638,20 +638,31 @@ readme.txt (100 bytes)
 
             try
             {
-                DoDragDrop(dragDataObject, DragDropEffects.Copy);
+                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Calling DoDragDrop()...\n"); } catch { }
+                var result = DoDragDrop(dragDataObject, DragDropEffects.Copy);
+                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] DoDragDrop returned: {result}\n"); } catch { }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] DoDragDrop failed: {ex}\n"); } catch { }
+            }
             finally
             {
-                try
+                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] DoDragDrop complete, scheduling cleanup\n"); } catch { }
+                // Delay cleanup: some targets may still be accessing the temp files after DoDragDrop returns.
+                Task.Run(() =>
                 {
-                    if (Directory.Exists(dragTempRoot))
+                    try
                     {
-                        try { Directory.Delete(dragTempRoot, true); }
-                        catch { }
+                        Thread.Sleep(15000); // wait 15s to allow recipient to finish copying
+                        if (Directory.Exists(dragTempRoot))
+                        {
+                            try { Directory.Delete(dragTempRoot, true); }
+                            catch (Exception ex) { try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Delayed cleanup failed: {ex}\n"); } catch { } }
+                        }
                     }
-                }
-                catch { }
+                    catch (Exception ex) { try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Delayed cleanup worker failed: {ex}\n"); } catch { } }
+                });
             }
         }
 
@@ -727,6 +738,8 @@ readme.txt (100 bytes)
 
         public bool ExtractFileSingle(string internalPath, string outputPath)
         {
+            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractFileSingle: {internalPath} -> {outputPath}\n"); } catch { }
+
             if (string.IsNullOrEmpty(currentArchive))
             {
                 try { File.WriteAllText(outputPath, "Contenu démo pour " + internalPath); return true; }
@@ -735,14 +748,55 @@ readme.txt (100 bytes)
 
             try
             {
-                var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{Path.GetDirectoryName(outputPath)}\" --files \"{internalPath}\"");
-
-                using (var p = Process.Start(psi))
+                // Use native decompress with --files to extract only the requested file
+                var tempOut = Path.Combine(Path.GetTempPath(), "pyxelze_extract_" + Guid.NewGuid().ToString("N"));
+                try
                 {
-                    string stdout = p!.StandardOutput.ReadToEnd();
-                    string stderr = p.StandardError.ReadToEnd();
-                    p.WaitForExit();
-                    return p.ExitCode == 0;
+                    Directory.CreateDirectory(tempOut);
+                    var safeInternal = internalPath.Replace('\\', '/');
+                    var psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" \"{tempOut}\" --files \"{safeInternal}\"");
+                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running: {psi.FileName} {psi.Arguments}\n"); } catch { }
+                    using (var p = Process.Start(psi))
+                    {
+                        var stdout = p!.StandardOutput.ReadToEnd();
+                        var stderr = p.StandardError.ReadToEnd();
+                        p.WaitForExit();
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Exit={p.ExitCode}, stdout={stdout.Length} bytes, stderr={stderr.Length} bytes\n"); } catch { }
+                        if (p.ExitCode != 0)
+                        {
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Decompress failed:\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Decompress failed: exit={p.ExitCode}\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
+                            return false;
+                        }
+                    }
+
+                    var sourceRel = internalPath.Replace('/', Path.DirectorySeparatorChar);
+                    var sourceFull = Path.Combine(tempOut, sourceRel);
+                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Looking for: {sourceFull}, exists={File.Exists(sourceFull)}\n"); } catch { }
+                    if (!File.Exists(sourceFull))
+                    {
+                        // try to find by name fallback
+                        var nm = Path.GetFileName(internalPath);
+                        var matches = Directory.GetFiles(tempOut, nm, SearchOption.AllDirectories);
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Fallback search for '{nm}': {matches.Length} matches\n"); } catch { }
+                        if (matches.Length == 0) return false;
+                        sourceFull = matches[0];
+                    }
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Path.GetTempPath());
+                    File.Copy(sourceFull, outputPath, true);
+                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] File copied successfully\n"); } catch { }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractFileSingle exception: {ex}\n"); } catch { }
+                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractFileSingle exception: {ex}\n"); } catch { }
+                    return false;
+                }
+                finally
+                {
+                    try { Directory.Delete(tempOut, true); } catch { }
                 }
             }
             catch
@@ -897,19 +951,26 @@ readme.txt (100 bytes)
 
 
         private System.ComponentModel.IContainer? components = null;
+
+        private void ContextMenu_Opening(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            bool hasSelection = listView.SelectedItems.Count > 0;
+            foreach (ToolStripItem item in contextMenu.Items)
+            {
+                if (item is ToolStripMenuItem menuItem)
+                {
+                    menuItem.Enabled = hasSelection;
+                }
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
                 if (components != null) components.Dispose();
-                try
-                {
-                    foreach (var img in iconSourceCache.Values)
-                    {
-                        img.Dispose();
-                    }
-                }
-                catch { }
+                associationWatcher?.Dispose();
+                iconManager?.Dispose();
             }
             base.Dispose(disposing);
         }
