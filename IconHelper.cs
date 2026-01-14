@@ -8,7 +8,7 @@ namespace Pyxelze
       {
             public static Bitmap GetSourceBitmap(string path, bool isFolder, Size srcSize)
             {
-                  var ico = NativeMethods.GetIcon(path, isFolder, large: srcSize.Width >= 32);
+                  var ico = NativeMethods.GetIcon(path, isFolder, large: false);
                   var bmp = new Bitmap(srcSize.Width, srcSize.Height, PixelFormat.Format32bppArgb);
                   using (var g = Graphics.FromImage(bmp))
                   {

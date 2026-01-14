@@ -23,6 +23,22 @@ jobs:
           cd tools/roxify
           npm ci
 
+      - name: Clone and build roxify native (if accessible)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if (-not (Test-Path roxify)) { git clone https://x-access-token:${{ env.GITHUB_TOKEN }}@github.com/RoxasYTB/roxify.git roxify } else { Write-Host 'roxify folder already exists' }
+          choco install -y mingw && echo 'mingw may help with cross builds'
+          pushd roxify
+          curl -sSf https://sh.rustup.rs | sh -s -- -y
+          & $env:USERPROFILE\.cargo\bin\rustup default stable-x86_64-pc-windows-msvc
+          & $env:USERPROFILE\.cargo\bin\cargo build --release --lib
+          popd
+          $src = Join-Path (Join-Path $PWD 'roxify') 'target\release'
+          if (Test-Path $src) {
+            Get-ChildItem -Path $src -Include 'roxify_native.*' -Recurse | ForEach-Object { Copy-Item $_.FullName -Destination (Join-Path $PWD 'tools\roxify\node_modules\roxify\libroxify_native.node') -Force }
+          }
+
       - name: Build rox.exe
         run: |
           cd tools/roxify
@@ -70,6 +86,19 @@ jobs:
         run: |
           cd tools/roxify
           npm ci
+
+      - name: Clone and build roxify native (if accessible)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if (-not (Test-Path roxify)) { git clone https://x-access-token:${{ env.GITHUB_TOKEN }}@github.com/RoxasYTB/roxify.git roxify } else { Write-Host 'roxify folder already exists' }
+          curl -sSf https://sh.rustup.rs | sh -s -- -y
+          & $env:USERPROFILE\.cargo\bin\rustup default stable-x86_64-pc-windows-msvc
+          & $env:USERPROFILE\.cargo\bin\cargo build --release --lib -C target-cpu=native
+          $src = Join-Path (Join-Path $PWD 'roxify') 'target\release'
+          if (Test-Path $src) {
+            Get-ChildItem -Path $src -Include 'roxify_native.*' -Recurse | ForEach-Object { Copy-Item $_.FullName -Destination (Join-Path $PWD 'tools\roxify\node_modules\roxify\libroxify_native.node') -Force }
+          }
 
       - name: Build rox and copy release
         run: |

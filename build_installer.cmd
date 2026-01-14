@@ -7,8 +7,13 @@ set INSTALLER_DIR=%ROOT%tools\installer
 set OUTPUT_DIR=%ROOT%installer_output
 
 if not exist "%PUBLISH_DIR%\Pyxelze.exe" (
-    echo ERROR: Publish folder not found. Run "dotnet publish -c Release -o publish_final" first.
-    exit /b 1
+    if exist "%PUBLISH_DIR%\Pyxelze" (
+        echo Found publish binary without extension, adding .exe extension
+        copy /Y "%PUBLISH_DIR%\Pyxelze" "%PUBLISH_DIR%\Pyxelze.exe" >nul
+    ) else (
+        echo ERROR: Publish folder not found. Run "dotnet publish -c Release -o publish_final" first.
+        exit /b 1
+    )
 )
 
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"

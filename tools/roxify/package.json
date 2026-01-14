@@ -10,12 +10,10 @@
     "pkg": "^5.8.1"
   },
   "scripts": {
-    "bundle:rox": "node_modules/.bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --outfile=build/rox-bundle.cjs",
-    "build:exe": "node_modules/.bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --outfile=build/rox-bundle.cjs && node ./scripts/postbuild.js && node ./scripts/download-node.js",
+    "build:exe": "cd /home/yohan/roxify && cargo build --release --bin roxify_native --target x86_64-pc-windows-gnu && npm run build:pkg && cd - && node ./scripts/postbuild.js",
     "postinstall": "node ./scripts/fix-cli-progress-presets.js",
-    "build:windows-native": "node ./scripts/build-windows-native.js",
-    "prepare:windows-release": "npm run build:windows-native && npm run build:exe",
     "postbuild:exe": "node ./scripts/postbuild.js",
+    "buildAndSetup": "bash -lc \"set -e; echo '==> Building roxify (native + cli + TS)...'; cd /home/yohan/roxify; npm run build; npm run build:cli:windows; echo '==> Copying artifacts to Pyxelze...'; mkdir -p /home/yohan/partage_vm/Pyxelze-Light/Pyxelze/tools/roxify/node_modules/roxify/dist; cp -f target/x86_64-pc-windows-gnu/release/roxify_native.exe /home/yohan/partage_vm/Pyxelze-Light/Pyxelze/tools/roxify/roxify_native.exe || true; cp -f target/x86_64-pc-windows-gnu/release/roxify_native.dll /home/yohan/partage_vm/Pyxelze-Light/Pyxelze/tools/roxify/node_modules/roxify/libroxify_native.node || true; cp -r dist/* /home/yohan/partage_vm/Pyxelze-Light/Pyxelze/tools/roxify/node_modules/roxify/dist/ || true; echo '==> Building Pyxelze installer...'; cd /home/yohan/partage_vm/Pyxelze-Light; bash build_linux_to_windows.sh; echo '==> Done.'\"",
     "clean": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true}); require('fs').rmSync('build', {recursive:true, force:true});\""
   },
   "pkg": {
