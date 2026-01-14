@@ -1,22 +1,27 @@
 #!/bin/bash
 set -e
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$ROOT_DIR"
 
 echo "🔨 Build de Pyxelze pour publish_final..."
 
 dotnet build -c Release --no-incremental
 
+PUB_DIR="$ROOT_DIR/publish_final"
+rm -rf "$PUB_DIR"
+mkdir -p "$PUB_DIR"
+
 echo "📦 Copie vers publish_final (sans win-x64 et tools)..."
-rm -rf publish_final/*
 
 # Publish a Windows build to obtain a proper Pyxelze.exe
 echo "🔧 Publish Windows (win-x64) pour récupérer Pyxelze.exe..."
-dotnet publish -c Release -r win-x64 -o ./bin/Release/net7.0-windows/win-x64-publish --no-self-contained || true
+dotnet publish -c Release -r win-x64 -o "$ROOT_DIR/bin/Release/net7.0-windows/win-x64-publish" --no-self-contained || true
 
-cd bin/Release/net7.0-windows
-find . -maxdepth 1 -type f -exec cp {} ../../../publish_final/ \;
-cd ../../..
+if [ -d "$ROOT_DIR/bin/Release/net7.0-windows" ]; then
+  find "$ROOT_DIR/bin/Release/net7.0-windows" -maxdepth 1 -type f -exec cp {} "$PUB_DIR/" \;
+fi
 
 # If publish produced a Windows exe, copy it to publish_final root
 if [ -f ./bin/Release/net7.0-windows/win-x64-publish/Pyxelze.exe ]; then
