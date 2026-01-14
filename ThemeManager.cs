@@ -14,7 +14,7 @@ namespace Pyxelze
             public static Color ControlFore => WindowFore;
             public static Color ListViewHeaderBack => DarkMode ? Color.FromArgb(50, 50, 50) : SystemColors.Control;
             public static Color ListViewRowHover => DarkMode ? Color.FromArgb(60, 60, 60) : Color.FromArgb(229, 243, 255);
-            public static Color ListViewSelectionBack => DarkMode ? Color.FromArgb(0, 120, 215) : SystemColors.Highlight;
+            public static Color ListViewSelectionBack => DarkMode ? Color.FromArgb(0, 120, 215) : Color.FromArgb(212, 232, 255);
             public static Color BorderColor => DarkMode ? Color.FromArgb(70, 70, 70) : Color.FromArgb(200, 200, 200);
 
             public static void InitializeFromRegistry()
