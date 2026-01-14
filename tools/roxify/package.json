@@ -3,16 +3,18 @@
   "version": "0.0.0-local",
   "bin": "index.js",
   "dependencies": {
-    "roxify": "1.5.4"
+    "roxify": "^1.5.10"
   },
   "devDependencies": {
     "esbuild": "^0.18.11",
     "pkg": "^5.8.1"
   },
   "scripts": {
-    "bundle:rox": "node_modules/.bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --outfile=build/rox-bundle.cjs && node build/postbuild-auto.js",
-    "build:exe": "node_modules/.bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --outfile=build/rox-bundle.cjs && node build/postbuild-auto.js && node ./scripts/postbuild.js && node ./scripts/download-node.js",
+    "bundle:rox": "node_modules/.bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --outfile=build/rox-bundle.cjs",
+    "build:exe": "node_modules/.bin/esbuild node_modules/roxify/dist/cli.js --bundle --platform=node --format=cjs --external:*.node --outfile=build/rox-bundle.cjs && node ./scripts/postbuild.js && node ./scripts/download-node.js",
     "postinstall": "node ./scripts/fix-cli-progress-presets.js",
+    "build:windows-native": "node ./scripts/build-windows-native.js",
+    "prepare:windows-release": "npm run build:windows-native && npm run build:exe",
     "postbuild:exe": "node ./scripts/postbuild.js",
     "clean": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true}); require('fs').rmSync('build', {recursive:true, force:true});\""
   },
