@@ -31,6 +31,8 @@ Pyxelze/
 │       └── node_modules/    # Dépendances npm (ignoré par git)
 ├── Properties/              # AssemblyInfo .NET
 ├── *.cs                     # Code source C# (Form1, DragHelper, etc.)
+├── docs/                    # Documentation regroupée
+├── scripts/                 # Scripts shell et batch (build, publish, helpers)
 ├── Pyxelze.csproj           # Projet .NET 7 WinForms
 ├── Pyxelze.sln              # Solution Visual Studio
 ├── appIcon.ico              # Icône de l'application
