@@ -32,17 +32,43 @@ fi
 echo "📋 Build & copie du binaire roxify..."
 if [ -d /home/yohan/roxify ]; then
   echo "🔧 Compilation cible Windows (x86_64-pc-windows-gnu) pour roxify_native..."
-  (cd /home/yohan/roxify && cargo build -p roxify_native --release --target x86_64-pc-windows-gnu) || true
+  (cd /home/yohan/roxify && cargo build -p roxify_native --release --target x86_64-pc-windows-gnu; echo "Exit code: $?" ) || true
+else
+  echo "⚠️  Dossier /home/yohan/roxify introuvable — impossible de compiler roxify_native"
 fi
 mkdir -p publish_final/roxify
-cp /home/yohan/roxify/target/x86_64-pc-windows-gnu/release/roxify_native.exe publish_final/roxify/ || true
+if [ -f /home/yohan/roxify/target/x86_64-pc-windows-gnu/release/roxify_native.exe ]; then
+  cp -v /home/yohan/roxify/target/x86_64-pc-windows-gnu/release/roxify_native.exe publish_final/roxify/ || true
+else
+  echo "⚠️  roxify_native.exe non trouvé, vérifie la compilation."
+fi
+
+# Create a timestamped zip release and compute SHA256
+RELEASE_DIR="$ROOT_DIR/releases"
+mkdir -p "$RELEASE_DIR"
+RELEASE_NAME="Pyxelze-publish-$(date +%Y%m%d-%H%M%S).zip"
+echo "📦 Création du zip de release: $RELEASE_DIR/$RELEASE_NAME"
+(cd "$ROOT_DIR" && zip -r "$RELEASE_DIR/$RELEASE_NAME" publish_final/*) || echo "⚠️ zip a échoué"
+
+# Compute SHA256 and add to SHA256SUMS.txt
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256sum "$RELEASE_DIR/$RELEASE_NAME" > "$RELEASE_DIR/SHA256SUMS.txt"
+  echo "🧾 SHA256 written to $RELEASE_DIR/SHA256SUMS.txt"
+else
+  echo "⚠️ sha256sum non disponible — pas de checksum généré"
+fi
 
 echo "✅ Build terminé!"
 echo "Fichiers dans publish_final:"
 ls -lh publish_final/
 echo ""
 echo "Contenu de roxify:"
-ls -lh publish_final/roxify/
+ls -lh publish_final/roxify/ || true
+
+echo "Fichiers dans releases:"
+ls -lh "$RELEASE_DIR/" || true
+
 echo ""
-echo "Taille totale:"
-du -sh publish_final/
+echo "Taille totale publish_final:"
+du -sh publish_final/ || true
+
