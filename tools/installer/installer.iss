@@ -5,8 +5,9 @@ AppName=Pyxelze
 AppVersion=1.0.1
 DefaultDirName={autopf}\Pyxelze
 DefaultGroupName=Pyxelze
-OutputDir=.
+OutputDir=..\..\releases
 OutputBaseFilename=Pyxelze-Setup
+SetupIconFile=..\..\appIcon.ico
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
@@ -18,7 +19,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 
 [Files]
-Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs; Excludes: "\tools\roxify\roxify,\tools\roxify\roxify\*,\win-x64,\win-x64\*"
+Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs; Excludes: "\tools\roxify\roxify,\tools\roxify\roxify\*,\win-x64,\win-x64\*,\artifacts\*,*.tar.gz"
 
 [Icons]
 Name: "{group}\Pyxelze"; Filename: "{app}\Pyxelze.exe"
@@ -51,6 +52,9 @@ var
   EnvPath: string;
   RoxPath: string;
   ResultCode: Integer;
+  ExecOK: Boolean;
+  RoxExePath: string;
+  NodePath: string;
 begin
   if CurStep = ssPostInstall then
   begin
@@ -71,7 +75,6 @@ begin
     end;
 
     // Try to register context menu, but handle failures gracefully
-    var ExecOK: Boolean;
     ExecOK := Exec(ExpandConstant('{app}\Pyxelze.exe'), 'register-contextmenu', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     if not ExecOK then
     begin
@@ -82,22 +85,22 @@ begin
       MsgBox('La commande d''enregistrement du menu contextuel a renvoyé le code ' + IntToStr(ResultCode) + '. Si le problème persiste, vérifie le binaire dans le dossier d''installation.', mbError, MB_OK);
     end;
 
-    // Verify roxify binary exists and is runnable
-    if not FileExists(ExpandConstant('{app}\roxify\roxify_native.exe')) then
-    begin
-      MsgBox('Le binaire roxify (roxify_native.exe) est absent de l''installation. Certaines fonctionnalités peuvent être limitées.', mbError, MB_OK);
-    end
-    else
-    begin
-      ExecOK := Exec(ExpandConstant('{app}\roxify\roxify_native.exe'), '--version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-      if not ExecOK or (ResultCode <> 0) then
-      begin
-        MsgBox('Le binaire roxify_native.exe est présent mais n''a pas pu s''exécuter correctement (code: ' + IntToStr(ResultCode) + '). Vérifie l''architecture du binaire.', mbError, MB_OK);
-      end;
-    end;
+    // Verify roxify native artifacts exist (either CLI .exe or native module .node)
+    RoxExePath := ExpandConstant('{app}\roxify\roxify_native.exe');
+    NodePath := ExpandConstant('{app}\tools\libroxify_native.node');
 
+    if FileExists(RoxExePath) then
+      ExecOK := Exec(RoxExePath, '--version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+    else if FileExists(NodePath) then
+      ExecOK := True
+    else
+      MsgBox('Aucun binaire roxify natif trouvé (ni roxify_native.exe ni libroxify_native.node). Certaines fonctionnalités peuvent être limitées.', mbError, MB_OK);
+
+    if FileExists(RoxExePath) and (not ExecOK or (ResultCode <> 0)) then
+      MsgBox('Le binaire roxify_native.exe est présent mais n''a pas pu s''exécuter correctement (code: ' + IntToStr(ResultCode) + '). Vérifie l''architecture du binaire.', mbError, MB_OK);
+
+    end;
   end;
-end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var

@@ -76,15 +76,18 @@ namespace Pyxelze
                   }
             }
 
+            private DragHelper.ExtractionJob? extractionJob = null;
+
             private void PerformPrepare()
             {
                   try
                   {
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] PerformPrepare START - {dragSelection.Count} items to extract\n"); } catch { }
-                        var toCopy = dragSelection.Select(v => v.FullPath).Distinct().ToList();
-                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Calling PrepareDragTempForSelection with {toCopy.Count} files\n"); } catch { }
-                        var actualTopLevel = DragHelper.PrepareDragTempForSelection(owner, toCopy, tempRoot);
-                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] PrepareDragTempForSelection returned {actualTopLevel.Count} top-level paths\n"); } catch { }
+                        var toCopy = dragSelection.GroupBy(v => v.FullPath).Select(g => g.First()).ToList();
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Calling PrepareDragTempForSelection with {toCopy.Count} items\n"); } catch { }
+                        var (actualTopLevel, job) = DragHelper.PrepareDragTempForSelection(owner, toCopy, tempRoot);
+                        extractionJob = job;
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] PrepareDragTempForSelection returned {actualTopLevel.Count} top-level paths (job started)\n"); } catch { }
 
                         var arr = actualTopLevel.Count > 0 ? actualTopLevel.ToArray() : new string[0];
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Setting FileDrop data with {arr.Length} paths\n"); } catch { }
@@ -100,6 +103,65 @@ namespace Pyxelze
                   {
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] PerformPrepare EXCEPTION: {ex}\n"); } catch { }
                         try { base.SetData(DataFormats.FileDrop, new string[0]); } catch { }
+                  }
+            }
+
+            public async Task FinalizeAfterDropAsync(DragDropEffects result)
+            {
+                  // Called by owner after DoDragDrop returns. If drop occurred and extraction is still running, show progress UI and wait.
+                  try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] FinalizeAfterDropAsync called, result={result}\n"); } catch { }
+                  if (extractionJob == null) return;
+
+                  if (result == DragDropEffects.None)
+                  {
+                        // No drop: cancel background extraction
+                        try { extractionJob.Cts.Cancel(); } catch { }
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] No drop occurred - cancelled extraction\n"); } catch { }
+                        return;
+                  }
+
+                  // If extraction already finished, nothing to do
+                  if (extractionJob.Finished) return;
+
+                  // Show progress UI and wait for completion (allows user to cancel)
+                  try
+                  {
+                        using (var dlg = new ExtractionProgressForm(extractionJob.Total))
+                        {
+                              // Start a task that updates the progress bar periodically
+                              var progressTask = Task.Run(async () =>
+                              {
+                                    while (!extractionJob.Finished)
+                                    {
+                                          try { dlg.UpdateProgress(extractionJob.Completed); } catch { }
+                                          await Task.Delay(150);
+                                    }
+                                    try { dlg.UpdateProgress(extractionJob.Completed); } catch { }
+                              });
+
+                              // Create placeholders so StartExtractionAsync iterates the expected number of steps
+                              var placeholderFiles = new List<string>();
+                              for (int i = 0; i < extractionJob.Total; i++) placeholderFiles.Add(i.ToString());
+
+                              // Show dialog (modal) while background extraction runs. The extractFunc will wait until the background job reports progress.
+                              await dlg.StartExtractionAsync(placeholderFiles, async (f, token) =>
+                              {
+                                    // f contains the index as string. Wait until background extraction has progressed to at least index+1
+                                    if (!int.TryParse(f, out int idx)) idx = 0;
+                                    while (!extractionJob.Finished && extractionJob.Completed <= idx && !token.IsCancellationRequested)
+                                    {
+                                          await Task.Delay(50);
+                                    }
+                                    if (token.IsCancellationRequested) extractionJob.Cts.Cancel();
+                                    return await Task.FromResult(extractionJob.Completed > idx && extractionJob.Error == null);
+                              });
+
+                              await progressTask;
+                        }
+                  }
+                  catch (Exception ex)
+                  {
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] FinalizeAfterDropAsync error: {ex}\n"); } catch { }
                   }
             }
       }
