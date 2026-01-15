@@ -13,7 +13,9 @@
     "build:exe": "cd /home/yohan/roxify && cargo build --release --bin roxify_native --target x86_64-pc-windows-gnu && npm run build:pkg && cd - && node ./scripts/postbuild.js",
     "postinstall": "node ./scripts/fix-cli-progress-presets.js",
     "postbuild:exe": "node ./scripts/postbuild.js",
-    "buildAndSetup": "bash -lc \"set -e; echo '==> Building roxify (native + cli + TS)...'; cd /home/yohan/roxify; npm run build; npm run build:cli:windows; echo '==> Copying artifacts to Pyxelze...'; mkdir -p /home/yohan/partage_vm/Pyxelze-Light/Pyxelze/tools/roxify/node_modules/roxify/dist; cp -f target/x86_64-pc-windows-gnu/release/roxify_native.exe /home/yohan/partage_vm/Pyxelze-Light/Pyxelze/tools/roxify/roxify_native.exe || true; cp -f target/x86_64-pc-windows-gnu/release/roxify_native.dll /home/yohan/partage_vm/Pyxelze-Light/Pyxelze/tools/roxify/node_modules/roxify/libroxify_native.node || true; cp -r dist/* /home/yohan/partage_vm/Pyxelze-Light/Pyxelze/tools/roxify/node_modules/roxify/dist/ || true; echo '==> Building Pyxelze installer...'; cd /home/yohan/partage_vm/Pyxelze-Light; bash build_linux_to_windows.sh; echo '==> Done.'\"",
+    "buildAndSetup": "bash ./scripts/build-and-setup.sh",
+    "buildReleasesAndSetup": "bash ./scripts/build-releases-and-setup.sh",
+    "publishReleases": "bash ./scripts/publish-releases.sh",
     "clean": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true}); require('fs').rmSync('build', {recursive:true, force:true});\""
   },
   "pkg": {
