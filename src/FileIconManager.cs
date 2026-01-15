@@ -26,6 +26,22 @@ namespace Pyxelze
                   _imageList = imageList;
                   _onIconChanged = onIconChanged;
                   _cacheCleanupTimer = new System.Threading.Timer(CleanupCache, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+
+                  try
+                  {
+                        var folderBmp = GetSourceBitmap("C:\\", true, _imageList.ImageSize);
+                        _iconCache["folder"] = new CachedIcon { SourceBitmap = folderBmp, LastAccessed = DateTime.Now, IsValid = true };
+                        if (!_imageList.Images.ContainsKey("folder")) _imageList.Images.Add("folder", ResizeTo(folderBmp, _imageList.ImageSize));
+                  }
+                  catch { }
+
+                  try
+                  {
+                        var fileBmp = GetSourceBitmap("file.txt", false, _imageList.ImageSize);
+                        _iconCache["file"] = new CachedIcon { SourceBitmap = fileBmp, LastAccessed = DateTime.Now, IsValid = true };
+                        if (!_imageList.Images.ContainsKey("file")) _imageList.Images.Add("file", ResizeTo(fileBmp, _imageList.ImageSize));
+                  }
+                  catch { }
             }
 
             public string GetIconKey(string fileName, bool isFolder)
@@ -107,6 +123,16 @@ namespace Pyxelze
                         }
                   }
 
+                  try
+                  {
+                        // Try to proactively reload the extension icon using a sample name
+                        if (!string.IsNullOrEmpty(key) && key != "folder")
+                        {
+                              LoadIcon("dummy" + key, false, key);
+                        }
+                  }
+                  catch { }
+
                   _onIconChanged?.Invoke(key);
             }
 
@@ -139,23 +165,25 @@ namespace Pyxelze
             private static Bitmap GetSourceBitmap(string path, bool isFolder, Size srcSize)
             {
                   var ico = NativeMethods.GetIcon(path, isFolder, large: false);
-                  var bmp = new Bitmap(srcSize.Width, srcSize.Height, PixelFormat.Format32bppArgb);
-                  using (var g = Graphics.FromImage(bmp))
+                  try
                   {
-                        g.Clear(Color.Transparent);
-                        g.CompositingMode = CompositingMode.SourceOver;
-                        g.CompositingQuality = CompositingQuality.HighQuality;
-                        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                        g.SmoothingMode = SmoothingMode.HighQuality;
-                        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                        g.DrawIcon(ico, new Rectangle(0, 0, srcSize.Width, srcSize.Height));
+                        var src = ico.ToBitmap();
+                        return ResizeTo(src, srcSize);
                   }
-                  return bmp;
+                  catch
+                  {
+                        var bmp = new Bitmap(srcSize.Width, srcSize.Height, PixelFormat.Format32bppPArgb);
+                        using (var g = Graphics.FromImage(bmp))
+                        {
+                              g.Clear(Color.Transparent);
+                        }
+                        return bmp;
+                  }
             }
 
             private static Bitmap ResizeTo(Image src, Size size)
             {
-                  var dest = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppArgb);
+                  var dest = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppPArgb);
                   using (var g = Graphics.FromImage(dest))
                   {
                         g.Clear(Color.Transparent);
