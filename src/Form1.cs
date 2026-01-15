@@ -636,10 +636,11 @@ readme.txt (100 bytes)
             }
             catch { }
 
+            DragDropEffects result = DragDropEffects.None;
             try
             {
                 try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Calling DoDragDrop()...\n"); } catch { }
-                var result = DoDragDrop(dragDataObject, DragDropEffects.Copy);
+                result = DoDragDrop(dragDataObject, DragDropEffects.Copy);
                 try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] DoDragDrop returned: {result}\n"); } catch { }
             }
             catch (Exception ex)
@@ -649,6 +650,17 @@ readme.txt (100 bytes)
             finally
             {
                 try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] DoDragDrop complete, scheduling cleanup\n"); } catch { }
+
+                // Finalize extraction UI or cancel if no drop
+                try
+                {
+                    if (dragDataObject is LazyDataObject ldo)
+                    {
+                        try { ldo.FinalizeAfterDropAsync(result).GetAwaiter().GetResult(); } catch { }
+                    }
+                }
+                catch (Exception ex) { try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] FinalizeAfterDropAsync failed: {ex}\n"); } catch { } }
+
                 // Delay cleanup: some targets may still be accessing the temp files after DoDragDrop returns.
                 Task.Run(() =>
                 {
@@ -804,6 +816,85 @@ readme.txt (100 bytes)
                 return false;
             }
 
+        }
+
+        public List<VirtualFile> GetFilesUnder(string folderInternalPath)
+        {
+            if (string.IsNullOrEmpty(folderInternalPath)) return new List<VirtualFile>();
+            return allFiles.Where(f => !f.IsFolder && f.FullPath.StartsWith(folderInternalPath + "/")).ToList();
+        }
+
+        public int ExtractMultipleFiles(IList<string> internalPaths, string tempOut)
+        {
+            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles: {internalPaths.Count} files -> {tempOut}\n"); } catch { }
+
+            if (string.IsNullOrEmpty(currentArchive))
+            {
+                int created = 0;
+                try
+                {
+                    Directory.CreateDirectory(tempOut);
+                    foreach (var p in internalPaths)
+                    {
+                        var rel = p.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+                        var outPath = Path.Combine(tempOut, rel);
+                        try { Directory.CreateDirectory(Path.GetDirectoryName(outPath) ?? tempOut); } catch { }
+                        try { File.WriteAllText(outPath, "Contenu démo pour " + p); created++; } catch { }
+                    }
+                }
+                catch { }
+                return created;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(tempOut);
+                var safeList = internalPaths.Select(s => s.Replace('\\', '/').Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
+                var filesArg = string.Join(",", safeList);
+                var psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" \"{tempOut}\" --files \"{filesArg}\"");
+                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles: {psi.FileName} {psi.Arguments}\n"); } catch { }
+                using (var p = Process.Start(psi))
+                {
+                    var stdout = p!.StandardOutput.ReadToEnd();
+                    var stderr = p.StandardError.ReadToEnd();
+                    p.WaitForExit();
+
+                    // Truncate logs to avoid unbounded growth
+                    int limit = 20000;
+                    string truncStdout = stdout.Length > limit ? stdout.Substring(0, limit) + "\n...(truncated)..." : stdout;
+                    string truncStderr = stderr.Length > limit ? stderr.Substring(0, limit) + "\n...(truncated)..." : stderr;
+
+                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles exit={p.ExitCode}, stdout_len={stdout.Length}, stderr_len={stderr.Length}\nStdout:\n{truncStdout}\nStderr:\n{truncStderr}\n"); } catch { }
+
+                    if (p.ExitCode != 0)
+                    {
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles failed: exit={p.ExitCode}\nCommand: {psi.FileName} {psi.Arguments}\nStdout:\n{truncStdout}\nStderr:\n{truncStderr}\n"); } catch { }
+                        return 0;
+                    }
+                }
+
+                int found = 0;
+                foreach (var pth in internalPaths)
+                {
+                    var sourceRel = pth.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+                    var sourceFull = Path.Combine(tempOut, sourceRel);
+                    if (!File.Exists(sourceFull))
+                    {
+                        var nm = Path.GetFileName(pth);
+                        var matches = Directory.GetFiles(tempOut, nm, SearchOption.AllDirectories);
+                        if (matches.Length == 0) continue;
+                        sourceFull = matches[0];
+                    }
+                    if (File.Exists(sourceFull)) found++;
+                }
+                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles found {found}/{internalPaths.Count}\n"); } catch { }
+                return found;
+            }
+            catch (Exception ex)
+            {
+                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles exception: {ex}\n"); } catch { }
+                return 0;
+            }
         }
 
         private bool ExtractFile(string internalPath, string outputPath)
