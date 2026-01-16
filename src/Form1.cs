@@ -916,7 +916,7 @@ readme.txt (100 bytes)
                         key.SetValue("", "");
                         key.SetValue("MUIVerb", "Pyxelze");
                         key.SetValue("Icon", exePath);
-                        key.SetValue("SubCommands", "open;decode");
+                        key.SetValue("SubCommands", "open;decompress");
                         using (var shellKey = key.CreateSubKey(@"shell"))
                         {
                             using (var openKey = shellKey.CreateSubKey("open"))
@@ -928,13 +928,21 @@ readme.txt (100 bytes)
                                     cmdKey.SetValue("", $"\"{exePath}\" \"%1\"");
                                 }
                             }
-                            using (var decodeKey = shellKey.CreateSubKey("decode"))
+                            using (var decodeKey = shellKey.CreateSubKey("decompress"))
                             {
                                 decodeKey.SetValue("MUIVerb", "Décoder l'archive ROX");
                                 decodeKey.SetValue("Icon", exePath);
                                 using (var cmdKey = decodeKey.CreateSubKey("command"))
                                 {
-                                    cmdKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+                                    var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
+                                    if (File.Exists(roxPath))
+                                    {
+                                        cmdKey.SetValue("", $"\"{exePath}\" decompress \"%1\"");
+                                    }
+                                    else
+                                    {
+                                        cmdKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+                                    }
                                 }
                             }
                         }
@@ -954,7 +962,15 @@ readme.txt (100 bytes)
                                 encodeKey.SetValue("Icon", exePath);
                                 using (var cmdKey = encodeKey.CreateSubKey("command"))
                                 {
-                                    cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                                    var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
+                                    if (File.Exists(roxPath))
+                                    {
+                                        cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                                    }
+                                    else
+                                    {
+                                        cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                                    }
                                 }
                             }
                         }

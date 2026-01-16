@@ -30,7 +30,7 @@ fi
 
 mkdir -p "$OUT_DIR"
 
-if [[ "$OS" == "Windows_NT" || -n "${WINDIR:-}" ]]; then
+if [[ "${OS:-}" == "Windows_NT" || -n "${WINDIR:-}" ]]; then
   echo "Detected Windows environment. Running tools/installer/build_installer.cmd"
   pushd "$ROOT_DIR/tools/installer" >/dev/null
   cmd.exe /c build_installer.cmd "$PUBLISH_DIR"
@@ -57,11 +57,12 @@ fi
 
 WIN_PUBLISH_DIR="$(winepath -w "$PUBLISH_DIR" | tr -d '\r')"
 WIN_OUT_DIR="$(winepath -w "$OUT_DIR" | tr -d '\r')"
+WIN_ISS="$(winepath -w "$ROOT_DIR/tools/installer/installer.iss" | tr -d '\r')"
 
 echo "Using ISCC at: $ISCC_PATH"
 echo "Running ISCC via wine to build installer from: $PUBLISH_DIR"
 
-wine "$ISCC_PATH" /O"$WIN_OUT_DIR" /F"Pyxelze_Setup" /DReleaseDir="$WIN_PUBLISH_DIR" "$ROOT_DIR/tools/installer/installer.iss"
+wine "$ISCC_PATH" /O"$WIN_OUT_DIR" /F"Pyxelze_Setup" /DReleaseDir="$WIN_PUBLISH_DIR" "$WIN_ISS"
 
 if [ $? -ne 0 ]; then
   echo "ISCC failed. Check wine console above for errors."; exit 1

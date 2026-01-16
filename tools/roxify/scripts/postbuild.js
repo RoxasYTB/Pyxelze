@@ -91,27 +91,31 @@ try {
     console.log('No local rust CLI binary found to copy into dist');
   }
 
-  // Copy rox.exe (TypeScript CLI standalone)
+  // Copy rox.exe (TypeScript CLI standalone) only if explicitly allowed by env ALLOW_PACKAGED_ROX
   const roxExePath = path.join(roxifyRoot, 'dist', 'rox.exe');
-  if (fs.existsSync(roxExePath)) {
-    const roxDestPath = path.join(dist, 'rox.exe');
-    fs.copyFileSync(roxExePath, roxDestPath);
-    try {
-      fs.chmodSync(roxDestPath, 0o755);
-    } catch (e) {}
-    console.log(
-      'Copied TypeScript CLI standalone from',
-      roxExePath,
-      'to',
-      roxDestPath,
-    );
+  const allowPackagedRox = process.env.ALLOW_PACKAGED_ROX === '1';
+  if (allowPackagedRox) {
+    if (fs.existsSync(roxExePath)) {
+      const roxDestPath = path.join(dist, 'rox.exe');
+      fs.copyFileSync(roxExePath, roxDestPath);
+      try {
+        fs.chmodSync(roxDestPath, 0o755);
+      } catch (e) {}
+      console.log(
+        'Copied TypeScript CLI standalone from',
+        roxExePath,
+        'to',
+        roxDestPath,
+      );
+    } else {
+      console.warn(
+        'NOTICE: rox.exe not found. Skipping packaged rox.exe — use `npm run build:pkg:full` in tools/roxify to generate it if needed.',
+      );
+    }
   } else {
-    console.error(
-      'ERROR: rox.exe not found. Run: cd ' +
-        roxifyRoot +
-        ' && npm run build:pkg',
+    console.log(
+      'Skipping rox.exe copy by default (not allowed). Set ALLOW_PACKAGED_ROX=1 to include rox.exe if needed.',
     );
-    process.exit(1);
   }
 
   const nativeNode = path.join(

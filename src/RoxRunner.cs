@@ -7,7 +7,6 @@ internal static class RoxRunner
       private static string? _roxExePath;
       private static string? _nodeExePath;
       private static string? _bundlePath;
-      private static string? _roxCliExe;
 
       static RoxRunner()
       {
@@ -30,32 +29,10 @@ internal static class RoxRunner
             {
                   _bundlePath = bundle;
             }
-
-            // Prefer a packaged rox CLI if present (some builds provide a standalone rox.exe)
-            var roxCliA = Path.Combine(appDir, "tools", "roxify", "rox.exe");
-            var roxCliB = Path.Combine(appDir, "tools", "roxify", "dist", "rox.exe");
-            if (File.Exists(roxCliA)) _roxCliExe = roxCliA;
-            else if (File.Exists(roxCliB)) _roxCliExe = roxCliB;
       }
 
       public static ProcessStartInfo CreateRoxProcess(string arguments)
       {
-            var argTrim = (arguments ?? string.Empty).TrimStart();
-
-            // If we have a packaged rox CLI, use it for commands that are only supported by the JS CLI (e.g. decode)
-            if (!string.IsNullOrEmpty(_roxCliExe) && (argTrim.StartsWith("decode", StringComparison.OrdinalIgnoreCase)))
-            {
-                  return new ProcessStartInfo
-                  {
-                        FileName = _roxCliExe,
-                        Arguments = arguments,
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true
-                  };
-            }
-
             if (!string.IsNullOrEmpty(_roxExePath))
             {
                   return new ProcessStartInfo
@@ -82,15 +59,7 @@ internal static class RoxRunner
                   };
             }
 
-            return new ProcessStartInfo
-            {
-                  FileName = "cmd.exe",
-                  Arguments = $"/c rox {arguments}",
-                  UseShellExecute = false,
-                  CreateNoWindow = true,
-                  RedirectStandardOutput = true,
-                  RedirectStandardError = true
-            };
+            throw new InvalidOperationException("Ni roxify_native.exe ni le bundle node ne sont disponibles");
       }
 
       public static bool TryCheckRox(out string error)

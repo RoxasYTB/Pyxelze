@@ -40,6 +40,12 @@ namespace Pyxelze
                     CompressDirectory(target);
                     return;
                 }
+                else if (command == "decompress")
+                {
+                    // backward-compat shortcut if registry uses 'decompress' verb
+                    ExtractDirectory(target);
+                    return;
+                }
             }
 
             string? fileToOpen = args.Length > 0 ? args[0] : null;
@@ -59,7 +65,7 @@ namespace Pyxelze
                     key.SetValue("", "");
                     key.SetValue("MUIVerb", "Pyxelze");
                     key.SetValue("Icon", exePath);
-                    key.SetValue("SubCommands", "open;decode");
+                    key.SetValue("SubCommands", "open;decompress");
                     using (var shellKey = key.CreateSubKey(@"shell"))
                     {
                         using (var openKey = shellKey.CreateSubKey("open"))
@@ -71,13 +77,24 @@ namespace Pyxelze
                                 cmdKey.SetValue("", $"\"{exePath}\" \"%1\"");
                             }
                         }
-                        using (var decodeKey = shellKey.CreateSubKey("decode"))
+                        using (var decodeKey = shellKey.CreateSubKey("decompress"))
                         {
                             decodeKey.SetValue("MUIVerb", "Décoder l'archive ROX");
                             decodeKey.SetValue("Icon", exePath);
                             using (var cmdKey = decodeKey.CreateSubKey("command"))
                             {
-                                cmdKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+                                var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
+                                if (File.Exists(roxPath))
+                                {
+                                    // Use cmd loop to compute output directory from input file: output -> same folder, same name as file without extension
+                                    // e.g. for %1 -> for %I in ("%1") do "C:\...\roxify_native.exe" decompress "%~I" "%~dpnI"
+                                    cmdKey.SetValue("", $"\"{exePath}\" decompress \"%1\"");
+                                }
+                                else
+                                {
+                                    // fall back to using Pyxelze's internal handler
+                                    cmdKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+                                }
                             }
                         }
                     }
@@ -97,7 +114,16 @@ namespace Pyxelze
                             encodeKey.SetValue("Icon", exePath);
                             using (var cmdKey = encodeKey.CreateSubKey("command"))
                             {
-                                cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                                var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
+                                if (File.Exists(roxPath))
+                                {
+                                    // Compute output file as <parent>\<dirname>.png using cmd for loop: %~dpnI expands to drive+path+name
+                                    cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                                }
+                                else
+                                {
+                                    cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                                }
                             }
                         }
                     }
@@ -139,17 +165,18 @@ namespace Pyxelze
 
             try
             {
-                var psi = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" \"{outputDir}\"");
-                using (var p = System.Diagnostics.Process.Start(psi))
+                var psi = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" \"{outputDir}\"");
+                string stdout, stderr;
+                using (var f = new ProcessProgressForm("Extraction en cours", $"Extraction de {Path.GetFileName(archivePath)}..."))
                 {
-                    p!.WaitForExit();
-                    if (p.ExitCode == 0)
+                    int exit = f.RunProcess(psi, out stdout, out stderr);
+                    if (exit == 0)
                     {
                         var enumerator = Directory.EnumerateFileSystemEntries(outputDir).GetEnumerator();
                         bool hasEntries = enumerator.MoveNext();
                         if (!hasEntries)
                         {
-                            var err = p.StandardError.ReadToEnd();
+                            var err = stderr;
                             if (string.IsNullOrEmpty(err))
                             {
                                 string roxError;
@@ -162,9 +189,13 @@ namespace Pyxelze
                             MessageBox.Show($"Extraction réussie vers :\n{outputDir}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                     }
+                    else if (f.Cancelled)
+                    {
+                        MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
                     else
                     {
-                        var err = p.StandardError.ReadToEnd();
+                        var err = stderr;
                         if (string.IsNullOrEmpty(err))
                         {
                             string roxError;
@@ -193,14 +224,15 @@ namespace Pyxelze
             try
             {
                 var psi = RoxRunner.CreateRoxProcess($"encode \"{dirPath}\" \"{outputFile}\"");
-                using (var p = System.Diagnostics.Process.Start(psi))
+                string stdout, stderr;
+                using (var f = new ProcessProgressForm("Encodage en cours", $"Encodage de {Path.GetFileName(dirPath)}..."))
                 {
-                    p!.WaitForExit();
-                    if (p.ExitCode == 0)
+                    int exit = f.RunProcess(psi, out stdout, out stderr);
+                    if (exit == 0)
                     {
                         if (!File.Exists(outputFile))
                         {
-                            var err = p.StandardError.ReadToEnd();
+                            var err = stderr;
                             if (string.IsNullOrEmpty(err))
                             {
                                 string roxError;
@@ -213,9 +245,13 @@ namespace Pyxelze
                             MessageBox.Show($"Compression réussie :\n{outputFile}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                     }
+                    else if (f.Cancelled)
+                    {
+                        MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
                     else
                     {
-                        var err = p.StandardError.ReadToEnd();
+                        var err = stderr;
                         if (string.IsNullOrEmpty(err))
                         {
                             string roxError;

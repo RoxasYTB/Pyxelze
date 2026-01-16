@@ -10,7 +10,9 @@
     "pkg": "^5.8.1"
   },
   "scripts": {
-    "build:exe": "cd /home/yohan/roxify && cargo build --release --bin roxify_native --target x86_64-pc-windows-gnu && npm run build:pkg && cd - && node ./scripts/postbuild.js",
+    "build:exe": "cd /home/yohan/roxify && cargo build --release --bin roxify_native --target x86_64-pc-windows-gnu && npm run build && cd - && node ./scripts/postbuild.js",
+    "build:pkg": "npm run build",
+    "build:pkg:full": "npm run build && npx pkg . --target node18-win-x64 --output dist/rox.exe --compress Brotli --public",
     "postinstall": "node ./scripts/fix-cli-progress-presets.js",
     "postbuild:exe": "node ./scripts/postbuild.js",
     "buildAndSetup": "bash ./scripts/build-and-setup.sh",
