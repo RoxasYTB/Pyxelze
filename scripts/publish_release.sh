@@ -20,6 +20,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+echo "🔧 Removing old release dir and recreating: $RELEASE_DIR"
+rm -rf "$RELEASE_DIR"
+mkdir -p "$RELEASE_DIR"
+
 echo "🔧 Build: dotnet build (Release)"
 dotnet build -c Release --no-incremental
 

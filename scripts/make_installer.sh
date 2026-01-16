@@ -28,7 +28,7 @@ if [ ! -d "$PUBLISH_DIR" ]; then
   echo "ERROR: Publish dir not found: $PUBLISH_DIR"; exit 1
 fi
 
-mkdir -p "$OUT_DIR"
+rm -rf "$OUT_DIR" && mkdir -p "$OUT_DIR"
 
 if [[ "${OS:-}" == "Windows_NT" || -n "${WINDIR:-}" ]]; then
   echo "Detected Windows environment. Running tools/installer/build_installer.cmd"
