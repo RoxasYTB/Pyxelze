@@ -192,7 +192,74 @@ namespace Pyxelze
                                 string roxError;
                                 if (!RoxRunner.TryCheckRox(out roxError)) err = roxError;
                             }
-                            MessageBox.Show($"Erreur lors de l'extraction : aucun fichier créé.\n{err}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                            var details = new System.Text.StringBuilder();
+                            details.AppendLine($"Commande: {psi.FileName} {psi.Arguments}");
+                            details.AppendLine($"Exit code: {exit}");
+                            if (!string.IsNullOrEmpty(stdout)) { details.AppendLine("--- Output ---"); details.AppendLine(stdout); }
+                            if (!string.IsNullOrEmpty(stderr)) { details.AppendLine("--- Erreur ---"); details.AppendLine(stderr); }
+                            if (!string.IsNullOrEmpty(err) && (err.Contains("Accès refusé") || err.Contains("access denied") || err.Contains("os error 5")))
+                            {
+                                details.AppendLine();
+                                details.AppendLine("Astuce: Vérifie les permissions d'écriture sur le dossier cible, exécute l'application en tant qu'administrateur ou vérifie un antivirus qui bloquerait l'écriture.");
+
+                                string tempDir = Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N"));
+                                Directory.CreateDirectory(tempDir);
+                                var psi2 = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" \"{tempDir}\"");
+                                string stdout2, stderr2;
+                                using (var f2 = new ProcessProgressForm("Extraction (contournement)", $"Extraction vers un répertoire temporaire pour contourner un problème de permission..."))
+                                {
+                                    int exit2 = f2.RunProcess(psi2, out stdout2, out stderr2);
+                                    bool hasTempEntries = false;
+                                    if (Directory.Exists(tempDir))
+                                    {
+                                        var en = Directory.EnumerateFileSystemEntries(tempDir).GetEnumerator();
+                                        hasTempEntries = en.MoveNext();
+                                    }
+
+                                    if (exit2 == 0 && hasTempEntries)
+                                    {
+                                        try
+                                        {
+                                            foreach (var entry in Directory.EnumerateFileSystemEntries(tempDir))
+                                            {
+                                                var name = Path.GetFileName(entry);
+                                                var dest = Path.Combine(outputDir, name);
+                                                if (Directory.Exists(entry))
+                                                {
+                                                    if (Directory.Exists(dest)) Directory.Delete(dest, true);
+                                                    Directory.Move(entry, dest);
+                                                }
+                                                else if (File.Exists(entry))
+                                                {
+                                                    if (File.Exists(dest)) File.Delete(dest);
+                                                    File.Move(entry, dest);
+                                                }
+                                            }
+                                            Directory.Delete(tempDir, true);
+                                            MessageBox.Show($"Extraction réussie vers :\n{outputDir}\n\nRemarque: extraction effectuée via un répertoire temporaire.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                            return;
+                                        }
+                                        catch (Exception exMove)
+                                        {
+                                            details.AppendLine();
+                                            details.AppendLine("Échec du déplacement depuis le répertoire temporaire: " + exMove.Message);
+                                            if (!string.IsNullOrEmpty(stdout2)) { details.AppendLine("--- Output (contournement) ---"); details.AppendLine(stdout2); }
+                                            if (!string.IsNullOrEmpty(stderr2)) { details.AppendLine("--- Erreur (contournement) ---"); details.AppendLine(stderr2); }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        details.AppendLine();
+                                        details.AppendLine("Tentative de contournement échouée.");
+                                        details.AppendLine($"Commande de contournement: {psi2.FileName} {psi2.Arguments}");
+                                        if (!string.IsNullOrEmpty(stdout2)) { details.AppendLine("--- Output (contournement) ---"); details.AppendLine(stdout2); }
+                                        if (!string.IsNullOrEmpty(stderr2)) { details.AppendLine("--- Erreur (contournement) ---"); details.AppendLine(stderr2); }
+                                    }
+                                }
+                            }
+
+                            MessageBox.Show($"Erreur lors de l'extraction : aucun fichier créé.\n\n{details}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                         else
                         {
@@ -211,7 +278,74 @@ namespace Pyxelze
                             string roxError;
                             if (!RoxRunner.TryCheckRox(out roxError)) err = roxError;
                         }
-                        MessageBox.Show($"Erreur lors de l'extraction.\n{err}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                        var details = new System.Text.StringBuilder();
+                        details.AppendLine($"Commande: {psi.FileName} {psi.Arguments}");
+                        details.AppendLine($"Exit code: {exit}");
+                        if (!string.IsNullOrEmpty(stdout)) { details.AppendLine("--- Output ---"); details.AppendLine(stdout); }
+                        if (!string.IsNullOrEmpty(stderr)) { details.AppendLine("--- Erreur ---"); details.AppendLine(stderr); }
+                        if (!string.IsNullOrEmpty(err) && (err.Contains("Accès refusé") || err.Contains("access denied") || err.Contains("os error 5")))
+                        {
+                            details.AppendLine();
+                            details.AppendLine("Astuce: Vérifie les permissions d'écriture sur le dossier cible, exécute l'application en tant qu'administrateur ou vérifie un antivirus qui bloquerait l'écriture.");
+
+                            string tempDir = Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N"));
+                            Directory.CreateDirectory(tempDir);
+                            var psi2 = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" \"{tempDir}\"");
+                            string stdout2, stderr2;
+                            using (var f2 = new ProcessProgressForm("Extraction (contournement)", $"Extraction vers un répertoire temporaire pour contourner un problème de permission..."))
+                            {
+                                int exit2 = f2.RunProcess(psi2, out stdout2, out stderr2);
+                                bool hasTempEntries = false;
+                                if (Directory.Exists(tempDir))
+                                {
+                                    var en = Directory.EnumerateFileSystemEntries(tempDir).GetEnumerator();
+                                    hasTempEntries = en.MoveNext();
+                                }
+
+                                if (exit2 == 0 && hasTempEntries)
+                                {
+                                    try
+                                    {
+                                        foreach (var entry in Directory.EnumerateFileSystemEntries(tempDir))
+                                        {
+                                            var name = Path.GetFileName(entry);
+                                            var dest = Path.Combine(outputDir, name);
+                                            if (Directory.Exists(entry))
+                                            {
+                                                if (Directory.Exists(dest)) Directory.Delete(dest, true);
+                                                Directory.Move(entry, dest);
+                                            }
+                                            else if (File.Exists(entry))
+                                            {
+                                                if (File.Exists(dest)) File.Delete(dest);
+                                                File.Move(entry, dest);
+                                            }
+                                        }
+                                        Directory.Delete(tempDir, true);
+                                        MessageBox.Show($"Extraction réussie vers :\n{outputDir}\n\nRemarque: extraction effectuée via un répertoire temporaire.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                        return;
+                                    }
+                                    catch (Exception exMove)
+                                    {
+                                        details.AppendLine();
+                                        details.AppendLine("Échec du déplacement depuis le répertoire temporaire: " + exMove.Message);
+                                        if (!string.IsNullOrEmpty(stdout2)) { details.AppendLine("--- Output (contournement) ---"); details.AppendLine(stdout2); }
+                                        if (!string.IsNullOrEmpty(stderr2)) { details.AppendLine("--- Erreur (contournement) ---"); details.AppendLine(stderr2); }
+                                    }
+                                }
+                                else
+                                {
+                                    details.AppendLine();
+                                    details.AppendLine("Tentative de contournement échouée.");
+                                    details.AppendLine($"Commande de contournement: {psi2.FileName} {psi2.Arguments}");
+                                    if (!string.IsNullOrEmpty(stdout2)) { details.AppendLine("--- Output (contournement) ---"); details.AppendLine(stdout2); }
+                                    if (!string.IsNullOrEmpty(stderr2)) { details.AppendLine("--- Erreur (contournement) ---"); details.AppendLine(stderr2); }
+                                }
+                            }
+                        }
+
+                        MessageBox.Show($"Erreur lors de l'extraction.\n\n{details}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -248,7 +382,53 @@ namespace Pyxelze
                                 string roxError;
                                 if (!RoxRunner.TryCheckRox(out roxError)) err = roxError;
                             }
-                            MessageBox.Show($"Erreur lors de la compression : le fichier de sortie n'a pas été créé.\n{err}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                            var details = new System.Text.StringBuilder();
+                            details.AppendLine($"Commande: {psi.FileName} {psi.Arguments}");
+                            details.AppendLine($"Exit code: {exit}");
+                            details.AppendLine($"Fichier attendu: {outputFile}");
+                            if (!string.IsNullOrEmpty(stdout)) { details.AppendLine("--- Output ---"); details.AppendLine(stdout); }
+                            if (!string.IsNullOrEmpty(stderr)) { details.AppendLine("--- Erreur ---"); details.AppendLine(stderr); }
+                            if (!string.IsNullOrEmpty(err) && (err.Contains("Accès refusé") || err.Contains("access denied") || err.Contains("os error 5")))
+                            {
+                                details.AppendLine();
+                                details.AppendLine("Astuce: Vérifie les permissions d'écriture sur le dossier cible, exécute l'application en tant qu'administrateur ou vérifie un antivirus qui bloquerait l'écriture.");
+
+                                string tempFile = Path.Combine(Path.GetTempPath(), "pyxelze-encode-" + Guid.NewGuid().ToString("N") + ".png");
+                                var psi2 = RoxRunner.CreateRoxProcess($"encode \"{dirPath}\" \"{tempFile}\"");
+                                string stdout2, stderr2;
+                                using (var f2 = new ProcessProgressForm("Encodage (contournement)", $"Encodage vers un fichier temporaire pour contourner un problème de permission..."))
+                                {
+                                    int exit2 = f2.RunProcess(psi2, out stdout2, out stderr2);
+                                    if (exit2 == 0 && File.Exists(tempFile))
+                                    {
+                                        try
+                                        {
+                                            if (File.Exists(outputFile)) File.Delete(outputFile);
+                                            File.Move(tempFile, outputFile);
+                                            MessageBox.Show($"Compression réussie :\n{outputFile}\n\nRemarque: créé via un fichier temporaire.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                            return;
+                                        }
+                                        catch (Exception exMove)
+                                        {
+                                            details.AppendLine();
+                                            details.AppendLine("Échec du déplacement du fichier temporaire: " + exMove.Message);
+                                            if (!string.IsNullOrEmpty(stdout2)) { details.AppendLine("--- Output (contournement) ---"); details.AppendLine(stdout2); }
+                                            if (!string.IsNullOrEmpty(stderr2)) { details.AppendLine("--- Erreur (contournement) ---"); details.AppendLine(stderr2); }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        details.AppendLine();
+                                        details.AppendLine("Tentative de contournement échouée.");
+                                        details.AppendLine($"Commande de contournement: {psi2.FileName} {psi2.Arguments}");
+                                        if (!string.IsNullOrEmpty(stdout2)) { details.AppendLine("--- Output (contournement) ---"); details.AppendLine(stdout2); }
+                                        if (!string.IsNullOrEmpty(stderr2)) { details.AppendLine("--- Erreur (contournement) ---"); details.AppendLine(stderr2); }
+                                    }
+                                }
+                            }
+
+                            MessageBox.Show($"Erreur lors de la compression : le fichier de sortie n'a pas été créé.\n\n{details}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                         else
                         {
@@ -267,7 +447,52 @@ namespace Pyxelze
                             string roxError;
                             if (!RoxRunner.TryCheckRox(out roxError)) err = roxError;
                         }
-                        MessageBox.Show($"Erreur lors de la compression.\n{err}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                        var details = new System.Text.StringBuilder();
+                        details.AppendLine($"Commande: {psi.FileName} {psi.Arguments}");
+                        details.AppendLine($"Exit code: {exit}");
+                        if (!string.IsNullOrEmpty(stdout)) { details.AppendLine("--- Output ---"); details.AppendLine(stdout); }
+                        if (!string.IsNullOrEmpty(stderr)) { details.AppendLine("--- Erreur ---"); details.AppendLine(stderr); }
+                        if (!string.IsNullOrEmpty(err) && (err.Contains("Accès refusé") || err.Contains("access denied") || err.Contains("os error 5")))
+                        {
+                            details.AppendLine();
+                            details.AppendLine("Astuce: Vérifie les permissions d'écriture sur le dossier cible, exécute l'application en tant qu'administrateur ou vérifie un antivirus qui bloquerait l'écriture.");
+
+                            string tempFile = Path.Combine(Path.GetTempPath(), "pyxelze-encode-" + Guid.NewGuid().ToString("N") + ".png");
+                            var psi2 = RoxRunner.CreateRoxProcess($"encode \"{dirPath}\" \"{tempFile}\"");
+                            string stdout2, stderr2;
+                            using (var f2 = new ProcessProgressForm("Encodage (contournement)", $"Encodage vers un fichier temporaire pour contourner un problème de permission..."))
+                            {
+                                int exit2 = f2.RunProcess(psi2, out stdout2, out stderr2);
+                                if (exit2 == 0 && File.Exists(tempFile))
+                                {
+                                    try
+                                    {
+                                        if (File.Exists(outputFile)) File.Delete(outputFile);
+                                        File.Move(tempFile, outputFile);
+                                        MessageBox.Show($"Compression réussie :\n{outputFile}\n\nRemarque: créé via un fichier temporaire.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                        return;
+                                    }
+                                    catch (Exception exMove)
+                                    {
+                                        details.AppendLine();
+                                        details.AppendLine("Échec du déplacement du fichier temporaire: " + exMove.Message);
+                                        if (!string.IsNullOrEmpty(stdout2)) { details.AppendLine("--- Output (contournement) ---"); details.AppendLine(stdout2); }
+                                        if (!string.IsNullOrEmpty(stderr2)) { details.AppendLine("--- Erreur (contournement) ---"); details.AppendLine(stderr2); }
+                                    }
+                                }
+                                else
+                                {
+                                    details.AppendLine();
+                                    details.AppendLine("Tentative de contournement échouée.");
+                                    details.AppendLine($"Commande de contournement: {psi2.FileName} {psi2.Arguments}");
+                                    if (!string.IsNullOrEmpty(stdout2)) { details.AppendLine("--- Output (contournement) ---"); details.AppendLine(stdout2); }
+                                    if (!string.IsNullOrEmpty(stderr2)) { details.AppendLine("--- Erreur (contournement) ---"); details.AppendLine(stderr2); }
+                                }
+                            }
+                        }
+
+                        MessageBox.Show($"Erreur lors de la compression.\n\n{details}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
