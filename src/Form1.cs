@@ -35,16 +35,22 @@ namespace Pyxelze
 
         // Hover state
         private ListViewItem? hoverItem = null;
+        private bool autoExtractMode = false;
 
-        public Form1(string? archivePath = null)
+        public Form1(string? archivePath = null, bool autoExtract = false)
         {
             InitializeComponent();
             SetupInterface();
             ThemeManager.ApplyToForm(this);
+            autoExtractMode = autoExtract;
 
             if (!string.IsNullOrEmpty(archivePath) && File.Exists(archivePath))
             {
                 LoadArchive(archivePath);
+                if (autoExtractMode)
+                {
+                    this.Shown += (s, e) => AutoExtractArchive();
+                }
             }
         }
 
@@ -675,6 +681,146 @@ readme.txt (100 bytes)
                     }
                     catch (Exception ex) { try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Delayed cleanup worker failed: {ex}\n"); } catch { } }
                 });
+            }
+        }
+
+        private void AutoExtractArchive()
+        {
+            if (string.IsNullOrEmpty(currentArchive)) return;
+
+            string outputDir = Path.Combine(Path.GetDirectoryName(currentArchive) ?? "", Path.GetFileNameWithoutExtension(currentArchive));
+            ExtractAllToFolder(outputDir);
+        }
+
+        private void ExtractAllToFolder(string destFolder)
+        {
+            if (string.IsNullOrEmpty(currentArchive))
+            {
+                MessageBox.Show("Aucune archive ouverte.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(destFolder);
+
+                var filePaths = RoxRunner.GetFileList(currentArchive);
+                if (filePaths == null || filePaths.Count == 0)
+                {
+                    // Try robust temporary extraction fallback (copy rox exe to temp and extract there, then move files)
+                    var tempDir = Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(tempDir);
+                    var roxPath = RoxRunner.GetRoxPath() ?? string.Empty;
+                    ProcessStartInfo psi2;
+                    if (!string.IsNullOrEmpty(roxPath))
+                    {
+                        try
+                        {
+                            var tempExe = Path.Combine(Path.GetTempPath(), "roxify_exec_" + Guid.NewGuid().ToString("N") + ".exe");
+                            File.Copy(roxPath, tempExe, true);
+                            try { File.SetAttributes(tempExe, FileAttributes.Normal); } catch { }
+                            try { File.Delete(tempExe + ":Zone.Identifier"); } catch { }
+                            psi2 = new ProcessStartInfo
+                            {
+                                FileName = tempExe,
+                                Arguments = $"decompress \"{currentArchive}\" \"{tempDir}\"",
+                                UseShellExecute = false,
+                                CreateNoWindow = true,
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true,
+                                WorkingDirectory = tempDir
+                            };
+                            try { psi2.EnvironmentVariables["TMP"] = tempDir; psi2.EnvironmentVariables["TEMP"] = tempDir; } catch { }
+                        }
+                        catch
+                        {
+                            psi2 = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" \"{tempDir}\"");
+                            psi2.WorkingDirectory = tempDir;
+                            try { psi2.EnvironmentVariables["TMP"] = tempDir; psi2.EnvironmentVariables["TEMP"] = tempDir; } catch { }
+                        }
+                    }
+                    else
+                    {
+                        psi2 = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" \"{tempDir}\"");
+                        psi2.WorkingDirectory = tempDir;
+                        try { psi2.EnvironmentVariables["TMP"] = tempDir; psi2.EnvironmentVariables["TEMP"] = tempDir; } catch { }
+                    }
+
+                    string stdout2, stderr2;
+                    using (var f2 = new ProcessProgressForm("Extraction (contournement)", $"Extraction vers un répertoire temporaire pour contourner un problème de permission..."))
+                    {
+                        int exit2 = f2.RunProcess(psi2, out stdout2, out stderr2);
+                        if (exit2 == 0)
+                        {
+                            // move contents from tempDir into destFolder
+                            foreach (var entry in Directory.EnumerateFileSystemEntries(tempDir))
+                            {
+                                var name = Path.GetFileName(entry);
+                                var dest = Path.Combine(destFolder, name);
+                                if (Directory.Exists(entry))
+                                {
+                                    if (Directory.Exists(dest)) Directory.Delete(dest, true);
+                                    Program.CopyDirectory(entry, dest);
+                                }
+                                else if (File.Exists(entry))
+                                {
+                                    if (File.Exists(dest)) File.Delete(dest);
+                                    File.Copy(entry, dest, true);
+                                }
+                            }
+                            try { Directory.Delete(tempDir, true); } catch { }
+                            MessageBox.Show($"Extraction réussie vers :\n{destFolder}\n\nRemarque: extraction effectuée via un répertoire temporaire.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            if (autoExtractMode) this.Close();
+                            return;
+                        }
+                        else
+                        {
+                            try { Directory.Delete(tempDir, true); } catch { }
+                            MessageBox.Show("Aucun fichier trouvé dans l'archive.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+                    }
+                }
+
+                var filesArg = string.Join(",", filePaths.Select(f => $"\"{f}\""));
+                var psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --files {filesArg} \"{destFolder}\"");
+
+                string stdout, stderr;
+                using (var f = new ProcessProgressForm("Extraction en cours", $"Extraction de {Path.GetFileName(currentArchive)}..."))
+                {
+                    int exit = f.RunProcess(psi, out stdout, out stderr);
+                    if (exit == 0)
+                    {
+                        bool hasEntries = false;
+                        if (Directory.Exists(destFolder))
+                        {
+                            var enumerator = Directory.EnumerateFileSystemEntries(destFolder).GetEnumerator();
+                            hasEntries = enumerator.MoveNext();
+                        }
+
+                        if (hasEntries)
+                        {
+                            MessageBox.Show($"Extraction réussie vers :\n{destFolder}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            if (autoExtractMode) this.Close();
+                        }
+                        else
+                        {
+                            MessageBox.Show($"Erreur lors de l'extraction : aucun fichier créé.\n\nErreur : {stderr}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                    else if (f.Cancelled)
+                    {
+                        MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Erreur lors de l'extraction.\n\nCode de sortie : {exit}\nErreur : {stderr}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erreur lors de l'extraction : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

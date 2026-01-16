@@ -12,6 +12,7 @@ UninstallDisplayName=Pyxelze
 UninstallDisplayIcon={app}\Pyxelze.exe
 OutputDir=..\..\releases
 OutputBaseFilename=Pyxelze-Setup
+PrivilegesRequired=admin
 SetupIconFile=..\..\appIcon.ico
 Compression=lzma
 SolidCompression=yes
@@ -32,6 +33,7 @@ Name: "{commondesktop}\Pyxelze"; Filename: "{app}\Pyxelze.exe"; Tasks: desktopic
 
 [Tasks]
 Name: "desktopicon"; Description: "Créer une icône sur le bureau"; GroupDescription: "Icônes additionnelles:"
+Name: "defenderexcl"; Description: "Ajouter une exclusion Windows Defender pour Pyxelze (recommandé)"; GroupDescription: "Sécurité:"
 
 
 
@@ -52,12 +54,14 @@ begin
   SendMessageTimeout($FFFF, $001A, 0, 'Environment', 2, 5000, ReturnValue);
 end;
 
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   EnvPath: string;
   RoxPath: string;
   ResultCode: Integer;
   ExecOK: Boolean;
+  Cmd: string;
   RoxExePath: string;
   NodePathA: string;
   NodePathB: string;
@@ -92,21 +96,39 @@ begin
       MsgBox('La commande d''enregistrement du menu contextuel a renvoyé le code ' + IntToStr(ResultCode) + '. Si le problème persiste, vérifie le binaire dans le dossier d''installation.', mbError, MB_OK);
     end;
 
+    // If the user asked, try to add a Windows Defender exclusion for the roxify folder
+    if WizardIsTaskSelected('defenderexcl') then
+    begin
+      if FileExists(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe')) then
+      begin
+        Cmd := '-NoProfile -ExecutionPolicy Bypass -Command "try { Add-MpPreference -ExclusionPath ''' + ExpandConstant('{app}\roxify') + ''' -ErrorAction Stop; exit 0 } catch { exit 1 }"';
+        ExecOK := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Cmd, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+        if not ExecOK or (ResultCode <> 0) then
+        begin
+          MsgBox('Impossible d''ajouter automatiquement l''exclusion Windows Defender pour : ' + ExpandConstant('{app}\roxify') + #13#10 + 'Tu peux l''ajouter manuellement depuis Sécurité Windows → Protection contre les virus et menaces → Gérer les paramètres → Exclusions.', mbInformation, MB_OK);
+        end;
+      end
+      else
+        MsgBox('PowerShell introuvable; impossible d''ajouter l''exclusion Windows Defender automatiquement.', mbInformation, MB_OK);
+    end;
+
     // Verify roxify native artifacts exist (either CLI .exe or native module .node)
     RoxExePath := ExpandConstant('{app}\roxify\roxify_native.exe');
     NodePathA := ExpandConstant('{app}\roxify\libroxify_native.node');
     NodePathB := ExpandConstant('{app}\libroxify_native.node');
     NodePathC := ExpandConstant('{app}\tools\roxify\libroxify_native.node');
 
+    // Do not execute roxify during install (can trigger Defender scans); just verify presence
     if FileExists(RoxExePath) then
-      ExecOK := Exec(RoxExePath, '--version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+      ExecOK := True
     else if FileExists(NodePathA) or FileExists(NodePathB) or FileExists(NodePathC) then
       ExecOK := True
     else
       MsgBox('Aucun binaire roxify natif trouvé (ni roxify_native.exe ni libroxify_native.node). Certaines fonctionnalités peuvent être limitées.', mbError, MB_OK);
 
-    if FileExists(RoxExePath) and (not ExecOK or (ResultCode <> 0)) then
-      MsgBox('Le binaire roxify_native.exe est présent mais n''a pas pu s''exécuter correctement (code: ' + IntToStr(ResultCode) + '). Vérifie l''architecture du binaire.', mbError, MB_OK);
+    // Informative message if roxify exists but was not executed (to avoid triggering antivirus during install)
+    if FileExists(RoxExePath) and not ExecOK then
+      MsgBox('Le binaire roxify_native.exe est présent, mais nous n''exécutons pas automatiquement les binaires pendant l''installation afin d''éviter des analyses antivirus. Si nécessaire, exécute "roxify_native.exe --version" manuellement pour vérifier le binaire.', mbInformation, MB_OK);
 
     end;
   end;
@@ -116,6 +138,9 @@ var
   EnvPath: string;
   RoxPath: string;
   P: Integer;
+  ResultCode: Integer;
+  ExecOK: Boolean;
+  Cmd: string;
 begin
   if CurUninstallStep = usPostUninstall then
   begin
@@ -132,6 +157,14 @@ begin
           Delete(EnvPath, P, 1);
         RegWriteExpandStringValue(HKEY_LOCAL_MACHINE, EnvironmentKey, 'Path', EnvPath);
       end;
+    end;
+
+    // Attempt to remove Windows Defender exclusion for roxify (best-effort)
+    if FileExists(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe')) then
+    begin
+      Cmd := '-NoProfile -ExecutionPolicy Bypass -Command "try { Remove-MpPreference -ExclusionPath ''' + ExpandConstant('{app}\roxify') + ''' -ErrorAction Stop; exit 0 } catch { exit 1 }"';
+      ExecOK := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Cmd, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      // ignore result; uninstall should continue
     end;
   end;
 end;

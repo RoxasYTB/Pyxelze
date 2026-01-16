@@ -25,7 +25,16 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ ! -d "$PUBLISH_DIR" ]; then
-  echo "ERROR: Publish dir not found: $PUBLISH_DIR"; exit 1
+  echo "Publish dir not found: $PUBLISH_DIR. Attempting to run publish_release.sh to build publish artifacts..."
+  if [ -f "$SCRIPT_DIR/publish_release.sh" ]; then
+    echo "Running publish_release.sh --no-installer"
+    bash "$SCRIPT_DIR/publish_release.sh" --no-installer || { echo "ERROR: publish_release.sh failed to generate $PUBLISH_DIR"; exit 1; }
+  else
+    echo "ERROR: Publish dir not found and $SCRIPT_DIR/publish_release.sh not present: $PUBLISH_DIR"; exit 1
+  fi
+  if [ ! -d "$PUBLISH_DIR" ]; then
+    echo "ERROR: Publish dir still not found after running publish: $PUBLISH_DIR"; exit 1
+  fi
 fi
 
 rm -rf "$OUT_DIR" && mkdir -p "$OUT_DIR"
