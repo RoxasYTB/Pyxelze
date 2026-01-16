@@ -172,8 +172,18 @@ namespace Pyxelze
                     int exit = f.RunProcess(psi, out stdout, out stderr);
                     if (exit == 0)
                     {
-                        var enumerator = Directory.EnumerateFileSystemEntries(outputDir).GetEnumerator();
-                        bool hasEntries = enumerator.MoveNext();
+                        bool hasEntries = false;
+                        if (Directory.Exists(outputDir))
+                        {
+                            var enumerator = Directory.EnumerateFileSystemEntries(outputDir).GetEnumerator();
+                            hasEntries = enumerator.MoveNext();
+                        }
+                        else if (File.Exists(outputDir))
+                        {
+                            var fi = new FileInfo(outputDir);
+                            hasEntries = fi.Length > 0;
+                        }
+
                         if (!hasEntries)
                         {
                             var err = stderr;
