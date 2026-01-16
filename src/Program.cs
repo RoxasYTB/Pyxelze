@@ -152,6 +152,17 @@ namespace Pyxelze
             }
         }
 
+        static string LogPath => Path.Combine(Path.GetTempPath(), "pyxelze-debug.log");
+
+        static void AppendLog(string text)
+        {
+            try
+            {
+                File.AppendAllText(LogPath, $"[{DateTime.Now:O}] {text}\n");
+            }
+            catch { }
+        }
+
         static void ExtractDirectory(string archivePath)
         {
             if (!File.Exists(archivePath))
@@ -162,10 +173,12 @@ namespace Pyxelze
 
             string outputDir = Path.Combine(Path.GetDirectoryName(archivePath) ?? "", Path.GetFileNameWithoutExtension(archivePath));
             Directory.CreateDirectory(outputDir);
+            AppendLog($"ExtractDirectory start: archive={archivePath} output={outputDir}");
 
             try
             {
                 var psi = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" \"{outputDir}\"");
+                AppendLog($"Run command: {psi.FileName} {psi.Arguments}");
                 string stdout, stderr;
                 using (var f = new ProcessProgressForm("Extraction en cours", $"Extraction de {Path.GetFileName(archivePath)}..."))
                 {
@@ -205,11 +218,13 @@ namespace Pyxelze
 
                                 string tempDir = Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N"));
                                 Directory.CreateDirectory(tempDir);
+                                AppendLog($"Attempting temp extract to {tempDir}");
                                 var psi2 = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" \"{tempDir}\"");
                                 string stdout2, stderr2;
                                 using (var f2 = new ProcessProgressForm("Extraction (contournement)", $"Extraction vers un répertoire temporaire pour contourner un problème de permission..."))
                                 {
                                     int exit2 = f2.RunProcess(psi2, out stdout2, out stderr2);
+                                    AppendLog($"Temp extract result: exit2={exit2} stdout2_len={stdout2?.Length ?? 0} stderr2_len={stderr2?.Length ?? 0}");
                                     bool hasTempEntries = false;
                                     if (Directory.Exists(tempDir))
                                     {
@@ -242,6 +257,7 @@ namespace Pyxelze
                                         }
                                         catch (Exception exMove)
                                         {
+                                            AppendLog($"Move from temp failed: {exMove}");
                                             details.AppendLine();
                                             details.AppendLine("Échec du déplacement depuis le répertoire temporaire: " + exMove.Message);
                                             if (!string.IsNullOrEmpty(stdout2)) { details.AppendLine("--- Output (contournement) ---"); details.AppendLine(stdout2); }
@@ -259,7 +275,7 @@ namespace Pyxelze
                                 }
                             }
 
-                            MessageBox.Show($"Erreur lors de l'extraction : aucun fichier créé.\n\n{details}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            MessageBox.Show($"Erreur lors de l'extraction : aucun fichier créé.\n\n{details}\n\nVoir le journal: {LogPath}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                         else
                         {
@@ -345,13 +361,14 @@ namespace Pyxelze
                             }
                         }
 
-                        MessageBox.Show($"Erreur lors de l'extraction.\n\n{details}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"Erreur lors de l'extraction.\n\n{details}\n\nVoir le journal: {LogPath}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Impossible d'extraire : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                AppendLog($"Extract threw: {ex}");
+                MessageBox.Show($"Impossible d'extraire : {ex.Message}\n\nVoir le journal: {LogPath}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -364,10 +381,12 @@ namespace Pyxelze
             }
 
             string outputFile = Path.Combine(Path.GetDirectoryName(dirPath) ?? "", Path.GetFileName(dirPath) + ".png");
+            AppendLog($"CompressDirectory start: dir={dirPath} output={outputFile}");
 
             try
             {
                 var psi = RoxRunner.CreateRoxProcess($"encode \"{dirPath}\" \"{outputFile}\"");
+                AppendLog($"Run command: {psi.FileName} {psi.Arguments}");
                 string stdout, stderr;
                 using (var f = new ProcessProgressForm("Encodage en cours", $"Encodage de {Path.GetFileName(dirPath)}..."))
                 {
@@ -395,11 +414,13 @@ namespace Pyxelze
                                 details.AppendLine("Astuce: Vérifie les permissions d'écriture sur le dossier cible, exécute l'application en tant qu'administrateur ou vérifie un antivirus qui bloquerait l'écriture.");
 
                                 string tempFile = Path.Combine(Path.GetTempPath(), "pyxelze-encode-" + Guid.NewGuid().ToString("N") + ".png");
+                                AppendLog($"Attempting temp encode to {tempFile}");
                                 var psi2 = RoxRunner.CreateRoxProcess($"encode \"{dirPath}\" \"{tempFile}\"");
                                 string stdout2, stderr2;
                                 using (var f2 = new ProcessProgressForm("Encodage (contournement)", $"Encodage vers un fichier temporaire pour contourner un problème de permission..."))
                                 {
                                     int exit2 = f2.RunProcess(psi2, out stdout2, out stderr2);
+                                    AppendLog($"Temp encode result: exit2={exit2} stdout2_len={stdout2?.Length ?? 0} stderr2_len={stderr2?.Length ?? 0}");
                                     if (exit2 == 0 && File.Exists(tempFile))
                                     {
                                         try
@@ -411,6 +432,7 @@ namespace Pyxelze
                                         }
                                         catch (Exception exMove)
                                         {
+                                            AppendLog($"Move temp file failed: {exMove}");
                                             details.AppendLine();
                                             details.AppendLine("Échec du déplacement du fichier temporaire: " + exMove.Message);
                                             if (!string.IsNullOrEmpty(stdout2)) { details.AppendLine("--- Output (contournement) ---"); details.AppendLine(stdout2); }
@@ -428,7 +450,7 @@ namespace Pyxelze
                                 }
                             }
 
-                            MessageBox.Show($"Erreur lors de la compression : le fichier de sortie n'a pas été créé.\n\n{details}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            MessageBox.Show($"Erreur lors de la compression : le fichier de sortie n'a pas été créé.\n\n{details}\n\nVoir le journal: {LogPath}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                         else
                         {
@@ -492,13 +514,14 @@ namespace Pyxelze
                             }
                         }
 
-                        MessageBox.Show($"Erreur lors de la compression.\n\n{details}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"Erreur lors de la compression.\n\n{details}\n\nVoir le journal: {LogPath}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Impossible de compresser : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                AppendLog($"Compress threw: {ex}");
+                MessageBox.Show($"Impossible de compresser : {ex.Message}\n\nVoir le journal: {LogPath}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
