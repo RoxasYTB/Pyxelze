@@ -114,6 +114,22 @@ Sortie : `publish_final\Pyxelze.exe` (avec toutes les DLL nécessaires)
 
 ---
 
+### Publish minimal release (Linux → Windows)
+
+Pour publier uniquement l'application GUI (avec le binaire natif roxify) vers un dossier minimal `publish_with_native`, utiliser le script suivant depuis la racine du dépôt :
+
+```bash
+./scripts/publish_pyxelze.sh
+```
+
+Ce script :
+
+- construit `tools/roxify` s'il manque `roxify_native.exe`,
+- exécute `dotnet publish` sur `Pyxelze.csproj` (sortie : `publish_with_native`),
+- nettoie `rox.exe` s'il est présent pour garder la release minimale.
+
+---
+
 ### Build CLI (rox.exe)
 
 #### Depuis tools/roxify
@@ -125,15 +141,19 @@ npm run build:exe
 cd ..\..
 ```
 
-Sortie : `tools\roxify\dist\` (contient rox.exe, node.exe, rox.cmd, install-rox.cmd, node_modules)
+Sortie : `tools\roxify\dist\` (contient `roxify_native.exe` (et peut contenir `rox.exe`), `node.exe`, `rox.cmd`, `install-rox.cmd`, `node_modules`)
+
+> **Remarque** : `rox.exe` peut encore être produit par le packaging (pkg), mais il n'est pas obligatoire pour Pyxelze — nous utilisons de préférence `roxify_native.exe` pour la distribution Windows.
 
 #### Workflow complet :
 
-1. `npm run build:exe` → bundle esbuild (rox-bundle.cjs) + pkg (rox.exe)
-2. Postbuild script (`scripts/postbuild.js`) copie :
-   - `rox.exe` + `node.exe` → `dist/`
-   - `node_modules/` → `dist/node_modules/`
-   - `rox.cmd`, `install-rox.cmd` → `dist/`
+1. `npm run build:exe` → bundle esbuild (`rox-bundle.cjs`) et compilation du binaire natif (`roxify_native.exe`).
+
+> **Remarque** : par défaut `pkg` **n'est pas** exécuté. Si tu souhaites générer le binaire empaqueté Windows `rox.exe` (optionnel), exécute : `npm run build:pkg:full` dans `tools/roxify`. 2. Postbuild script (`scripts/postbuild.js`) copie :
+
+- `rox.exe` + `node.exe` → `dist/`
+- `node_modules/` → `dist/node_modules/`
+- `rox.cmd`, `install-rox.cmd` → `dist/`
 
 ---
 
@@ -150,7 +170,7 @@ build_production.cmd
 3. Copie `publish_final\*` → `production\`
 4. Copie `tools\roxify\dist\*` → `production\` (ou `release\roxify\*` si dist manquant)
 
-Résultat : `production/` contient Pyxelze.exe + rox.exe + node.exe + tous les fichiers nécessaires.
+Résultat : `production/` contient Pyxelze.exe + `roxify_native.exe` (ou `libroxify_native.node`) + `node.exe` + tous les fichiers nécessaires. Note: `rox.exe` n'est plus inclus par défaut — l'exécutable natif `roxify_native.exe` est privilégié pour les builds Windows.
 
 ---
 
@@ -174,7 +194,7 @@ make_release.cmd
 1. Build production unifié : `build_production.cmd`
 2. Inno Setup 6 installé dans `C:\Program Files (x86)\Inno Setup 6\`
 
-#### Compiler
+#### Compiler (Windows)
 
 ```cmd
 cd release
@@ -186,6 +206,20 @@ build_installer.cmd
 1. Vérifie que `production\Pyxelze.exe` existe
 2. Compile `installer.iss` avec Inno Setup (ISCC.exe)
 3. Génère `release\Pyxelze-Setup.exe`
+
+#### Automatisation depuis Linux (scripts)
+
+Des scripts sont fournis pour automatiser la génération depuis un hôte Linux :
+
+- `scripts/publish_release.sh`
+  - construit `tools/roxify` (si `npm` présent), lance `dotnet publish -c Release -r win-x64 --no-self-contained -o publish_with_native` et crée une archive horodatée dans `release/` (SHA256 inclus).
+  - Usage : `./scripts/publish_release.sh [--no-installer]`
+- `scripts/make_installer.sh`
+  - compile l'installateur Inno via `wine` en utilisant `ISCC.exe` présent dans une prefix wine.
+  - Recherche `ISCC.exe` automatiquement dans `~/.wine/drive_c/Program Files (x86)/Inno Setup 6/ISCC.exe` ou accepte `--iscc-path "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe"`.
+  - Usage : `./scripts/make_installer.sh [--publish-dir DIR] [--out-dir DIR] [--iscc-path PATH]`
+
+> Remarque : l'installateur cible Windows. Pour valider l'apparence dans "Applications et fonctionnalités" (nom + icône), installe `release/Pyxelze_Setup.exe` sur une machine Windows ou VM Windows. La compilation et des tests basiques peuvent être faits avec `wine`, mais la validation finale (affichage exact dans les Paramètres Windows) doit se faire sur Windows réel.
 
 #### Configuration installer (release/installer.iss)
 
