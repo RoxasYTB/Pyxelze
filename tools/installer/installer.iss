@@ -1,10 +1,15 @@
-#define PublishDir "..\..\publish_final"
+#ifndef ReleaseDir
+#define ReleaseDir "..\\..\\publish_with_native"
+#endif
 
 [Setup]
+AppId={{D3B9B9B3-C8C1-4A5A-9DEB-1B9B6B3A6F2E}}
 AppName=Pyxelze
 AppVersion=1.0.1
 DefaultDirName={autopf}\Pyxelze
 DefaultGroupName=Pyxelze
+UninstallDisplayName=Pyxelze
+UninstallDisplayIcon={app}\Pyxelze.exe
 OutputDir=..\..\releases
 OutputBaseFilename=Pyxelze-Setup
 SetupIconFile=..\..\appIcon.ico
@@ -19,7 +24,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 
 [Files]
-Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs; Excludes: "\tools\roxify\roxify,\tools\roxify\roxify\*,\win-x64,\win-x64\*,\artifacts\*,*.tar.gz"
+Source: "{#ReleaseDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs; Excludes: "\tools\roxify\dist\rox.exe,\tools\roxify\roxify,\tools\roxify\roxify\*,\win-x64,\win-x64\*,\artifacts\*,*.tar.gz"
 
 [Icons]
 Name: "{group}\Pyxelze"; Filename: "{app}\Pyxelze.exe"
@@ -54,7 +59,9 @@ var
   ResultCode: Integer;
   ExecOK: Boolean;
   RoxExePath: string;
-  NodePath: string;
+  NodePathA: string;
+  NodePathB: string;
+  NodePathC: string;
 begin
   if CurStep = ssPostInstall then
   begin
@@ -87,11 +94,13 @@ begin
 
     // Verify roxify native artifacts exist (either CLI .exe or native module .node)
     RoxExePath := ExpandConstant('{app}\roxify\roxify_native.exe');
-    NodePath := ExpandConstant('{app}\tools\libroxify_native.node');
+    NodePathA := ExpandConstant('{app}\roxify\libroxify_native.node');
+    NodePathB := ExpandConstant('{app}\libroxify_native.node');
+    NodePathC := ExpandConstant('{app}\tools\roxify\libroxify_native.node');
 
     if FileExists(RoxExePath) then
       ExecOK := Exec(RoxExePath, '--version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-    else if FileExists(NodePath) then
+    else if FileExists(NodePathA) or FileExists(NodePathB) or FileExists(NodePathC) then
       ExecOK := True
     else
       MsgBox('Aucun binaire roxify natif trouvé (ni roxify_native.exe ni libroxify_native.node). Certaines fonctionnalités peuvent être limitées.', mbError, MB_OK);
