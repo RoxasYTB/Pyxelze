@@ -78,6 +78,7 @@ namespace Pyxelze
                     key.SetValue("SubCommands", "open;decode");
                     using (var shellKey = key.CreateSubKey(@"shell"))
                     {
+                        try { shellKey.DeleteSubKeyTree("decompress", false); } catch { }
                         using (var openKey = shellKey.CreateSubKey("open"))
                         {
                             openKey.SetValue("MUIVerb", "Ouvrir l'archive");
