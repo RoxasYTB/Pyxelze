@@ -14,8 +14,8 @@ OutputDir=..\..\releases
 OutputBaseFilename=Pyxelze-Setup
 PrivilegesRequired=admin
 SetupIconFile=..\..\appIcon.ico
-Compression=lzma
-SolidCompression=yes
+Compression=none
+SolidCompression=no
 ArchitecturesInstallIn64BitMode=x64
 CloseApplications=force
 RestartApplications=yes
@@ -33,7 +33,6 @@ Name: "{commondesktop}\Pyxelze"; Filename: "{app}\Pyxelze.exe"; Tasks: desktopic
 
 [Tasks]
 Name: "desktopicon"; Description: "Créer une icône sur le bureau"; GroupDescription: "Icônes additionnelles:"
-Name: "defenderexcl"; Description: "Ajouter une exclusion Windows Defender pour Pyxelze (recommandé)"; GroupDescription: "Sécurité:"
 
 
 
@@ -96,21 +95,8 @@ begin
       MsgBox('La commande d''enregistrement du menu contextuel a renvoyé le code ' + IntToStr(ResultCode) + '. Si le problème persiste, vérifie le binaire dans le dossier d''installation.', mbError, MB_OK);
     end;
 
-    // If the user asked, try to add a Windows Defender exclusion for the roxify folder
-    if WizardIsTaskSelected('defenderexcl') then
-    begin
-      if FileExists(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe')) then
-      begin
-        Cmd := '-NoProfile -ExecutionPolicy Bypass -Command "try { Add-MpPreference -ExclusionPath ''' + ExpandConstant('{app}\roxify') + ''' -ErrorAction Stop; exit 0 } catch { exit 1 }"';
-        ExecOK := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Cmd, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-        if not ExecOK or (ResultCode <> 0) then
-        begin
-          MsgBox('Impossible d''ajouter automatiquement l''exclusion Windows Defender pour : ' + ExpandConstant('{app}\roxify') + #13#10 + 'Tu peux l''ajouter manuellement depuis Sécurité Windows → Protection contre les virus et menaces → Gérer les paramètres → Exclusions.', mbInformation, MB_OK);
-        end;
-      end
-      else
-        MsgBox('PowerShell introuvable; impossible d''ajouter l''exclusion Windows Defender automatiquement.', mbInformation, MB_OK);
-    end;
+    if FileExists(ExpandConstant('{app}\roxify')) then
+      MsgBox('Si nécessaire, tu peux ajouter une exclusion manuellement dans Sécurité Windows → Protection contre les virus et menaces → Gérer les paramètres → Exclusions en ajoutant le dossier : ' + ExpandConstant('{app}\roxify'), mbInformation, MB_OK);
 
     // Verify roxify native artifacts exist (either CLI .exe or native module .node)
     RoxExePath := ExpandConstant('{app}\roxify\roxify_native.exe');

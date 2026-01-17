@@ -78,6 +78,38 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Installer built, outputs placed in: $OUT_DIR"
+
+if command -v sha256sum >/dev/null 2>&1; then
+  echo "Generating SHA256 checksums for installer(s)..."
+  > "$OUT_DIR/sha256sums.txt"
+  for f in "$OUT_DIR"/*.exe; do
+    [ -f "$f" ] || continue
+    sha256sum "$f" >> "$OUT_DIR/sha256sums.txt"
+  done
+  echo "Checksums written to $OUT_DIR/sha256sums.txt"
+else
+  echo "Warning: sha256sum not found; skipping checksum generation."
+fi
+
+if [ -n "${SIGN_PFX:-}" ] && command -v osslsigncode >/dev/null 2>&1; then
+  for f in "$OUT_DIR"/*.exe; do
+    [ -f "$f" ] || continue
+    echo "Signing $f with osslsigncode..."
+    tmpf="${f}.signed"
+    if osslsigncode sign -pkcs12 "$SIGN_PFX" -pass "${SIGN_PFX_PASS:-}" -n "Pyxelze" -i "https://pyxelze.example" -in "$f" -out "$tmpf"; then
+      mv "$tmpf" "$f"
+      echo "Signed $f"
+    else
+      echo "Signing failed for $f"
+      rm -f "$tmpf"
+    fi
+  done
+else
+  if [ -n "${SIGN_PFX:-}" ]; then
+    echo "Signing requested but osslsigncode not found; skipping sign step."
+  fi
+fi
+
 ls -lh "$OUT_DIR" | sed -n '1,200p'
 
 echo "Done."
