@@ -44,7 +44,7 @@ namespace Pyxelze
                 string command = args[0].ToLower();
                 string target = args[1];
 
-                if (command == "extract" || command == "decompress")
+                if (command == "extract" || command == "decode")
                 {
                     // Run extraction headless (no main UI) and show only the minimal popups
                     ExtractDirectory(target);
@@ -75,7 +75,7 @@ namespace Pyxelze
                     key.SetValue("", "");
                     key.SetValue("MUIVerb", "Pyxelze");
                     key.SetValue("Icon", exePath);
-                    key.SetValue("SubCommands", "open;decompress");
+                    key.SetValue("SubCommands", "open;decode");
                     using (var shellKey = key.CreateSubKey(@"shell"))
                     {
                         using (var openKey = shellKey.CreateSubKey("open"))
@@ -87,14 +87,14 @@ namespace Pyxelze
                                 cmdKey.SetValue("", $"\"{exePath}\" \"%1\"");
                             }
                         }
-                        using (var decodeKey = shellKey.CreateSubKey("decompress"))
+                        using (var decodeKey = shellKey.CreateSubKey("decode"))
                         {
                             decodeKey.SetValue("MUIVerb", "Décoder");
                             decodeKey.SetValue("Icon", exePath);
                             using (var cmdKey = decodeKey.CreateSubKey("command"))
                             {
                                 // Always route through the application so we can prompt for passphrase when necessary
-                                cmdKey.SetValue("", $"\"{exePath}\" decompress \"%1\"");
+                                cmdKey.SetValue("", $"\"{exePath}\" decode \"%1\"");
                             }
                         }
                     }
@@ -146,6 +146,9 @@ namespace Pyxelze
         }
 
         static string LogPath => Path.Combine(Path.GetTempPath(), "pyxelze-debug.log");
+
+        // Build stamp inserted at build time to help verify which build is running
+        public const string BuildStamp = "20260117-1948";
 
         public static void AppendLog(string text)
         {
@@ -272,7 +275,7 @@ namespace Pyxelze
 
             string outputDir = Path.Combine(Path.GetDirectoryName(archivePath) ?? "", Path.GetFileNameWithoutExtension(archivePath));
             Directory.CreateDirectory(outputDir);
-            AppendLog($"ExtractDirectory start: archive={archivePath} output={outputDir}");
+            AppendLog($"ExtractDirectory start: archive={archivePath} output={outputDir} (build {BuildStamp})");
 
             // Quick test: verify we can create a file in the output directory without elevation.
             bool canWriteToOutput = true;
@@ -296,7 +299,7 @@ namespace Pyxelze
                 {
                     string tempDir = Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N"));
                     Directory.CreateDirectory(tempDir);
-                    var psi2 = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" \"{tempDir}\"");
+                    var psi2 = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" \"{tempDir}\"");
                     psi2.WorkingDirectory = tempDir;
                     try { psi2.EnvironmentVariables["TMP"] = tempDir; psi2.EnvironmentVariables["TEMP"] = tempDir; } catch { }
 
@@ -365,14 +368,14 @@ namespace Pyxelze
                 ProcessStartInfo psi;
                 if (filePaths != null && filePaths.Count > 0)
                 {
-                    var filesArg = string.Join(",", filePaths.Select(f => $"\"{f}\""));
-                    psi = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" --files {filesArg} \"{outputDir}\"");
-                    AppendLog($"Using --files with {filePaths.Count} entries");
+                    // Prefer a simple decode (avoids building long --files lists which may hit command-line or quoting issues)
+                    psi = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" \"{outputDir}\"");
+                    AppendLog($"Using decode to extract; files: {filePaths.Count} entries");
                 }
                 else
                 {
-                    psi = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" \"{outputDir}\"");
-                    AppendLog("No files parsed from rox list; falling back to direct decompress (legacy behavior)");
+                    psi = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" \"{outputDir}\"");
+                    AppendLog("No files parsed from rox list; using decode (legacy fallback)");
                 }
 
                 AppendLog($"Run command: {psi.FileName} {psi.Arguments}");
@@ -393,16 +396,7 @@ namespace Pyxelze
                         }
 
                         var esc = pass.Replace("\"", "\\\"");
-                        ProcessStartInfo psiPass;
-                        if (filePaths != null && filePaths.Count > 0)
-                        {
-                            var filesArg = string.Join(",", filePaths.Select(fa => $"\"{fa}\""));
-                            psiPass = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" --passphrase \"{esc}\" --files {filesArg} \"{outputDir}\"");
-                        }
-                        else
-                        {
-                            psiPass = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" --passphrase \"{esc}\" \"{outputDir}\"");
-                        }
+                        var psiPass = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" --passphrase \"{esc}\" \"{outputDir}\"");
 
                         AppendLog($"Run command (with passphrase): {psiPass.FileName} {psiPass.Arguments}");
                         string stdout2, stderr2;
@@ -905,7 +899,7 @@ namespace Pyxelze
                                         AppendLog($"Post-manual AV retry attempt {attempt}/{postDelays.Length}");
                                         if (attempt > 1) Thread.Sleep(postDelays[attempt - 2]);
 
-                                        var psiRetry = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" \"{outputDir}\"");
+                                        var psiRetry = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" \"{outputDir}\"");
                                         psiRetry.WorkingDirectory = outputDir;
                                         try { psiRetry.EnvironmentVariables["TMP"] = outputDir; psiRetry.EnvironmentVariables["TEMP"] = outputDir; } catch { }
 
@@ -940,7 +934,7 @@ namespace Pyxelze
 
                             string tempDir = Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N"));
                             Directory.CreateDirectory(tempDir);
-                            var psi2 = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" \"{tempDir}\"");
+                            var psi2 = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" \"{tempDir}\"");
                             psi2.WorkingDirectory = tempDir;
                             try { psi2.EnvironmentVariables["TMP"] = tempDir; psi2.EnvironmentVariables["TEMP"] = tempDir; } catch { }
                             string stdout2, stderr2;
