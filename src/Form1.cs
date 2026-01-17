@@ -1126,7 +1126,7 @@ readme.txt (100 bytes)
 
             try
             {
-                // Use native decompress with --files to extract only the requested file
+                // Use a simpler decode command to extract the requested file (avoid long --files lists which can exceed command-line limits) // will extract into a temp dir and pick the requested file out of it
                 var tempOut = Path.Combine(Path.GetTempPath(), "pyxelze_extract_" + Guid.NewGuid().ToString("N"));
                 try
                 {
@@ -1262,6 +1262,8 @@ readme.txt (100 bytes)
                 Directory.CreateDirectory(tempOut);
                 var safeList = internalPaths.Select(s => s.Replace('\\', '/').Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
                 var filesArg = string.Join(",", safeList);
+
+                // Run a simple decode into the temp folder. If a passphrase is required, prompt and retry (same UX as single-file extract).
                 var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempOut}\"");
                 try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles: {psi.FileName} {psi.Arguments}\n"); } catch { }
                 using (var p = Process.Start(psi))
@@ -1277,7 +1279,57 @@ readme.txt (100 bytes)
 
                     try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles exit={p.ExitCode}, stdout_len={stdout.Length}, stderr_len={stderr.Length}\nStdout:\n{truncStdout}\nStderr:\n{truncStderr}\n"); } catch { }
 
-                    if (p.ExitCode != 0)
+                    bool needsPass = (stdout?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("AES decryption failed") == true) || (stdout?.Contains("AES decryption failed") == true) || (stderr?.Contains("Encrypted payload") == true) || (stdout?.Contains("Encrypted payload") == true);
+
+                    if (needsPass)
+                    {
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Passphrase required but platform unsupported for ExtractMultipleFiles\n"); } catch { }
+                            return 0;
+                        }
+
+                        string? errorMsg = null;
+                        while (true)
+                        {
+                            var pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+                            if (pass == null) return 0;
+
+                            var esc = pass.Replace("\"", "\\\"");
+                            var psiPass = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{tempOut}\"");
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles with passphrase: {psiPass.FileName} {psiPass.Arguments}\n"); } catch { }
+
+                            using (var p2 = Process.Start(psiPass))
+                            {
+                                var stdout2 = p2!.StandardOutput.ReadToEnd();
+                                var stderr2 = p2.StandardError.ReadToEnd();
+                                p2.WaitForExit();
+
+                                int limit2 = 20000;
+                                string truncStdout2 = stdout2.Length > limit2 ? stdout2.Substring(0, limit2) + "\n...(truncated)..." : stdout2;
+                                string truncStderr2 = stderr2.Length > limit2 ? stderr2.Substring(0, limit2) + "\n...(truncated)..." : stderr2;
+
+                                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles exit={p2.ExitCode}, stdout_len={stdout2.Length}, stderr_len={stderr2.Length}\nStdout:\n{truncStdout2}\nStderr:\n{truncStderr2}\n"); } catch { }
+
+                                if (p2.ExitCode == 0)
+                                {
+                                    break; // success
+                                }
+                                else
+                                {
+                                    if ((stderr2?.Contains("AES decryption failed") == true) || (stdout2?.Contains("AES decryption failed") == true))
+                                    {
+                                        errorMsg = "Mot de passe incorrect";
+                                        continue;
+                                    }
+
+                                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles failed after pass try:\nStdout:\n{stdout2}\nStderr:\n{stderr2}\n"); } catch { }
+                                    return 0;
+                                }
+                            }
+                        }
+                    }
+                    else if (p.ExitCode != 0)
                     {
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles failed: exit={p.ExitCode}\nCommand: {psi.FileName} {psi.Arguments}\nStdout:\n{truncStdout}\nStderr:\n{truncStderr}\n"); } catch { }
                         return 0;

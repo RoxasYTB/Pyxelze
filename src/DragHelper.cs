@@ -46,7 +46,7 @@ namespace Pyxelze
                   return actual;
             }
 
-            // Prépare un dossier temporaire contenant les items sélectionnés en utilisant --files.
+            // Prépare un dossier temporaire contenant les items sélectionnés (extraction via decode, éviter les longues listes --files).
             // Extrait les fichiers en préservant leur structure mais retourne uniquement les chemins de premier niveau
             public class ExtractionJob
             {
