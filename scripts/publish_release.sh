@@ -24,18 +24,21 @@ echo "🔧 Removing old release dir and recreating: $RELEASE_DIR"
 rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
 
+if [ "$(id -u)" -eq 0 ]; then
+  echo "⚠️  Attention: tu exécutes le script en tant que root (sudo). Il est recommandé d'exécuter ce script sans sudo pour éviter des problèmes de permissions lors de la copie des artefacts (roxify_native.exe)."
+fi
+
 echo "🔧 Build: dotnet build (Release)"
 dotnet build -c Release --no-incremental
 
-echo "📦 Build roxify (npm -> cargo if available)"
-if command -v npm >/dev/null 2>&1; then
-  if [ -d "$ROOT_DIR/tools/roxify" ]; then
-    (cd "$ROOT_DIR/tools/roxify" && npm ci && npm run build:exe) || echo "⚠️  roxify build failed (continuing)"
-  else
-    echo "⚠️  $ROOT_DIR/tools/roxify not found — skipping npm build"
-  fi
+echo "📦 Using prebuilt roxify_native.exe (no npm build)"
+# Prefer global build location or local tools build if present. Do not run npm here.
+if [ -f "/home/yohan/roxify/dist/roxify_native.exe" ]; then
+  echo "✅ Found global roxify_native.exe at /home/yohan/roxify/dist/roxify_native.exe"
+elif [ -f "$ROOT_DIR/tools/roxify/dist/roxify_native.exe" ]; then
+  echo "✅ Found local roxify_native.exe at $ROOT_DIR/tools/roxify/dist/roxify_native.exe"
 else
-  echo "⚠️  npm not found — skipping roxify build"
+  echo "⚠️  roxify_native.exe not found in known locations; publish will continue but may be incomplete"
 fi
 
 echo "🔧 dotnet publish -> $PUBLISH_DIR"
@@ -44,8 +47,24 @@ mkdir -p "$PUBLISH_DIR"
 
 dotnet publish -c Release -r win-x64 --no-self-contained -o "$PUBLISH_DIR"
 
+# Ensure roxify_native.exe is present in the publish tree. Try multiple known locations.
+mkdir -p "$PUBLISH_DIR/roxify"
+COPIED=0
+# Preferred global build location
+if [ -f "/home/yohan/roxify/dist/roxify_native.exe" ]; then
+  echo "📥 Copying roxify_native.exe from /home/yohan/roxify/dist"
+  cp -f "/home/yohan/roxify/dist/roxify_native.exe" "$PUBLISH_DIR/roxify/roxify_native.exe" && COPIED=1 || COPIED=0
+fi
+# Local tools build location
+if [ "$COPIED" -eq 0 ] && [ -f "$ROOT_DIR/tools/roxify/dist/roxify_native.exe" ]; then
+  echo "📥 Copying roxify_native.exe from $ROOT_DIR/tools/roxify/dist"
+  cp -f "$ROOT_DIR/tools/roxify/dist/roxify_native.exe" "$PUBLISH_DIR/roxify/roxify_native.exe" && COPIED=1 || COPIED=0
+fi
+
 if [ ! -f "$PUBLISH_DIR/roxify/roxify_native.exe" ]; then
   echo "⚠️  roxify_native.exe not found in $PUBLISH_DIR/roxify — publish may be incomplete"
+else
+  echo "✅ roxify_native.exe copied to $PUBLISH_DIR/roxify/roxify_native.exe"
 fi
 
 # Attempt to build installer if requested and possible

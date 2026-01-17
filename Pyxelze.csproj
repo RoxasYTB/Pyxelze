@@ -6,6 +6,7 @@
             <UseWindowsForms>true</UseWindowsForms>
             <ImplicitUsings>enable</ImplicitUsings>
             <Nullable>enable</Nullable>
+            <NoWarn>NETSDK1138</NoWarn>
             <ApplicationIcon>appIcon.ico</ApplicationIcon>
             <!-- Disable SDK-generated assembly attributes to avoid duplicate attribute issues -->
             <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -30,11 +31,8 @@
             <Compile Remove="dnd_test\**\*.cs" />
       </ItemGroup>
       <Target Name="BuildRoxifyCli" BeforeTargets="BeforeBuild">
-            <Exec Command="where node" IgnoreExitCode="true" />
-            <Exec Command="npm ci" WorkingDirectory="$(ProjectDir)tools\roxify"
-                  ContinueOnError="true" />
-            <Exec Command="npm run build:exe" WorkingDirectory="$(ProjectDir)tools\roxify"
-                  ContinueOnError="true" />
+            <Message Importance="low"
+                  Text="Skipping roxify build during dotnet build: rely on prebuilt roxify_native.exe in tools/roxify/dist or /home/yohan/roxify/dist." />
             <ItemGroup>
                   <RoxifyDistFiles Include="$(ProjectDir)tools\roxify\dist\**\*.*"
                         Condition="Exists('$(ProjectDir)tools\roxify\dist')" />

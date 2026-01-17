@@ -37,6 +37,16 @@ if [ ! -d "$PUBLISH_DIR" ]; then
   fi
 fi
 
+# Ensure roxify_native.exe is present before attempting installer build
+if [ ! -f "$PUBLISH_DIR/roxify/roxify_native.exe" ]; then
+  echo "ERROR: roxify_native.exe not found in publish tree: $PUBLISH_DIR/roxify/roxify_native.exe"
+  echo "Please ensure the prebuilt roxify_native.exe is available in one of these locations before building the installer:"
+  echo "  - /home/yohan/roxify/dist/roxify_native.exe"
+  echo "  - $ROOT_DIR/tools/roxify/dist/roxify_native.exe"
+  echo "You can run: scripts/publish_release.sh (without sudo) to copy it into the publish tree if present locally."
+  exit 1
+fi
+
 rm -rf "$OUT_DIR" && mkdir -p "$OUT_DIR"
 
 if [[ "${OS:-}" == "Windows_NT" || -n "${WINDIR:-}" ]]; then

@@ -130,30 +130,17 @@ Ce script :
 
 ---
 
-### Build CLI (rox.exe)
+### Build CLI (roxify native)
 
-#### Depuis tools/roxify
+To build the latest native Windows CLI from the published package, run the helper script from the repository root:
 
-```cmd
-cd tools\roxify
-npm ci
-npm run build:exe
-cd ..\..
+```bash
+./scripts/build_roxify_native.sh
 ```
 
-Sortie : `tools\roxify\dist\` (contient `roxify_native.exe` (et peut contenir `rox.exe`), `node.exe`, `rox.cmd`, `install-rox.cmd`, `node_modules`)
+This script fetches `roxify@latest`, compiles the Rust native component for Windows and places artifacts into `tools/roxify/dist/` and `tools/roxify/node_modules/roxify/`.
 
-> **Remarque** : `rox.exe` peut encore être produit par le packaging (pkg), mais il n'est pas obligatoire pour Pyxelze — nous utilisons de préférence `roxify_native.exe` pour la distribution Windows.
-
-#### Workflow complet :
-
-1. `npm run build:exe` → bundle esbuild (`rox-bundle.cjs`) et compilation du binaire natif (`roxify_native.exe`).
-
-> **Remarque** : par défaut `pkg` **n'est pas** exécuté. Si tu souhaites générer le binaire empaqueté Windows `rox.exe` (optionnel), exécute : `npm run build:pkg:full` dans `tools/roxify`. 2. Postbuild script (`scripts/postbuild.js`) copie :
-
-- `rox.exe` + `node.exe` → `dist/`
-- `node_modules/` → `dist/node_modules/`
-- `rox.cmd`, `install-rox.cmd` → `dist/`
+Note: Building `rox.exe` via `pkg` is deprecated and is not required for Pyxelze; `roxify_native.exe` is the preferred Windows CLI for distribution.
 
 ---
 
@@ -243,10 +230,8 @@ cd tools\roxify
 npm ci
 cd ..\..
 
-# 2. Build CLI rox.exe
-cd tools\roxify
-npm run build:exe
-cd ..\..
+# 2. Build CLI (native)
+./scripts/build_roxify_native.sh
 
 # 3. Créer production unifié (GUI + CLI)
 build_production.cmd
@@ -282,10 +267,12 @@ Résultat final : `release\Pyxelze-Setup.exe` (~200 sec de compilation)
 **Sorties** :
 
 - `production\Pyxelze.exe` (GUI)
-- `production\rox.exe` (CLI)
-- `production\node.exe` (Node.js runtime pour rox)
+- `production\roxify_native.exe` (CLI) ou `libroxify_native.node` (si usage natif)
+- `production\node.exe` (Node.js runtime pour roxify)
 - `production\rox.cmd` (wrapper Windows)
 - `production\node_modules\` (dépendances roxify)
+
+Note: `rox.exe` produced via `pkg` is deprecated and is not included by default.
 
 ---
 
@@ -330,25 +317,20 @@ Résultat final : `release\Pyxelze-Setup.exe` (~200 sec de compilation)
 
 ---
 
-### tools/roxify/build.cmd
+### tools/roxify/build.cmd (legacy)
 
-**Objectif** : Build CLI rox.exe avec esbuild + pkg.
+**Objectif** : Ancien workflow pour créer `rox.exe` via `pkg` (deprecated). Préfère la compilation native.
 
-**Étapes** :
+**Notes** :
 
-1. `npm ci` : Installe dépendances (roxify, pkg, esbuild)
-2. `npm run build:exe` :
-   - `esbuild` bundle `node_modules/roxify/dist/cli.js` → `build/rox-bundle.cjs`
-   - `scripts/postbuild.js` :
-     - Compile `rox-bundle.cjs` avec `pkg` → `rox.exe`
-     - Copie `rox.exe`, `node.exe`, `node_modules/`, `rox.cmd`, `install-rox.cmd` → `dist/`
+- Use `./scripts/build_roxify_native.sh` to fetch `roxify@latest` and build the native Windows CLI (`roxify_native.exe`).
+- The `pkg`-based `rox.exe` build is deprecated and not required for Pyxelze.
 
-**Sorties** :
+**Sorties (actuelles)** :
 
-- `tools\roxify\dist\rox.exe`
+- `tools\roxify\dist\roxify_native.exe` (preferred)
 - `tools\roxify\dist\node.exe`
-- `tools\roxify\dist\rox.cmd`
-- `tools\roxify\dist\install-rox.cmd`
+- `tools\roxify\dist\rox.cmd` (wrapper)
 - `tools\roxify\dist\node_modules\` (dépendances runtime)
 
 ---

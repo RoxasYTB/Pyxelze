@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Win32;
 using System.Drawing.Drawing2D;
 using System.Text.Json;
+using System.Runtime.Versioning;
 
 namespace Pyxelze
 {
@@ -218,8 +219,13 @@ namespace Pyxelze
 
                 using (var p = Process.Start(psi))
                 {
+                    if (p == null)
+                    {
+                        MessageBox.Show("Impossible de lancer roxify.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
                     // Read output/error asynchronously and wait with timeout to avoid UI hang
-                    var outTask = Task.Run(() => p!.StandardOutput.ReadToEnd());
+                    var outTask = Task.Run(() => p.StandardOutput.ReadToEnd());
                     var errTask = Task.Run(() => p.StandardError.ReadToEnd());
 
                     const int timeoutMs = 10000; // 10 seconds
@@ -775,6 +781,76 @@ readme.txt (100 bytes)
                         }
                         else
                         {
+                            // If roxify requested a passphrase, prompt and retry once
+                            bool needsPass = (stdout2?.Contains("Passphrase required for AES decryption") == true) || (stderr2?.Contains("Passphrase required for AES decryption") == true) || (stderr2?.Contains("AES decryption failed") == true) || (stdout2?.Contains("AES decryption failed") == true) || (stderr2?.Contains("Encrypted payload") == true) || (stdout2?.Contains("Encrypted payload") == true);
+                            if (needsPass)
+                            {
+                                if (!OperatingSystem.IsWindows())
+                                {
+                                    MessageBox.Show("Passphrase requise mais non prise en charge sur cette plateforme.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    try { Directory.Delete(tempDir, true); } catch { }
+                                    return;
+                                }
+
+                                string? errorMsg = null;
+                                while (true)
+                                {
+                                    var pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+                                    if (pass == null)
+                                    {
+                                        try { Directory.Delete(tempDir, true); } catch { }
+                                        MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                        return;
+                                    }
+
+                                    var esc = pass.Replace("\"", "\\\"");
+                                    var psiPass = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --passphrase \"{esc}\" \"{tempDir}\"");
+                                    psiPass.WorkingDirectory = tempDir;
+                                    try { psiPass.EnvironmentVariables["TMP"] = tempDir; psiPass.EnvironmentVariables["TEMP"] = tempDir; } catch { }
+
+                                    string stdout3, stderr3;
+                                    using (var f3 = new ProcessProgressForm("Déchiffrement en cours", "Déchiffrement en cours..."))
+                                    {
+                                        int exit3 = f3.RunProcess(psiPass, out stdout3, out stderr3);
+                                        if (exit3 == 0)
+                                        {
+                                            foreach (var entry in Directory.EnumerateFileSystemEntries(tempDir))
+                                            {
+                                                var name = Path.GetFileName(entry);
+                                                var dest = Path.Combine(destFolder, name);
+                                                if (Directory.Exists(entry))
+                                                {
+                                                    if (Directory.Exists(dest)) Directory.Delete(dest, true);
+                                                    Program.CopyDirectory(entry, dest);
+                                                }
+                                                else if (File.Exists(entry))
+                                                {
+                                                    if (File.Exists(dest)) File.Delete(dest);
+                                                    File.Copy(entry, dest, true);
+                                                }
+                                            }
+                                            try { Directory.Delete(tempDir, true); } catch { }
+                                            MessageBox.Show($"Extraction réussie vers :\n{destFolder}\n\nRemarque: extraction effectuée via un répertoire temporaire (chiffrée).", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                            if (autoExtractMode) this.Close();
+                                            return;
+                                        }
+                                        else
+                                        {
+                                            // If decryption failed due to bad passphrase, prompt again with error message in red
+                                            if ((stderr3?.Contains("AES decryption failed") == true) || (stdout3?.Contains("AES decryption failed") == true))
+                                            {
+                                                errorMsg = "Mot de passe incorrect";
+                                                continue;
+                                            }
+
+                                            try { Directory.Delete(tempDir, true); } catch { }
+                                            MessageBox.Show($"Erreur lors du déchiffrement :\n{stderr3}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+
                             try { Directory.Delete(tempDir, true); } catch { }
                             MessageBox.Show("Aucun fichier trouvé dans l'archive.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             return;
@@ -789,6 +865,69 @@ readme.txt (100 bytes)
                 using (var f = new ProcessProgressForm("Extraction en cours", $"Extraction de {Path.GetFileName(currentArchive)}..."))
                 {
                     int exit = f.RunProcess(psi, out stdout, out stderr);
+
+                    // If roxify requested a passphrase, prompt and retry once
+                    bool needsPassphrase = (stdout?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("AES decryption failed") == true) || (stdout?.Contains("AES decryption failed") == true) || (stderr?.Contains("Encrypted payload") == true) || (stdout?.Contains("Encrypted payload") == true);
+                    if (needsPassphrase)
+                    {
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            MessageBox.Show("Passphrase requise mais non prise en charge sur cette plateforme.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+
+                        string? errorMsg2 = null;
+                        while (true)
+                        {
+                            var pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg2);
+                            if (pass == null)
+                            {
+                                MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                return;
+                            }
+
+                            var esc = pass.Replace("\"", "\\\"");
+                            var psiPass = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --passphrase \"{esc}\" --files {filesArg} \"{destFolder}\"");
+
+                            string stdout3, stderr3;
+                            using (var f3 = new ProcessProgressForm("Déchiffrement en cours", "Déchiffrement en cours..."))
+                            {
+                                int exit3 = f3.RunProcess(psiPass, out stdout3, out stderr3);
+                                if (exit3 == 0)
+                                {
+                                    bool hasEntries3 = false;
+                                    if (Directory.Exists(destFolder))
+                                    {
+                                        var enumerator3 = Directory.EnumerateFileSystemEntries(destFolder).GetEnumerator();
+                                        hasEntries3 = enumerator3.MoveNext();
+                                    }
+                                    if (hasEntries3)
+                                    {
+                                        MessageBox.Show($"Extraction réussie vers :\n{destFolder}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                        if (autoExtractMode) this.Close();
+                                        return;
+                                    }
+                                    else
+                                    {
+                                        MessageBox.Show($"Erreur lors du déchiffrement : aucun fichier créé.\n\nErreur : {stderr3}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                        return;
+                                    }
+                                }
+                                else
+                                {
+                                    if ((stderr3?.Contains("AES decryption failed") == true) || (stdout3?.Contains("AES decryption failed") == true))
+                                    {
+                                        errorMsg2 = "Mot de passe incorrect";
+                                        continue;
+                                    }
+
+                                    MessageBox.Show($"Erreur lors du déchiffrement.\n\nErreur : {stderr3}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
                     if (exit == 0)
                     {
                         bool hasEntries = false;
