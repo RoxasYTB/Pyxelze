@@ -19,25 +19,39 @@ namespace Pyxelze
 
             public static void InitializeFromRegistry()
             {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                   using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Pyxelze"))
                   {
                         if (key != null)
                         {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                               var v = key.GetValue("DarkMode");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                               if (v is int i) DarkMode = i != 0;
                               else if (v is string s && int.TryParse(s, out int j)) DarkMode = j != 0;
                         }
                   }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
             }
 
             public static void SetDarkMode(bool on)
             {
                   if (DarkMode == on) return;
                   DarkMode = on;
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                   using (var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Pyxelze"))
                   {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         key.SetValue("DarkMode", on ? 1 : 0, Microsoft.Win32.RegistryValueKind.DWord);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                   }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                   ApplyToAllOpenForms();
             }
 

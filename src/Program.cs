@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.Runtime.Versioning;
 
 namespace Pyxelze
 {
     static class Program
     {
+        [SupportedOSPlatform("windows")]
         [STAThread]
         static void Main(string[] args)
         {
@@ -17,11 +19,21 @@ namespace Pyxelze
                 var cmd = args[0].ToLower();
                 if (cmd == "register-contextmenu")
                 {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        MessageBox.Show("L'opération d'intégration au menu contextuel est réservée à Windows.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
                     RegisterContextMenu();
                     return;
                 }
                 else if (cmd == "unregister-contextmenu")
                 {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        MessageBox.Show("L'opération de suppression du menu contextuel est réservée à Windows.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
                     UnregisterContextMenu();
                     return;
                 }
@@ -51,6 +63,7 @@ namespace Pyxelze
 
         // These methods are executed when the app is relaunched with elevation
         // as e.g. `Pyxelze.exe register-contextmenu`
+        [SupportedOSPlatform("windows")]
         static void RegisterContextMenu()
         {
             try
@@ -76,22 +89,12 @@ namespace Pyxelze
                         }
                         using (var decodeKey = shellKey.CreateSubKey("decompress"))
                         {
-                            decodeKey.SetValue("MUIVerb", "Décoder l'archive ROX");
+                            decodeKey.SetValue("MUIVerb", "Décoder");
                             decodeKey.SetValue("Icon", exePath);
                             using (var cmdKey = decodeKey.CreateSubKey("command"))
                             {
-                                var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
-                                if (File.Exists(roxPath))
-                                {
-                                    // Use cmd loop to compute output directory from input file: output -> same folder, same name as file without extension
-                                    // e.g. for %1 -> for %I in ("%1") do "C:\...\roxify_native.exe" decompress "%~I" "%~dpnI"
-                                    cmdKey.SetValue("", $"\"{exePath}\" decompress \"%1\"");
-                                }
-                                else
-                                {
-                                    // fall back to using Pyxelze's internal handler
-                                    cmdKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
-                                }
+                                // Always route through the application so we can prompt for passphrase when necessary
+                                cmdKey.SetValue("", $"\"{exePath}\" decompress \"%1\"");
                             }
                         }
                     }
@@ -107,20 +110,12 @@ namespace Pyxelze
                     {
                         using (var encodeKey = shellKey.CreateSubKey("encode"))
                         {
-                            encodeKey.SetValue("MUIVerb", "Encoder en archive ROX");
+                            encodeKey.SetValue("MUIVerb", "Encoder");
                             encodeKey.SetValue("Icon", exePath);
                             using (var cmdKey = encodeKey.CreateSubKey("command"))
                             {
-                                var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
-                                if (File.Exists(roxPath))
-                                {
-                                    // Compute output file as <parent>\<dirname>.png using cmd for loop: %~dpnI expands to drive+path+name
-                                    cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
-                                }
-                                else
-                                {
-                                    cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
-                                }
+                                // Always route through the application so we can prompt for passphrase when encoding
+                                cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
                             }
                         }
                     }
@@ -134,6 +129,7 @@ namespace Pyxelze
             }
         }
 
+        [SupportedOSPlatform("windows")]
         static void UnregisterContextMenu()
         {
             try
@@ -176,6 +172,7 @@ namespace Pyxelze
         }
 
         // Collect diagnostics when extraction fails with an access denied error
+        [SupportedOSPlatform("windows")]
         static string CollectExtractionDiagnostics(string archivePath, string outputDir, ProcessStartInfo psi)
         {
             var sb = new System.Text.StringBuilder();
@@ -383,6 +380,68 @@ namespace Pyxelze
                 using (var f = new ProcessProgressForm("Extraction en cours", $"Extraction de {Path.GetFileName(archivePath)}..."))
                 {
                     int exit = f.RunProcess(psi, out stdout, out stderr);
+
+                    // If roxify told us a passphrase is required, prompt once and retry with the provided passphrase
+                    bool needsPassphrase = (stdout?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true);
+                    if (needsPassphrase)
+                    {
+                        var pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :");
+                        if (pass == null)
+                        {
+                            MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return;
+                        }
+
+                        var esc = pass.Replace("\"", "\\\"");
+                        ProcessStartInfo psiPass;
+                        if (filePaths != null && filePaths.Count > 0)
+                        {
+                            var filesArg = string.Join(",", filePaths.Select(fa => $"\"{fa}\""));
+                            psiPass = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" --passphrase \"{esc}\" --files {filesArg} \"{outputDir}\"");
+                        }
+                        else
+                        {
+                            psiPass = RoxRunner.CreateRoxProcess($"decompress \"{archivePath}\" --passphrase \"{esc}\" \"{outputDir}\"");
+                        }
+
+                        AppendLog($"Run command (with passphrase): {psiPass.FileName} {psiPass.Arguments}");
+                        string stdout2, stderr2;
+                        using (var f2 = new ProcessProgressForm("Déchiffrement en cours", "Déchiffrement en cours..."))
+                        {
+                            int exit2 = f2.RunProcess(psiPass, out stdout2, out stderr2);
+                            AppendLog($"Decrypt attempt exit={exit2} stdout_len={stdout2?.Length ?? 0} stderr_len={stderr2?.Length ?? 0}");
+
+                            bool hasEntries2 = false;
+                            if (Directory.Exists(outputDir))
+                            {
+                                var enumerator2 = Directory.EnumerateFileSystemEntries(outputDir).GetEnumerator();
+                                hasEntries2 = enumerator2.MoveNext();
+                            }
+                            else if (File.Exists(outputDir))
+                            {
+                                var fi2 = new FileInfo(outputDir);
+                                hasEntries2 = fi2.Length > 0;
+                            }
+
+                            if (exit2 == 0 && hasEntries2)
+                            {
+                                MessageBox.Show($"Extraction réussie vers :\n{outputDir}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                try { Directory.Delete(Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N")), true); } catch { }
+                                return;
+                            }
+                            else
+                            {
+                                var details2 = new System.Text.StringBuilder();
+                                details2.AppendLine($"Commande: {psiPass.FileName} {psiPass.Arguments}");
+                                details2.AppendLine($"Exit code: {exit2}");
+                                if (!string.IsNullOrEmpty(stdout2)) { details2.AppendLine("--- Output ---"); details2.AppendLine(stdout2); }
+                                if (!string.IsNullOrEmpty(stderr2)) { details2.AppendLine("--- Erreur ---"); details2.AppendLine(stderr2); }
+                                MessageBox.Show($"Erreur lors du déchiffrement :\n\n{details2}\n\nVoir le journal: {LogPath}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                return;
+                            }
+                        }
+                    }
+
                     if (exit == 0)
                     {
                         bool hasEntries = false;
@@ -413,17 +472,16 @@ namespace Pyxelze
                             if (!string.IsNullOrEmpty(stderr)) { details.AppendLine("--- Erreur ---"); details.AppendLine(stderr); }
                             if (!string.IsNullOrEmpty(err) && (err.Contains("Accès refusé") || err.Contains("access denied") || err.Contains("os error 5")))
                             {
-                                details.AppendLine();
-                                details.AppendLine("Astuce: Vérifie les permissions d'écriture sur le dossier cible, exécute l'application en tant qu'administrateur ou vérifie un antivirus qui bloquerait l'écriture.");
-                                details.AppendLine("Conseil: installe Pyxelze en tant qu'administrateur et utilise l'option 'Ajouter une exclusion Windows Defender pour Pyxelze' dans l'installateur, ou ajoute manuellement une exclusion pour le dossier \"C:\\Program Files\\Pyxelze\\roxify\" et pour ton répertoire TEMP (%TEMP%).");
-
                                 try
                                 {
-                                    var diag = CollectExtractionDiagnostics(archivePath, outputDir, psi);
-                                    details.AppendLine();
-                                    details.AppendLine("--- Diagnostic (auto-collect) ---");
-                                    details.AppendLine(diag);
-                                    details.AppendLine("--- End Diagnostic ---");
+                                    if (OperatingSystem.IsWindows())
+                                    {
+                                        var diag = CollectExtractionDiagnostics(archivePath, outputDir, psi);
+                                        details.AppendLine();
+                                        details.AppendLine("--- Diagnostic (auto-collect) ---");
+                                        details.AppendLine(diag);
+                                        details.AppendLine("--- End Diagnostic ---");
+                                    }
                                 }
                                 catch { }
 
@@ -732,11 +790,14 @@ namespace Pyxelze
                             details.AppendLine("Conseil: installe Pyxelze en tant qu'administrateur et utilise l'option 'Ajouter une exclusion Windows Defender pour Pyxelze' dans l'installateur, ou ajoute manuellement une exclusion pour le dossier \"C:\\Program Files\\Pyxelze\\roxify\" et pour ton répertoire TEMP (%TEMP%).");
                             try
                             {
-                                var diag = CollectExtractionDiagnostics(archivePath, outputDir, psi);
-                                details.AppendLine();
-                                details.AppendLine("--- Diagnostic (auto-collect) ---");
-                                details.AppendLine(diag);
-                                details.AppendLine("--- End Diagnostic ---");
+                                if (OperatingSystem.IsWindows())
+                                {
+                                    var diag = CollectExtractionDiagnostics(archivePath, outputDir, psi);
+                                    details.AppendLine();
+                                    details.AppendLine("--- Diagnostic (auto-collect) ---");
+                                    details.AppendLine(diag);
+                                    details.AppendLine("--- End Diagnostic ---");
+                                }
                             }
                             catch { }
 
@@ -1021,7 +1082,15 @@ namespace Pyxelze
 
             try
             {
-                var psi = RoxRunner.CreateRoxProcess($"encode \"{dirPath}\" \"{outputFile}\"");
+                string? pass = PassphrasePrompt.Prompt("Passphrase (optionnel)", "Saisir une passphrase pour chiffrer (laisser vide pour ne pas chiffrer) :");
+                if (pass == null)
+                {
+                    AppendLog("Compress cancelled by user");
+                    MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                var passArg = string.IsNullOrEmpty(pass) ? string.Empty : $" --passphrase \"{pass.Replace("\"", "\\\"")}\"";
+                var psi = RoxRunner.CreateRoxProcess($"encode \"{dirPath}\" \"{outputFile}\"{passArg}");
                 AppendLog($"Run command: {psi.FileName} {psi.Arguments}");
                 string stdout, stderr;
                 using (var f = new ProcessProgressForm("Encodage en cours", $"Encodage de {Path.GetFileName(dirPath)}..."))

@@ -86,7 +86,9 @@ namespace Pyxelze
             try
             {
                 var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appIcon.ico");
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                 if (File.Exists(iconPath)) this.Icon = new Icon(iconPath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
             }
             catch { }
 
@@ -591,7 +593,11 @@ readme.txt (100 bytes)
             Color back = ThemeManager.ListViewHeaderBack;
             Color fore = ThemeManager.ControlFore;
 
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
             using (var b = new SolidBrush(back)) e.Graphics.FillRectangle(b, e.Bounds);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
             TextFormatFlags flags = TextFormatFlags.VerticalCenter | TextFormatFlags.Left;
             TextRenderer.DrawText(e.Graphics, e.Header!.Text, e.Font!, e.Bounds, fore, flags);
         }
@@ -603,7 +609,11 @@ readme.txt (100 bytes)
             int headerHeight = textH + 12;
             var rect = new Rectangle(0, 0, listView.ClientSize.Width, headerHeight + 2);
             Color back = ThemeManager.ListViewHeaderBack;
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
             using (var b = new SolidBrush(back)) e.Graphics.FillRectangle(b, rect);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
         }
 
         private void ListView_DrawItem(object? sender, DrawListViewItemEventArgs e)
@@ -633,7 +643,11 @@ readme.txt (100 bytes)
                 back = hoverColor;
             }
 
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
             using (var b = new SolidBrush(back)) e.Graphics.FillRectangle(b, bounds);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
 
             if (e.ColumnIndex == 0)
             {
@@ -651,7 +665,9 @@ readme.txt (100 bytes)
                 {
                     int iconLeft = bounds.Left + 2;
                     int iconTop = bounds.Top + (bounds.Height - smallImageList.ImageSize.Height) / 2;
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                     e.Graphics.DrawImage(img, new Rectangle(iconLeft, iconTop, iconWidth, smallImageList.ImageSize.Height));
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                 }
 
                 // Draw Text
@@ -1124,7 +1140,52 @@ readme.txt (100 bytes)
                         var stderr = p.StandardError.ReadToEnd();
                         p.WaitForExit();
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Exit={p.ExitCode}, stdout={stdout.Length} bytes, stderr={stderr.Length} bytes\n"); } catch { }
-                        if (p.ExitCode != 0)
+
+                        bool needsPass = (stdout?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("AES decryption failed") == true) || (stdout?.Contains("AES decryption failed") == true) || (stderr?.Contains("Encrypted payload") == true) || (stdout?.Contains("Encrypted payload") == true);
+                        if (p.ExitCode != 0 && needsPass)
+                        {
+                            if (!OperatingSystem.IsWindows())
+                            {
+                                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Passphrase required but platform unsupported\n"); } catch { }
+                                return false;
+                            }
+
+                            string? errorMsg = null;
+                            while (true)
+                            {
+                                var pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+                                if (pass == null) return false;
+
+                                var esc = pass.Replace("\"", "\\\"");
+                                var psiPass = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{tempOut}\"");
+                                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running with passphrase: {psiPass.FileName} {psiPass.Arguments}\n"); } catch { }
+                                using (var p2 = Process.Start(psiPass))
+                                {
+                                    var stdout2 = p2!.StandardOutput.ReadToEnd();
+                                    var stderr2 = p2.StandardError.ReadToEnd();
+                                    p2.WaitForExit();
+                                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Exit={p2.ExitCode}, stdout={stdout2.Length}, stderr={stderr2.Length}\n"); } catch { }
+
+                                    if (p2.ExitCode == 0)
+                                    {
+                                        // success, proceed to locate file
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        if ((stderr2?.Contains("AES decryption failed") == true) || (stdout2?.Contains("AES decryption failed") == true))
+                                        {
+                                            errorMsg = "Mot de passe incorrect";
+                                            continue;
+                                        }
+
+                                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Extraction failed after pass try:\nStdout:\n{stdout2}\nStderr:\n{stderr2}\n"); } catch { }
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                        else if (p.ExitCode != 0)
                         {
                             try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Extraction failed:\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
                             try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Extraction failed: exit={p.ExitCode}\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
@@ -1261,70 +1322,132 @@ readme.txt (100 bytes)
                 // Try to create keys directly
                 try
                 {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                     using (var key = Registry.ClassesRoot.CreateSubKey(@"*\\shell\\Pyxelze"))
                     {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         key.SetValue("", "");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         key.SetValue("MUIVerb", "Pyxelze");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         key.SetValue("Icon", exePath);
-                        key.SetValue("SubCommands", "open;decompress");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+                        key.SetValue("SubCommands", "open;decode");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         using (var shellKey = key.CreateSubKey(@"shell"))
                         {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                             using (var openKey = shellKey.CreateSubKey("open"))
                             {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 openKey.SetValue("MUIVerb", "Ouvrir l'archive");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 openKey.SetValue("Icon", exePath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 using (var cmdKey = openKey.CreateSubKey("command"))
                                 {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                     cmdKey.SetValue("", $"\"{exePath}\" \"%1\"");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                                 }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                             }
-                            using (var decodeKey = shellKey.CreateSubKey("decompress"))
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+                            using (var decodeKey = shellKey.CreateSubKey("decode"))
                             {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 decodeKey.SetValue("MUIVerb", "Décoder l'archive ROX");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 decodeKey.SetValue("Icon", exePath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 using (var cmdKey = decodeKey.CreateSubKey("command"))
                                 {
                                     var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
                                     if (File.Exists(roxPath))
                                     {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                         cmdKey.SetValue("", $"\"{exePath}\" decode \"%1\"");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                                     }
                                     else
                                     {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                         cmdKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                                     }
                                 }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                             }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                     }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
 
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                     using (var dirKey = Registry.ClassesRoot.CreateSubKey(@"Directory\\shell\\Pyxelze"))
                     {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         dirKey.SetValue("", "");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         dirKey.SetValue("MUIVerb", "Pyxelze");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         dirKey.SetValue("Icon", exePath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         dirKey.SetValue("SubCommands", "encode");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         using (var shellKey = dirKey.CreateSubKey(@"shell"))
                         {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                             using (var encodeKey = shellKey.CreateSubKey("encode"))
                             {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 encodeKey.SetValue("MUIVerb", "Encoder en archive ROX");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 encodeKey.SetValue("Icon", exePath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 using (var cmdKey = encodeKey.CreateSubKey("command"))
                                 {
                                     var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
                                     if (File.Exists(roxPath))
                                     {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                         cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                                     }
                                     else
                                     {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                         cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                                     }
                                 }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                             }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                     }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
 
                     MessageBox.Show("Intégration réussie ! Faites un clic droit sur un fichier ou dossier pour voir les options.");
                     return;
@@ -1359,8 +1482,16 @@ readme.txt (100 bytes)
                 // Try direct deletion
                 try
                 {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                     Registry.ClassesRoot.DeleteSubKeyTree(@"*\\shell\\Pyxelze", false);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                     Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\\shell\\Pyxelze", false);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                     MessageBox.Show("Intégration supprimée.");
                     return;
                 }
@@ -1389,8 +1520,16 @@ readme.txt (100 bytes)
         {
             try
             {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                 using (var k1 = Registry.ClassesRoot.OpenSubKey(@"*\\shell\\Pyxelze")) if (k1 != null) return true;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                 using (var k2 = Registry.ClassesRoot.OpenSubKey(@"Directory\\shell\\Pyxelze")) if (k2 != null) return true;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
             }
             catch { }
             return false;

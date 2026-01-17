@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Runtime.Versioning;
 
 namespace Pyxelze
 {
+      [SupportedOSPlatform("windows")]
       internal static class DragHelper
       {
             private static bool HasParentFolderInSelection(string filePath, IList<VirtualFile> selection)
@@ -137,7 +133,7 @@ namespace Pyxelze
                   try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Starting background extraction for {rels.Count} items\n"); } catch { }
 
                   // Start background extraction without showing UI. We'll only show UI if drop actually occurs and extraction hasn't finished.
-                  job.WorkTask = Task.Run(async () =>
+                  job.WorkTask = Task.Run(() =>
                   {
                         try
                         {
