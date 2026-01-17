@@ -261,7 +261,72 @@ namespace Pyxelze
                         }
                         catch { }
 
-                        MessageBox.Show("Erreur lors de la lecture de l'archive.\n" + stderr + extra, "Erreur rox", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        bool needsPass = (output?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("AES decryption failed") == true) || (output?.Contains("AES decryption failed") == true) || (stderr?.Contains("Encrypted payload") == true) || (output?.Contains("Encrypted payload") == true);
+                        if (needsPass)
+                        {
+                            if (!OperatingSystem.IsWindows())
+                            {
+                                MessageBox.Show("Passphrase requise mais non prise en charge sur cette plateforme.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                return;
+                            }
+
+                            string? errorMsg = null;
+                            while (true)
+                            {
+                                var pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+                                if (pass == null)
+                                {
+                                    MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    return;
+                                }
+
+                                var esc = pass.Replace("\"", "\\\"");
+                                var psiPass = RoxRunner.CreateRoxProcess($"list \"{path}\" --passphrase \"{esc}\"");
+                                using (var p2 = Process.Start(psiPass))
+                                {
+                                    if (p2 == null)
+                                    {
+                                        MessageBox.Show("Impossible de lancer roxify.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                        return;
+                                    }
+
+                                    var outTask2 = Task.Run(() => p2.StandardOutput.ReadToEnd());
+                                    var errTask2 = Task.Run(() => p2.StandardError.ReadToEnd());
+                                    const int timeoutMs2 = 10000;
+                                    bool exited2 = p2.WaitForExit(timeoutMs2);
+                                    if (!exited2)
+                                    {
+                                        try { p2.Kill(); } catch { }
+                                        MessageBox.Show($"Erreur: la commande rox a expiré après {timeoutMs2 / 1000}s.", "Erreur rox", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                        return;
+                                    }
+
+                                    Task.WaitAll(new[] { outTask2, errTask2 }, 1000);
+                                    var output2 = outTask2.Result ?? string.Empty;
+                                    var stderr2 = errTask2.Result ?? string.Empty;
+                                    if (p2.ExitCode == 0)
+                                    {
+                                        ParseData(output2);
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        if ((stderr2?.Contains("AES decryption failed") == true) || (output2?.Contains("AES decryption failed") == true))
+                                        {
+                                            errorMsg = "Mot de passe incorrect";
+                                            continue;
+                                        }
+
+                                        MessageBox.Show("Erreur lors de la lecture de l'archive.\n" + stderr2, "Erreur rox", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            MessageBox.Show("Erreur lors de la lecture de l'archive.\n" + stderr + extra, "Erreur rox", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
                     }
                 }
             }
