@@ -5,7 +5,7 @@
 [Setup]
 AppId={{D3B9B9B3-C8C1-4A5A-9DEB-1B9B6B3A6F2E}}
 AppName=Pyxelze
-AppVersion=1.0.1
+AppVersion=1.0.2
 DefaultDirName={autopf}\Pyxelze
 DefaultGroupName=Pyxelze
 UninstallDisplayName=Pyxelze

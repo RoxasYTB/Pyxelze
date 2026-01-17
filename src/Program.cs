@@ -155,7 +155,7 @@ namespace Pyxelze
         static string LogPath => Path.Combine(Path.GetTempPath(), "pyxelze-debug.log");
 
         // Build stamp inserted at build time to help verify which build is running
-        public const string BuildStamp = "20260117-201704"; // updated
+        public const string BuildStamp = "20260117-203921"; // release 20260117-203921
 
 
         public static void AppendLog(string text)
