@@ -1235,7 +1235,7 @@ readme.txt (100 bytes)
             return allFiles.Where(f => !f.IsFolder && f.FullPath.StartsWith(folderInternalPath + "/")).ToList();
         }
 
-        public int ExtractMultipleFiles(IList<string> internalPaths, string tempOut)
+        public int ExtractMultipleFiles(IList<string> internalPaths, string tempOut, bool useFiles = false)
         {
             try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles: {internalPaths.Count} files -> {tempOut}\n"); } catch { }
 
@@ -1263,9 +1263,19 @@ readme.txt (100 bytes)
                 var safeList = internalPaths.Select(s => s.Replace('\\', '/').Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
                 var filesArg = string.Join(",", safeList);
 
-                // Run a simple decode into the temp folder. If a passphrase is required, prompt and retry (same UX as single-file extract).
-                var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempOut}\"");
-                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles: {psi.FileName} {psi.Arguments}\n"); } catch { }
+                // Choose method: for drag-and-drop we may prefer 'decompress --files', otherwise use 'decode'
+                ProcessStartInfo psi;
+                if (useFiles)
+                {
+                    psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --files {filesArg} \"{tempOut}\"");
+                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles (useFiles): {psi.FileName} {psi.Arguments}\n"); } catch { }
+                }
+                else
+                {
+                    psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempOut}\"");
+                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles: {psi.FileName} {psi.Arguments}\n"); } catch { }
+                }
+
                 using (var p = Process.Start(psi))
                 {
                     var stdout = p!.StandardOutput.ReadToEnd();
@@ -1296,7 +1306,15 @@ readme.txt (100 bytes)
                             if (pass == null) return 0;
 
                             var esc = pass.Replace("\"", "\\\"");
-                            var psiPass = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{tempOut}\"");
+                            ProcessStartInfo psiPass;
+                            if (useFiles)
+                            {
+                                psiPass = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --passphrase \"{esc}\" --files {filesArg} \"{tempOut}\"");
+                            }
+                            else
+                            {
+                                psiPass = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{tempOut}\"");
+                            }
                             try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles with passphrase: {psiPass.FileName} {psiPass.Arguments}\n"); } catch { }
 
                             using (var p2 = Process.Start(psiPass))

@@ -164,7 +164,7 @@ namespace Pyxelze
                                           else
                                           {
                                                 var filePaths = filesUnder.Select(f => f.FullPath).ToList();
-                                                int extracted = owner.ExtractMultipleFiles(filePaths, dragTempRoot);
+                                                int extracted = owner.ExtractMultipleFiles(filePaths, dragTempRoot, true);
                                                 try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Background Batch extracted {extracted}/{filePaths.Count} files\n"); } catch { }
 
                                                 if (extracted > 0)
