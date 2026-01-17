@@ -1261,7 +1261,7 @@ readme.txt (100 bytes)
             {
                 Directory.CreateDirectory(tempOut);
                 var safeList = internalPaths.Select(s => s.Replace('\\', '/').Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
-                var filesArg = string.Join(",", safeList);
+                var filesArg = string.Join(",", safeList.Select(f => $"\"{f}\""));
 
                 // Choose method: for drag-and-drop we may prefer 'decompress --files', otherwise use 'decode'
                 ProcessStartInfo psi;
