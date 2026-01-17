@@ -794,7 +794,7 @@ readme.txt (100 bytes)
                             psi2 = new ProcessStartInfo
                             {
                                 FileName = tempExe,
-                                Arguments = $"decompress \"{currentArchive}\" \"{tempDir}\"",
+                                Arguments = $"decode \"{currentArchive}\" \"{tempDir}\"",
                                 UseShellExecute = false,
                                 CreateNoWindow = true,
                                 RedirectStandardOutput = true,
@@ -805,14 +805,14 @@ readme.txt (100 bytes)
                         }
                         catch
                         {
-                            psi2 = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" \"{tempDir}\"");
+                            psi2 = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempDir}\"");
                             psi2.WorkingDirectory = tempDir;
                             try { psi2.EnvironmentVariables["TMP"] = tempDir; psi2.EnvironmentVariables["TEMP"] = tempDir; } catch { }
                         }
                     }
                     else
                     {
-                        psi2 = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" \"{tempDir}\"");
+                        psi2 = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempDir}\"");
                         psi2.WorkingDirectory = tempDir;
                         try { psi2.EnvironmentVariables["TMP"] = tempDir; psi2.EnvironmentVariables["TEMP"] = tempDir; } catch { }
                     }
@@ -869,7 +869,7 @@ readme.txt (100 bytes)
                                     }
 
                                     var esc = pass.Replace("\"", "\\\"");
-                                    var psiPass = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --passphrase \"{esc}\" \"{tempDir}\"");
+                                    var psiPass = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{tempDir}\"");
                                     psiPass.WorkingDirectory = tempDir;
                                     try { psiPass.EnvironmentVariables["TMP"] = tempDir; psiPass.EnvironmentVariables["TEMP"] = tempDir; } catch { }
 
@@ -923,8 +923,8 @@ readme.txt (100 bytes)
                     }
                 }
 
-                var filesArg = string.Join(",", filePaths.Select(f => $"\"{f}\""));
-                var psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --files {filesArg} \"{destFolder}\"");
+                // Use a simpler decode command (avoid passing long --files lists which can exceed command-line limits)
+                var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{destFolder}\"");
 
                 string stdout, stderr;
                 using (var f = new ProcessProgressForm("Extraction en cours", $"Extraction de {Path.GetFileName(currentArchive)}..."))
@@ -952,7 +952,7 @@ readme.txt (100 bytes)
                             }
 
                             var esc = pass.Replace("\"", "\\\"");
-                            var psiPass = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --passphrase \"{esc}\" --files {filesArg} \"{destFolder}\"");
+                            var psiPass = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{destFolder}\"");
 
                             string stdout3, stderr3;
                             using (var f3 = new ProcessProgressForm("Déchiffrement en cours", "Déchiffrement en cours..."))
@@ -1116,7 +1116,7 @@ readme.txt (100 bytes)
                 {
                     Directory.CreateDirectory(tempOut);
                     var safeInternal = internalPath.Replace('\\', '/');
-                    var psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" \"{tempOut}\" --files \"{safeInternal}\"");
+                    var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempOut}\"");
                     try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running: {psi.FileName} {psi.Arguments}\n"); } catch { }
                     using (var p = Process.Start(psi))
                     {
@@ -1126,8 +1126,8 @@ readme.txt (100 bytes)
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Exit={p.ExitCode}, stdout={stdout.Length} bytes, stderr={stderr.Length} bytes\n"); } catch { }
                         if (p.ExitCode != 0)
                         {
-                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Decompress failed:\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
-                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Decompress failed: exit={p.ExitCode}\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Extraction failed:\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Extraction failed: exit={p.ExitCode}\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
                             return false;
                         }
                     }
@@ -1201,7 +1201,7 @@ readme.txt (100 bytes)
                 Directory.CreateDirectory(tempOut);
                 var safeList = internalPaths.Select(s => s.Replace('\\', '/').Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
                 var filesArg = string.Join(",", safeList);
-                var psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" \"{tempOut}\" --files \"{filesArg}\"");
+                var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempOut}\"");
                 try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles: {psi.FileName} {psi.Arguments}\n"); } catch { }
                 using (var p = Process.Start(psi))
                 {
@@ -1287,7 +1287,7 @@ readme.txt (100 bytes)
                                     var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
                                     if (File.Exists(roxPath))
                                     {
-                                        cmdKey.SetValue("", $"\"{exePath}\" decompress \"%1\"");
+                                        cmdKey.SetValue("", $"\"{exePath}\" decode \"%1\"");
                                     }
                                     else
                                     {
