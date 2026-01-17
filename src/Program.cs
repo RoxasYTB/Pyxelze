@@ -37,6 +37,12 @@ namespace Pyxelze
                     UnregisterContextMenu();
                     return;
                 }
+                else if (cmd == "version")
+                {
+                    // Headless helper to show which build is installed when invoked from registry or script
+                    try { MessageBox.Show($"Build: {BuildStamp}", "Pyxelze version", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch { }
+                    return;
+                }
             }
 
             if (args.Length >= 2)
@@ -149,7 +155,8 @@ namespace Pyxelze
         static string LogPath => Path.Combine(Path.GetTempPath(), "pyxelze-debug.log");
 
         // Build stamp inserted at build time to help verify which build is running
-        public const string BuildStamp = "20260117-1948";
+        public const string BuildStamp = "20260117-201704"; // updated
+
 
         public static void AppendLog(string text)
         {
@@ -389,45 +396,56 @@ namespace Pyxelze
                     bool needsPassphrase = (stdout?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true);
                     if (needsPassphrase)
                     {
-                        var pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :");
-                        if (pass == null)
+                        string? errorMsg = null;
+                        while (true)
                         {
-                            MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            return;
-                        }
-
-                        var esc = pass.Replace("\"", "\\\"");
-                        var psiPass = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" --passphrase \"{esc}\" \"{outputDir}\"");
-
-                        AppendLog($"Run command (with passphrase): {psiPass.FileName} {psiPass.Arguments}");
-                        string stdout2, stderr2;
-                        using (var f2 = new ProcessProgressForm("Déchiffrement en cours", "Déchiffrement en cours..."))
-                        {
-                            int exit2 = f2.RunProcess(psiPass, out stdout2, out stderr2);
-                            AppendLog($"Decrypt attempt exit={exit2} stdout_len={stdout2?.Length ?? 0} stderr_len={stderr2?.Length ?? 0}");
-
-                            bool hasEntries2 = false;
-                            if (Directory.Exists(outputDir))
+                            var passTry = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+                            if (passTry == null)
                             {
-                                var enumerator2 = Directory.EnumerateFileSystemEntries(outputDir).GetEnumerator();
-                                hasEntries2 = enumerator2.MoveNext();
-                            }
-                            else if (File.Exists(outputDir))
-                            {
-                                var fi2 = new FileInfo(outputDir);
-                                hasEntries2 = fi2.Length > 0;
-                            }
-
-                            if (exit2 == 0 && hasEntries2)
-                            {
-                                MessageBox.Show($"Extraction réussie vers :\n{outputDir}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                try { Directory.Delete(Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N")), true); } catch { }
+                                MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                 return;
                             }
-                            else
+
+                            var escTry = passTry.Replace("\"", "\\\"");
+                            var psiPassTry = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" --passphrase \"{escTry}\" \"{outputDir}\"");
+
+                            AppendLog($"Run command (with passphrase): {psiPassTry.FileName} {psiPassTry.Arguments}");
+                            string stdout2, stderr2;
+                            using (var f2 = new ProcessProgressForm("Déchiffrement en cours", "Déchiffrement en cours..."))
                             {
+                                int exit2 = f2.RunProcess(psiPassTry, out stdout2, out stderr2);
+                                AppendLog($"Decrypt attempt exit={exit2} stdout_len={stdout2?.Length ?? 0} stderr_len={stderr2?.Length ?? 0}");
+
+                                bool hasEntries2 = false;
+                                if (Directory.Exists(outputDir))
+                                {
+                                    var enumerator2 = Directory.EnumerateFileSystemEntries(outputDir).GetEnumerator();
+                                    hasEntries2 = enumerator2.MoveNext();
+                                }
+                                else if (File.Exists(outputDir))
+                                {
+                                    var fi2 = new FileInfo(outputDir);
+                                    hasEntries2 = fi2.Length > 0;
+                                }
+
+                                if (exit2 == 0 && hasEntries2)
+                                {
+                                    MessageBox.Show($"Extraction réussie vers :\n{outputDir}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    try { Directory.Delete(Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N")), true); } catch { }
+                                    return;
+                                }
+
+                                // If decryption failed due to bad passphrase, reprompt with an error message
+                                if ((stderr2?.Contains("AES decryption failed") == true) || (stdout2?.Contains("AES decryption failed") == true) || (stderr2?.Contains("Encrypted payload") == true) || (stdout2?.Contains("Encrypted payload") == true))
+                                {
+                                    errorMsg = "Mot de passe incorrect";
+                                    AppendLog($"Passphrase retry: incorrect passphrase; will reprompt");
+                                    try { if (Directory.Exists(outputDir)) Directory.Delete(outputDir, true); } catch { }
+                                    continue;
+                                }
+
                                 var details2 = new System.Text.StringBuilder();
-                                details2.AppendLine($"Commande: {psiPass.FileName} {psiPass.Arguments}");
+                                details2.AppendLine($"Commande: {psiPassTry.FileName} {psiPassTry.Arguments}");
                                 details2.AppendLine($"Exit code: {exit2}");
                                 if (!string.IsNullOrEmpty(stdout2)) { details2.AppendLine("--- Output ---"); details2.AppendLine(stdout2); }
                                 if (!string.IsNullOrEmpty(stderr2)) { details2.AppendLine("--- Erreur ---"); details2.AppendLine(stderr2); }
