@@ -9,6 +9,12 @@ PUBLISH_DIR="$ROOT_DIR/publish_with_native"
 OUT_DIR="$ROOT_DIR/release"
 ISCC_PATH="${ISCC_PATH:-}"
 
+# Optional behaviors (defaults)
+SCAN_BINARIES=0
+PREPARE_FP=0
+AUTO_SUBMIT_FP=0
+SELF_SIGN="${SELF_SIGN:-0}"
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --publish-dir|-p)
@@ -17,8 +23,18 @@ while [[ $# -gt 0 ]]; do
       OUT_DIR="$2"; shift 2;;
     --iscc-path)
       ISCC_PATH="$2"; shift 2;;
+    --self-sign)
+      SELF_SIGN=1; shift;;
+    --scan-binaries)
+      SCAN_BINARIES=1; shift;;
+    --prepare-fp)
+      PREPARE_FP=1; shift;;
+    --auto-submit-fp)
+      AUTO_SUBMIT_FP=1; shift;;
     --help|-h)
-      echo "Usage: $0 [--publish-dir DIR] [--out-dir DIR] [--iscc-path PATH]"; exit 0;;
+      echo "Usage: $0 [--publish-dir DIR] [--out-dir DIR] [--iscc-path PATH] [--self-sign] [--scan-binaries] [--prepare-fp] [--auto-submit-fp]"
+      echo "Example: $0 --self-sign --scan-binaries --prepare-fp"
+      exit 0;;
     *)
       echo "Unknown option: $1"; exit 1;;
   esac
@@ -65,6 +81,15 @@ if [ ! -f "$PUBLISH_DIR/roxify/roxify_native.exe" ]; then
   exit 1
 fi
 
+# Try to strip symbols/debug info from the native binary to reduce embedded source paths and panic strings
+if command -v strip >/dev/null 2>&1; then
+  echo "🔧 Stripping symbols from roxify_native.exe to reduce embedded debug/source strings..."
+  strip --strip-all "$PUBLISH_DIR/roxify/roxify_native.exe" || true
+  if strings "$PUBLISH_DIR/roxify/roxify_native.exe" | grep -i "/home/" >/dev/null 2>&1; then
+    echo "⚠️ Note: binary still contains source paths or large debug strings — consider rebuilding roxify with a release profile and reduced debug information (e.g., 'panic = "abort"' in Cargo.toml or disabling debug symbols)."
+  fi
+fi
+
 rm -rf "$OUT_DIR" && mkdir -p "$OUT_DIR"
 
 if [[ "${OS:-}" == "Windows_NT" || -n "${WINDIR:-}" ]]; then
@@ -99,6 +124,15 @@ if [ -f "$PYXELZE_EXE" ]; then
   echo "✅ Checksum de Pyxelze.exe copié dans $PUBLISH_DIR/sha256sums.txt AVANT compilation installateur: $PYXELZE_CHECKSUM"
 fi
 
+# Remove PDBs and other debug artifacts from publish dir to lower FP risk
+echo "🔧 Removing debug artifacts (.pdb, .pdb.*, .pdb*, *.dbg) from publish tree to reduce FP heuristics..."
+find "$PUBLISH_DIR" -type f \( -iname "*.pdb" -o -iname "*.pdb.*" -o -iname "*.dbg" \) -print -exec rm -f {} + || true
+
+# Verify no PDB remains
+if find "$PUBLISH_DIR" -type f -iname "*.pdb" | read; then
+  echo "⚠️ Warning: Some PDB files remain in publish tree. Consider rebuilding without generating PDBs." >&2
+fi
+
 WIN_PUBLISH_DIR="$(winepath -w "$PUBLISH_DIR" | tr -d '\r')"
 WIN_OUT_DIR="$(winepath -w "$OUT_DIR" | tr -d '\r')"
 WIN_ISS="$(winepath -w "$ROOT_DIR/tools/installer/installer.iss" | tr -d '\r')"
@@ -126,12 +160,28 @@ else
   echo "Warning: sha256sum not found; skipping checksum generation."
 fi
 
+if [ "${SELF_SIGN:-0}" = "1" ]; then
+  echo "🔐 Generating self-signed PFX for signing (development only)..."
+  if ! command -v openssl >/dev/null 2>&1; then
+    echo "ERROR: openssl not found; cannot generate self-signed PFX. Install openssl or provide SIGN_PFX."; exit 1
+  fi
+  GENERATED_PFX="$SCRIPT_DIR/create_self_signed_pfx.sh"
+  PFX_OUT="$($SCRIPT_DIR/create_self_signed_pfx.sh "$SCRIPT_DIR/signing_cert.pfx" "${SIGN_PFX_PASS:-changeit}")"
+  if [ -f "$PFX_OUT" ]; then
+    SIGN_PFX="$PFX_OUT"
+    SIGN_PFX_PASS="${SIGN_PFX_PASS:-changeit}"
+    echo "Using generated PFX: $SIGN_PFX"
+  else
+    echo "ERROR: failed to generate PFX at: $PFX_OUT"; exit 1
+  fi
+fi
+
 if [ -n "${SIGN_PFX:-}" ] && command -v osslsigncode >/dev/null 2>&1; then
   for f in "$OUT_DIR"/*.exe; do
     [ -f "$f" ] || continue
     echo "Signing $f with osslsigncode..."
     tmpf="${f}.signed"
-    if osslsigncode sign -pkcs12 "$SIGN_PFX" -pass "${SIGN_PFX_PASS:-}" -n "Pyxelze" -i "https://pyxelze.example" -in "$f" -out "$tmpf"; then
+    if osslsigncode sign -pkcs12 "$SIGN_PFX" -pass "${SIGN_PFX_PASS:-}" -n "Pyxelze" -i "https://pyxelze.example" -t "http://timestamp.digicert.com" -in "$f" -out "$tmpf"; then
       mv "$tmpf" "$f"
       echo "Signed $f"
     else
@@ -142,6 +192,33 @@ if [ -n "${SIGN_PFX:-}" ] && command -v osslsigncode >/dev/null 2>&1; then
 else
   if [ -n "${SIGN_PFX:-}" ]; then
     echo "Signing requested but osslsigncode not found; skipping sign step."
+  fi
+fi
+
+# Optional: run binary checks
+if [ "${SCAN_BINARIES:-0}" = "1" ]; then
+  echo "🔎 Running binary checks on publish and release directories..."
+  if [ -x "$SCRIPT_DIR/check_binaries.sh" ]; then
+    "$SCRIPT_DIR/check_binaries.sh" "$PUBLISH_DIR" "$OUT_DIR" || echo "Binary check found suspicious items (see output above)."
+  else
+    echo "Warning: check_binaries.sh not found or not executable; skipping binary checks."
+  fi
+fi
+
+# Optional: prepare a false-positive submission bundle
+if [ "${PREPARE_FP:-0}" = "1" ]; then
+  echo "📦 Preparing false-positive submission package..."
+  FP_OUT="$OUT_DIR/fp_submission"
+  mkdir -p "$FP_OUT"
+  if [ -x "$SCRIPT_DIR/prepare_fp_submission.sh" ]; then
+    "$SCRIPT_DIR/prepare_fp_submission.sh" "$FP_OUT" "$OUT_DIR" "$PUBLISH_DIR"
+    echo "Prepared false-positive bundle at: $FP_OUT/fp_submission.tar.gz"
+  else
+    echo "Warning: prepare_fp_submission.sh not found or not executable; skipping preparation."
+  fi
+
+  if [ "${AUTO_SUBMIT_FP:-0}" = "1" ]; then
+    echo "⚠️ Auto-submission not implemented (requires API keys/credentials). The prepared bundle is available for manual submission: $FP_OUT"
   fi
 fi
 
