@@ -24,16 +24,34 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [ ! -d "$PUBLISH_DIR" ]; then
-  echo "Publish dir not found: $PUBLISH_DIR. Attempting to run publish_release.sh to build publish artifacts..."
+# By default, force a fresh publish to ensure the installer is built from the latest artifacts.
+# Set SKIP_PUBLISH=1 to avoid forcing a fresh publish (useful if you manage publish artifacts externally).
+if [ -z "${SKIP_PUBLISH:-}" ]; then
+  echo "🔁 Forcing fresh publish to regenerate $PUBLISH_DIR..."
   if [ -f "$SCRIPT_DIR/publish_release.sh" ]; then
-    echo "Running publish_release.sh --no-installer"
-    bash "$SCRIPT_DIR/publish_release.sh" --no-installer || { echo "ERROR: publish_release.sh failed to generate $PUBLISH_DIR"; exit 1; }
+    bash "$SCRIPT_DIR/publish_release.sh" --no-installer || { echo "ERROR: publish_release.sh failed"; exit 1; }
+    # If the caller requested a non-default publish dir, copy the freshly built default publish tree into place
+    if [ "$PUBLISH_DIR" != "$ROOT_DIR/publish_with_native" ]; then
+      rm -rf "$PUBLISH_DIR"
+      cp -a "$ROOT_DIR/publish_with_native" "$PUBLISH_DIR"
+    fi
   else
-    echo "ERROR: Publish dir not found and $SCRIPT_DIR/publish_release.sh not present: $PUBLISH_DIR"; exit 1
+    echo "ERROR: publish_release.sh not present; cannot refresh publish."
   fi
+else
+  echo "ℹ️ SKIP_PUBLISH set; not forcing publish."
+  # If publish dir missing and SKIP_PUBLISH is set, attempt fallback publish as before
   if [ ! -d "$PUBLISH_DIR" ]; then
-    echo "ERROR: Publish dir still not found after running publish: $PUBLISH_DIR"; exit 1
+    echo "Publish dir not found: $PUBLISH_DIR. Attempting to run publish_release.sh to build publish artifacts..."
+    if [ -f "$SCRIPT_DIR/publish_release.sh" ]; then
+      echo "Running publish_release.sh --no-installer"
+      bash "$SCRIPT_DIR/publish_release.sh" --no-installer || { echo "ERROR: publish_release.sh failed to generate $PUBLISH_DIR"; exit 1; }
+    else
+      echo "ERROR: Publish dir not found and $SCRIPT_DIR/publish_release.sh not present: $PUBLISH_DIR"; exit 1
+    fi
+    if [ ! -d "$PUBLISH_DIR" ]; then
+      echo "ERROR: Publish dir still not found after running publish: $PUBLISH_DIR"; exit 1
+    fi
   fi
 fi
 
@@ -72,6 +90,13 @@ fi
 
 if [ -z "$ISCC_PATH" ]; then
   echo "ISCC_PATH not set and Inno Setup not found in default wine paths. Set ISCC_PATH to the path to ISCC.exe (Windows style) and re-run, or run build_installer.cmd on Windows."; exit 1
+fi
+
+PYXELZE_EXE="$PUBLISH_DIR/Pyxelze.exe"
+if [ -f "$PYXELZE_EXE" ]; then
+  PYXELZE_CHECKSUM=$(sha256sum "$PYXELZE_EXE" | awk '{print $1}')
+  echo "$PYXELZE_CHECKSUM" > "$PUBLISH_DIR/sha256sums.txt"
+  echo "✅ Checksum de Pyxelze.exe copié dans $PUBLISH_DIR/sha256sums.txt AVANT compilation installateur: $PYXELZE_CHECKSUM"
 fi
 
 WIN_PUBLISH_DIR="$(winepath -w "$PUBLISH_DIR" | tr -d '\r')"

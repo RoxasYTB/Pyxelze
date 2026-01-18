@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Pyxelze
 {
@@ -40,7 +42,22 @@ namespace Pyxelze
                 else if (cmd == "version")
                 {
                     // Headless helper to show which build is installed when invoked from registry or script
-                    try { MessageBox.Show($"Build: {BuildStamp}", "Pyxelze version", MessageBoxButtons.OK, MessageBoxIcon.Information); } catch { }
+                    // Support --console to print the build stamp to stdout for easy verification in scripts or CI
+                    try
+                    {
+                        if (args.Length >= 2 && (args[1] == "--console" || args[1] == "-c"))
+                        {
+                            Console.WriteLine(BuildStamp);
+                        }
+                        else
+                        {
+                            MessageBox.Show($"Build: {BuildStamp}", "Pyxelze version", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                    }
+                    catch
+                    {
+                        try { Console.WriteLine(BuildStamp); } catch { }
+                    }
                     return;
                 }
             }
@@ -64,6 +81,20 @@ namespace Pyxelze
             }
 
             string? fileToOpen = args.Length > 0 ? args[0] : null;
+
+            // Load persistent passphrase cache early (if any)
+            try { LoadCachedPassphrase(); } catch { }
+
+            // If we're opening an archive directly, try to prompt for a passphrase before showing the UI
+            if (!string.IsNullOrEmpty(fileToOpen) && File.Exists(fileToOpen))
+            {
+                if (!EnsurePassphraseBeforeOpen(fileToOpen))
+                {
+                    // user cancelled or an unrecoverable error occurred; exit silently
+                    return;
+                }
+            }
+
             Application.Run(new Form1(fileToOpen));
         }
 
@@ -84,7 +115,6 @@ namespace Pyxelze
                     key.SetValue("SubCommands", "open;decode");
                     using (var shellKey = key.CreateSubKey(@"shell"))
                     {
-                        try { shellKey.DeleteSubKeyTree("decompress", false); } catch { }
                         using (var openKey = shellKey.CreateSubKey("open"))
                         {
                             openKey.SetValue("MUIVerb", "Ouvrir l'archive");
@@ -100,7 +130,6 @@ namespace Pyxelze
                             decodeKey.SetValue("Icon", exePath);
                             using (var cmdKey = decodeKey.CreateSubKey("command"))
                             {
-                                // Always route through the application so we can prompt for passphrase when necessary
                                 cmdKey.SetValue("", $"\"{exePath}\" decode \"%1\"");
                             }
                         }
@@ -121,7 +150,6 @@ namespace Pyxelze
                             encodeKey.SetValue("Icon", exePath);
                             using (var cmdKey = encodeKey.CreateSubKey("command"))
                             {
-                                // Always route through the application so we can prompt for passphrase when encoding
                                 cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
                             }
                         }
@@ -157,6 +185,11 @@ namespace Pyxelze
         // Build stamp inserted at build time to help verify which build is running
         public const string BuildStamp = "20260117-203921"; // release 20260117-203921
 
+        // Cached passphrase stored for the lifetime of the process to allow multiple drag&drop operations
+        public static string? CachedPassphrase = null;
+
+        // Persistent, encrypted cache file (DPAPI) for passphrase to survive restarts (Windows only)
+        static string CachedPassphraseFile => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Pyxelze", "passphrase.dat");
 
         public static void AppendLog(string text)
         {
@@ -165,6 +198,161 @@ namespace Pyxelze
                 File.AppendAllText(LogPath, $"[{DateTime.Now:O}] {text}\n");
             }
             catch { }
+        }
+
+        public static void SaveCachedPassphrase(string pass)
+        {
+            try
+            {
+                CachedPassphrase = pass;
+                AppendLog("SaveCachedPassphrase: cached in memory for current session");
+            }
+            catch (Exception ex)
+            {
+                AppendLog("SaveCachedPassphrase failed: " + ex);
+            }
+        }
+
+        public static void LoadCachedPassphrase()
+        {
+            // Cache is now in-memory only for the current session
+            // No persistent storage to avoid conflicts between different files
+        }
+
+        public static void ClearCachedPassphrase()
+        {
+            try
+            {
+                CachedPassphrase = null;
+                AppendLog("ClearCachedPassphrase: cleared in-memory cache");
+            }
+            catch (Exception ex)
+            {
+                AppendLog("ClearCachedPassphrase failed: " + ex);
+            }
+        }
+
+        public static bool EnsurePassphraseBeforeOpen(string archivePath)
+        {
+            try
+            {
+                var temp = Path.Combine(Path.GetTempPath(), "pyxelze-preopen-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(temp);
+
+                var psiQuick = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" \"{temp}\"");
+                try { psiQuick.RedirectStandardOutput = true; psiQuick.RedirectStandardError = true; } catch { }
+
+                string qsOut = "";
+                string qsErr = "";
+                int exitCode = -1;
+
+                using (var pq = Process.Start(psiQuick))
+                {
+                    if (pq != null)
+                    {
+                        var outTask = Task.Run(() => pq.StandardOutput.ReadToEnd());
+                        var errTask = Task.Run(() => pq.StandardError.ReadToEnd());
+
+                        bool exited = pq.WaitForExit(8000);
+                        if (!exited)
+                        {
+                            try { pq.Kill(); } catch { }
+                        }
+
+                        Task.WaitAll(new[] { outTask, errTask }, 2000);
+                        qsOut = outTask.Result ?? "";
+                        qsErr = errTask.Result ?? "";
+                        exitCode = pq.ExitCode;
+                    }
+                }
+
+                try { Directory.Delete(temp, true); } catch { }
+
+                AppendLog($"EnsurePassphrase quick-decode exit={exitCode} stdout_len={qsOut?.Length ?? 0} stderr_len={qsErr?.Length ?? 0}");
+                AppendLog($"EnsurePassphrase stderr={qsErr}");
+
+                bool needsPass = (qsErr?.Contains("Passphrase required") == true) || (qsOut?.Contains("Passphrase required") == true) || (qsErr?.Contains("Encrypted payload") == true) || (qsOut?.Contains("Encrypted payload") == true) || (qsErr?.Contains("AES decryption failed") == true) || (qsOut?.Contains("AES decryption failed") == true);
+
+                if (!needsPass && exitCode == 0)
+                {
+                    AppendLog("EnsurePassphrase: No passphrase needed");
+                    return true;
+                }
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    MessageBox.Show("Passphrase requise mais non prise en charge sur cette plateforme.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+
+                AppendLog($"EnsurePassphrase: Passphrase required, needsPass={needsPass}, exitCode={exitCode}");
+
+                string? errorMsg = null;
+                string? cached = CachedPassphrase;
+
+                while (true)
+                {
+                    string? pass = cached;
+                    if (string.IsNullOrEmpty(pass))
+                    {
+                        pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+                        if (pass == null) return false;
+                    }
+
+                    var esc = pass.Replace("\"", "\\\"");
+                    var temp2 = Path.Combine(Path.GetTempPath(), "pyxelze-preopen-try-" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(temp2);
+
+                    var psiDec = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" --passphrase \"{esc}\" \"{temp2}\"");
+                    try { psiDec.RedirectStandardOutput = true; psiDec.RedirectStandardError = true; } catch { }
+
+                    using (var p3 = Process.Start(psiDec))
+                    {
+                        if (p3 != null)
+                        {
+                            var outTask3 = Task.Run(() => p3.StandardOutput.ReadToEnd());
+                            var errTask3 = Task.Run(() => p3.StandardError.ReadToEnd());
+
+                            bool exited3 = p3.WaitForExit(15000);
+                            if (!exited3)
+                            {
+                                try { p3.Kill(); } catch { }
+                            }
+
+                            Task.WaitAll(new[] { outTask3, errTask3 }, 2000);
+                            var dOut = outTask3.Result ?? "";
+                            var dErr = errTask3.Result ?? "";
+                            AppendLog($"EnsurePassphrase decode-with-pass exit={p3.ExitCode} stdout_len={dOut?.Length ?? 0} stderr_len={dErr?.Length ?? 0}");
+
+                            bool decSuccess = p3.ExitCode == 0 && (Directory.Exists(temp2) ? Directory.EnumerateFileSystemEntries(temp2).Any() : false);
+                            try { Directory.Delete(temp2, true); } catch { }
+
+                            if (decSuccess)
+                            {
+                                SaveCachedPassphrase(pass);
+                                AppendLog("EnsurePassphrase: Successfully cached passphrase");
+                                return true;
+                            }
+
+                            if ((dErr?.Contains("AES decryption failed") == true) || (dOut?.Contains("AES decryption failed") == true) || (dErr?.Contains("Encrypted payload") == true) || (dOut?.Contains("Encrypted payload") == true))
+                            {
+                                errorMsg = "Mot de passe incorrect";
+                                if (CachedPassphrase == pass) ClearCachedPassphrase();
+                                cached = null;
+                                continue;
+                            }
+
+                            MessageBox.Show($"Erreur lors de la vérification de l'archive :\n{dErr}\n\nVoir le journal: {LogPath}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return false;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"EnsurePassphraseBeforeOpen failed: {ex}");
+                return true;
+            }
         }
 
         public static void CopyDirectory(string sourceDir, string destinationDir)
@@ -396,17 +584,22 @@ namespace Pyxelze
                     bool needsPassphrase = (stdout?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true);
                     if (needsPassphrase)
                     {
+                        // Try cached passphrase first, then prompt and cache if successful
+                        string? pass = Program.CachedPassphrase;
                         string? errorMsg = null;
                         while (true)
                         {
-                            var passTry = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
-                            if (passTry == null)
+                            if (pass == null)
                             {
-                                MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                return;
+                                pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+                                if (pass == null)
+                                {
+                                    MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    return;
+                                }
                             }
 
-                            var escTry = passTry.Replace("\"", "\\\"");
+                            var escTry = pass.Replace("\"", "\\\"");
                             var psiPassTry = RoxRunner.CreateRoxProcess($"decode \"{archivePath}\" --passphrase \"{escTry}\" \"{outputDir}\"");
 
                             AppendLog($"Run command (with passphrase): {psiPassTry.FileName} {psiPassTry.Arguments}");
@@ -430,6 +623,7 @@ namespace Pyxelze
 
                                 if (exit2 == 0 && hasEntries2)
                                 {
+                                    SaveCachedPassphrase(pass);
                                     MessageBox.Show($"Extraction réussie vers :\n{outputDir}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                     try { Directory.Delete(Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N")), true); } catch { }
                                     return;
@@ -440,6 +634,12 @@ namespace Pyxelze
                                 {
                                     errorMsg = "Mot de passe incorrect";
                                     AppendLog($"Passphrase retry: incorrect passphrase; will reprompt");
+                                    // Clear cached passphrase if it was the one tried, and force re-prompt
+                                    if (Program.CachedPassphrase == pass)
+                                    {
+                                        Program.ClearCachedPassphrase();
+                                    }
+                                    pass = null;
                                     try { if (Directory.Exists(outputDir)) Directory.Delete(outputDir, true); } catch { }
                                     continue;
                                 }

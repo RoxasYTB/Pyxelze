@@ -24,6 +24,13 @@ echo "🔧 Removing old release dir and recreating: $RELEASE_DIR"
 rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
 
+echo "🔧 Cleaning previous build artifacts (bin/obj/publish/release)..."
+dotnet clean -c Release || true
+rm -rf "$ROOT_DIR/bin" "$ROOT_DIR/obj" "$PUBLISH_DIR"
+# ensure a fresh release dir exists
+rm -rf "$RELEASE_DIR"
+mkdir -p "$RELEASE_DIR"
+
 if [ "$(id -u)" -eq 0 ]; then
   echo "⚠️  Attention: tu exécutes le script en tant que root (sudo). Il est recommandé d'exécuter ce script sans sudo pour éviter des problèmes de permissions lors de la copie des artefacts (roxify_native.exe)."
 fi
@@ -67,6 +74,12 @@ else
   echo "✅ roxify_native.exe copied to $PUBLISH_DIR/roxify/roxify_native.exe"
 fi
 
+# Write build stamp into publish tree for easy verification without executing the binary
+# extract BuildStamp reliably using sed (works with various encodings)
+STAMP="$(sed -n 's/.*BuildStamp = "\([^"]*\)".*/\1/p' src/Program.cs || true)"
+echo "$STAMP" > "$PUBLISH_DIR/BUILDSTAMP.txt"
+echo "Build stamp written to $PUBLISH_DIR/BUILDSTAMP.txt: $STAMP"
+
 # Attempt to build installer if requested and possible
 if [ "$NO_INSTALLER" -eq 0 ]; then
   echo "
@@ -98,8 +111,9 @@ echo "📦 Création du zip de release: $RELEASE_DIR/$RELEASE_NAME"
 
 # SHA256
 if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum "$RELEASE_DIR/$RELEASE_NAME" > "$RELEASE_DIR/SHA256SUMS.txt"
-  echo "🧾 SHA256 écrit dans $RELEASE_DIR/SHA256SUMS.txt"
+  echo "🧾 Génération des checksums SHA256..."
+  (cd "$RELEASE_DIR" && sha256sum * > sha256sums.txt 2>/dev/null) || true
+  echo "🧾 SHA256 écrit dans $RELEASE_DIR/sha256sums.txt"
 else
   echo "⚠️  sha256sum non disponible — pas de checksum généré"
 fi
