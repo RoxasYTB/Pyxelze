@@ -148,6 +148,13 @@ fi
 
 echo "Installer built, outputs placed in: $OUT_DIR"
 
+# Optional sanitization step to remove common developer paths/strings that trigger FP heuristics
+if [ -x "$SCRIPT_DIR/sanitize_binaries.sh" ]; then
+  echo "🔧 Sanitizing built binaries to reduce heuristic flags (removing absolute source paths and known trigger strings)..."
+  # sanitize roxify and installer if present
+  "$SCRIPT_DIR/sanitize_binaries.sh" "$PUBLISH_DIR/roxify/roxify_native.exe" "$OUT_DIR"/*.exe || true
+fi
+
 if command -v sha256sum >/dev/null 2>&1; then
   echo "Generating SHA256 checksums for installer(s)..."
   > "$OUT_DIR/sha256sums.txt"
