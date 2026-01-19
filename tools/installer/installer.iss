@@ -181,11 +181,11 @@ begin
     ExecOK := Exec(ExpandConstant('{app}\Pyxelze.exe'), 'register-contextmenu', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     if not ExecOK then
     begin
-      MsgBox('Attention: impossible d''exécuter "' + ExpandConstant('{app}\Pyxelze.exe') + '" pour l''enregistrement du menu contextuel. Il est possible que le binaire installé ne soit pas la bonne version (ex. binaire Linux).\n\nMerci de vérifier que tu utilises la version Windows de Pyxelze.', mbError, MB_OK);
+      MsgBox('Attention: impossible d''exécuter "' + ExpandConstant('{app}\Pyxelze.exe') + '" pour l''enregistrement du menu contextuel. Il est possible que le binaire installé ne soit pas la bonne version (ex. binaire Linux).' + #13#10#13#10 + 'Merci de vérifier que tu utilises la version Windows de Pyxelze.', mbError, MB_OK);
     end
     else if ResultCode <> 0 then
     begin
-      MsgBox('La commande d''enregistrement du menu contextuel a renvoyé le code ' + IntToStr(ResultCode) + '. Si le problème persiste, vérifie le binaire dans le dossier d''installation.', mbError, MB_OK);
+      MsgBox('La commande d''enregistrement du menu contextuel a renvoyé le code ' + IntToStr(ResultCode) + '. Si le problème persiste, vérifie le binaire dans le dossier d''installation et exécute manuellement en administrateur : "' + ExpandConstant('{app}\Pyxelze.exe') + '" register-contextmenu', mbError, MB_OK);
     end;
 
     if FileExists(ExpandConstant('{app}\roxify')) then
@@ -203,7 +203,7 @@ begin
     else if FileExists(NodePathA) or FileExists(NodePathB) or FileExists(NodePathC) then
       ExecOK := True
     else
-      MsgBox('Aucun binaire roxify natif trouvé (ni roxify_native.exe ni libroxify_native.node). Certaines fonctionnalités peuvent être limitées.', mbError, MB_OK);
+      MsgBox('Aucun binaire roxify natif trouvé (ni roxify_native.exe ni libroxify_native.node). Certaines fonctionnalités peuvent être limitées.' + #13#10#13#10 + 'Pour supprimer ce message, copie un binaire Windows "roxify_native.exe" dans le dossier d''installation (ex. "{app}\\roxify") avant de relancer l''installateur.', mbInformation, MB_OK);
 
     // Informative message if roxify exists but was not executed (to avoid triggering antivirus during install)
     if FileExists(RoxExePath) and not ExecOK then

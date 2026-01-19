@@ -42,6 +42,11 @@ echo "📦 Using prebuilt roxify_native.exe (no npm build)"
 # Prefer global build location or local tools build if present. Do not run npm here.
 if [ -f "/home/yohan/roxify/dist/roxify_native.exe" ]; then
   echo "✅ Found global roxify_native.exe at /home/yohan/roxify/dist/roxify_native.exe"
+  mkdir -p "$ROOT_DIR/tools/roxify/dist"
+  if [ ! -f "$ROOT_DIR/tools/roxify/dist/roxify_native.exe" ] || [ "/home/yohan/roxify/dist/roxify_native.exe" -nt "$ROOT_DIR/tools/roxify/dist/roxify_native.exe" ]; then
+    echo "📋 Copying to $ROOT_DIR/tools/roxify/dist for local convenience"
+    cp -f "/home/yohan/roxify/dist/roxify_native.exe" "$ROOT_DIR/tools/roxify/dist/roxify_native.exe" || echo "⚠️ Failed to copy into tools/roxify/dist"
+  fi
 elif [ -f "$ROOT_DIR/tools/roxify/dist/roxify_native.exe" ]; then
   echo "✅ Found local roxify_native.exe at $ROOT_DIR/tools/roxify/dist/roxify_native.exe"
 else

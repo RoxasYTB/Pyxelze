@@ -73,12 +73,23 @@ fi
 
 # Ensure roxify_native.exe is present before attempting installer build
 if [ ! -f "$PUBLISH_DIR/roxify/roxify_native.exe" ]; then
-  echo "ERROR: roxify_native.exe not found in publish tree: $PUBLISH_DIR/roxify/roxify_native.exe"
-  echo "Please ensure the prebuilt roxify_native.exe is available in one of these locations before building the installer:"
-  echo "  - /home/yohan/roxify/dist/roxify_native.exe"
-  echo "  - $ROOT_DIR/tools/roxify/dist/roxify_native.exe"
-  echo "You can run: scripts/publish_release.sh (without sudo) to copy it into the publish tree if present locally."
-  exit 1
+  echo "⚠️ roxify_native.exe not found in publish tree: $PUBLISH_DIR/roxify/roxify_native.exe"
+  echo "Tentative de copie depuis emplacements connus..."
+  mkdir -p "$PUBLISH_DIR/roxify"
+  if [ -f "/home/yohan/roxify/dist/roxify_native.exe" ]; then
+    echo "📥 Copying /home/yohan/roxify/dist/roxify_native.exe -> $PUBLISH_DIR/roxify/roxify_native.exe"
+    cp -f "/home/yohan/roxify/dist/roxify_native.exe" "$PUBLISH_DIR/roxify/roxify_native.exe" || { echo "ERROR: copy failed"; exit 1; }
+  elif [ -f "$ROOT_DIR/tools/roxify/dist/roxify_native.exe" ]; then
+    echo "📥 Copying $ROOT_DIR/tools/roxify/dist/roxify_native.exe -> $PUBLISH_DIR/roxify/roxify_native.exe"
+    cp -f "$ROOT_DIR/tools/roxify/dist/roxify_native.exe" "$PUBLISH_DIR/roxify/roxify_native.exe" || { echo "ERROR: copy failed"; exit 1; }
+  else
+    echo "ERROR: roxify_native.exe still not found in publish tree: $PUBLISH_DIR/roxify/roxify_native.exe"
+    echo "Please ensure the prebuilt roxify_native.exe is available in one of these locations before building the installer:"
+    echo "  - /home/yohan/roxify/dist/roxify_native.exe"
+    echo "  - $ROOT_DIR/tools/roxify/dist/roxify_native.exe"
+    echo "You can run: scripts/publish_release.sh (without sudo) to copy it into the publish tree if present locally."
+    exit 1
+  fi
 fi
 
 # Try to strip symbols/debug info from the native binary to reduce embedded source paths and panic strings
