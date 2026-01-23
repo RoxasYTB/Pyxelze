@@ -1,6 +1,6 @@
 @echo off
-REM Copy tools\roxify\dist -> release\roxify (minimal fallback used by CI)
+REM The CLI previously built under tools/roxify has been archived (tools/archive/roxify).
+REM This script is therefore a no-op for the current version.
 if not exist release mkdir release
-
-
-exit /b 0xcopy /E /Y tools\roxify\dist release\roxify >nul 2>nul || exit /b 0nif not exist release\roxify mkdir release\roxify
+echo No CLI distribution to copy; tools/roxify archived under tools/archive/roxify
+exit /b 0

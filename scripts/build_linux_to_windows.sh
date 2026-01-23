@@ -29,30 +29,13 @@ fi
 echo -e "${GREEN}   ✓ Module natif Windows compilé ($(du -sh target/x86_64-pc-windows-gnu/release/roxify_native.dll | cut -f1))${NC}"
 cd "$ROOT"
 
-echo -e "${GREEN}[3/6] Build du CLI roxify...${NC}"
-if [ -f tools/roxify/dist/roxify_native.exe ] && [ -f tools/roxify/dist/rox.exe ]; then
-    echo -e "${GREEN}   ✓ CLI roxify déjà construit ($(du -sh tools/roxify/dist | cut -f1))${NC}"
-else
-    cd tools/roxify
-    npm install
-    npm run build:exe
-    if [ ! -f dist/roxify_native.exe ] || [ ! -f dist/rox.exe ]; then
-        echo -e "${RED}ERREUR: dist/roxify_native.exe ou dist/rox.exe manquant${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}   ✓ CLI roxify prêt ($(du -sh dist | cut -f1))${NC}"
-    cd "$ROOT"
-fi
+echo -e "${GREEN}[3/6] (CLI roxify archivé) - pas de build Node.js pour cette version${NC}"
+# Le code Node/CLI a été archivé dans `tools/archive/roxify`. Si vous avez besoin
+# de reconstruire le CLI, restaure manuellement `tools/archive/roxify` et exécute
+# `npm install && npm run build:exe` dans ce dossier. Le script continue sans CLI.
 
-echo -e "${GREEN}   Remplacement du module natif par la version Windows...${NC}"
-if [ -f /home/yohan/roxify/target/x86_64-pc-windows-gnu/release/roxify_native.dll ]; then
-    cp /home/yohan/roxify/target/x86_64-pc-windows-gnu/release/roxify_native.dll tools/roxify/node_modules/roxify/libroxify_native.node
-    echo -e "${GREEN}   ✓ Module natif Windows copié ($(du -sh tools/roxify/node_modules/roxify/libroxify_native.node | cut -f1))${NC}"
-else
-    echo -e "${RED}ERREUR: Module natif Windows non trouvé dans ~/roxify/target/${NC}"
-    echo "Compilez-le avec: cd ~/roxify && cargo build --release --target x86_64-pc-windows-gnu --lib"
-    exit 1
-fi
+echo -e "${GREEN}   (skip) Remplacement du module natif par la version Windows (non applicable)${NC}"
+
 
 echo -e "${GREEN}[4/6] Publication .NET pour Windows...${NC}"
 dotnet publish -c Release -r win-x64 --self-contained false -p:EnableWindowsTargeting=true -o bin/Release/net7.0-windows

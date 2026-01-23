@@ -6,8 +6,8 @@
             <UseWindowsForms>true</UseWindowsForms>
             <ImplicitUsings>enable</ImplicitUsings>
             <Nullable>enable</Nullable>
-            <NoWarn>NETSDK1138</NoWarn>
             <ApplicationIcon>appIcon.ico</ApplicationIcon>
+            <PackageLicenseFile>LICENSE</PackageLicenseFile>
             <!-- Disable SDK-generated assembly attributes to avoid duplicate attribute issues -->
             <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
             <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
@@ -27,52 +27,11 @@
             </None>
       </ItemGroup>
       <ItemGroup>
+            <None Include="LICENSE" Pack="true" PackagePath="" />
+      </ItemGroup>
+      <ItemGroup>
             <!-- Exclude test project sources from main project wildcard includes -->
             <Compile Remove="dnd_test\**\*.cs" />
       </ItemGroup>
-      <Target Name="BuildRoxifyCli" BeforeTargets="BeforeBuild">
-            <Message Importance="low"
-                  Text="Skipping roxify build during dotnet build: rely on prebuilt roxify_native.exe in tools/roxify/dist or /home/yohan/roxify/dist." />
-            <ItemGroup>
-                  <RoxifyDistFiles Include="$(ProjectDir)tools\roxify\dist\**\*.*"
-                        Condition="Exists('$(ProjectDir)tools\roxify\dist')" />
-            </ItemGroup>
-            <Copy SourceFiles="@(RoxifyDistFiles)"
-                  Condition="Exists('$(ProjectDir)tools\roxify\dist')"
-                  DestinationFiles="@(RoxifyDistFiles->'$(OutDir)tools\roxify\%(RecursiveDir)%(Filename)%(Extension)')" />
-      </Target>
-      <Target Name="CopyRoxifyToBuild" AfterTargets="Build">
-            <PropertyGroup>
-                  <RoxExeSource>
-                        $(ProjectDir)..\..\roxify\target\x86_64-pc-windows-gnu\release\roxify_native.exe</RoxExeSource>
-                  <RoxExeDest>$(OutDir)roxify\roxify_native.exe</RoxExeDest>
-            </PropertyGroup>
-            <MakeDir Directories="$(OutDir)roxify" />
-            <Copy SourceFiles="$(RoxExeSource)" DestinationFiles="$(RoxExeDest)"
-                  Condition="Exists('$(RoxExeSource)')" />
-      </Target>
-      <Target Name="PublishRoxify" BeforeTargets="Publish">
-            <PropertyGroup>
-                  <RoxExeSource>$(ProjectDir)tools\roxify\dist\roxify_native.exe</RoxExeSource>
-                  <RoxExeDest>$(PublishDir)roxify\roxify_native.exe</RoxExeDest>
-            </PropertyGroup>
-
-            <Message Importance="high"
-                  Text="Including roxify_native.exe in publish: $(RoxExeSource) -> $(RoxExeDest)" />
-
-            <MakeDir Directories="$(PublishDir)roxify" />
-            <Copy SourceFiles="$(RoxExeSource)" DestinationFiles="$(RoxExeDest)"
-                  Condition="Exists('$(RoxExeSource)') And '$(PublishDir)' != ''" />
-
-      </Target>
-
-      <Target Name="MakeInstaller" AfterTargets="Publish">
-            <Message Importance="high" Text="Building Inno Setup installer from $(PublishDir)..." />
-            <Exec Condition="'$(OS)' == 'Windows_NT'"
-                  Command="&quot;$(ProjectDir)tools\installer\build_installer.cmd&quot; &quot;$(PublishDir)&quot;"
-                  WorkingDirectory="$(ProjectDir)tools\installer" ContinueOnError="false" />
-            <Exec Condition="'$(OS)' != 'Windows_NT'"
-                  Command="echo Skipping installer build on non-Windows host. Run tools\installer\build_installer.cmd on Windows or provide ISCC_PATH and build installer manually."
-                  WorkingDirectory="$(ProjectDir)tools\installer" ContinueOnError="true" />
-      </Target>
+      <!-- Node CLI (roxify) is archived; related build/publish targets removed to simplify the main project. If you need the legacy CLI, restore it from `tools/archive/roxify`. -->
 </Project>
