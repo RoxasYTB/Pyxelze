@@ -18,18 +18,4 @@ jobs:
       - name: Build
         run: dotnet build -c Release --no-restore
 
-  build-node:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-      - name: Build CLI
-        run: |
-          cd tools/roxify
-          npm ci
-          npm run build:exe || true
+

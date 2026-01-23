@@ -116,26 +116,17 @@ Sortie : `publish_final\Pyxelze.exe` (avec toutes les DLL nécessaires)
 
 ---
 
-### Build CLI (rox.exe)
+### CLI (legacy)
 
-#### Depuis tools/roxify
+Le CLI `roxify` était historiquement inclus dans `tools/roxify` (Node.js). Pour cette version, le CLI a été **archivé** et n'est plus construit ni inclus automatiquement. Le code source du CLI est conservé sous `tools/archive/roxify` pour référence ou reconstruction manuelle si nécessaire.
+
+Si vous avez besoin de reconstruire le CLI :
 
 ```cmd
-cd tools\roxify
+cd tools/archive/roxify
 npm ci
 npm run build:exe
-cd ..\..
 ```
-
-Sortie : `tools\roxify\dist\` (contient rox.exe, node.exe, rox.cmd, install-rox.cmd, node_modules)
-
-#### Workflow complet :
-
-1. `npm run build:exe` → bundle esbuild (rox-bundle.cjs) + pkg (rox.exe)
-2. Postbuild script (`scripts/postbuild.js`) copie :
-   - `rox.exe` + `node.exe` → `dist/`
-   - `node_modules/` → `dist/node_modules/`
-   - `rox.cmd`, `install-rox.cmd` → `dist/`
 
 ---
 

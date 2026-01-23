@@ -33,48 +33,5 @@
             <!-- Exclude test project sources from main project wildcard includes -->
             <Compile Remove="dnd_test\**\*.cs" />
       </ItemGroup>
-      <Target Name="BuildRoxifyCli" BeforeTargets="BeforeBuild">
-            <Exec Command="where node" IgnoreExitCode="true" />
-            <Exec Command="npm ci" WorkingDirectory="$(ProjectDir)tools\roxify"
-                  ContinueOnError="true" />
-            <Exec Command="npm run build:exe" WorkingDirectory="$(ProjectDir)tools\roxify"
-                  ContinueOnError="true" />
-            <ItemGroup>
-                  <RoxifyDistFiles Include="$(ProjectDir)tools\roxify\dist\**\*.*"
-                        Condition="Exists('$(ProjectDir)tools\roxify\dist')" />
-            </ItemGroup>
-            <Copy SourceFiles="@(RoxifyDistFiles)"
-                  Condition="Exists('$(ProjectDir)tools\roxify\dist')"
-                  DestinationFiles="@(RoxifyDistFiles->'$(OutDir)tools\roxify\%(RecursiveDir)%(Filename)%(Extension)')" />
-      </Target>
-      <Target Name="CopyRoxifyToBuild" AfterTargets="Build">
-            <PropertyGroup>
-                  <RoxExeSource>
-                        $(ProjectDir)..\..\roxify\target\x86_64-pc-windows-gnu\release\roxify_native.exe</RoxExeSource>
-                  <RoxExeDest>$(OutDir)roxify\roxify_native.exe</RoxExeDest>
-            </PropertyGroup>
-            <MakeDir Directories="$(OutDir)roxify" />
-            <Copy SourceFiles="$(RoxExeSource)" DestinationFiles="$(RoxExeDest)"
-                  Condition="Exists('$(RoxExeSource)')" />
-      </Target>
-      <Target Name="PublishRoxify" BeforeTargets="Publish">
-            <Exec Command="bash -c 'wine cmd /c make_release.cmd'"
-                  WorkingDirectory="$(ProjectDir)" ContinueOnError="false" />
-
-            <PropertyGroup>
-                  <RoxExeSource>$(ProjectDir)release\roxify\roxify_native.exe</RoxExeSource>
-                  <RoxExeDest>$(PublishDir)roxify\roxify_native.exe</RoxExeDest>
-            </PropertyGroup>
-
-            <Message Importance="high"
-                  Text="Including roxify_native.exe in publish: $(RoxExeSource) -> $(RoxExeDest)" />
-
-            <MakeDir Directories="$(PublishDir)roxify" />
-            <Copy SourceFiles="$(RoxExeSource)" DestinationFiles="$(RoxExeDest)"
-                  Condition="Exists('$(RoxExeSource)') And '$(PublishDir)' != ''" />
-            <Copy SourceFiles="$(ProjectDir)release\roxify\roxify_native.cmd"
-                  DestinationFiles="$(PublishDir)roxify\roxify_native.cmd"
-                  Condition="Exists('$(ProjectDir)release\roxify\roxify_native.cmd') And '$(PublishDir)' != ''" />
-
-      </Target>
+      <!-- Node CLI (roxify) is archived; related build/publish targets removed to simplify the main project. If you need the legacy CLI, restore it from `tools/archive/roxify`. -->
 </Project>
