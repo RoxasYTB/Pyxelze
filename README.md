@@ -2,7 +2,9 @@
 
 > ⚠️ Note : l'historique du dépôt a été réécrit le 2026-01-23 pour retirer des artefacts binaires et réduire la taille du dépôt. Si vous possédez un clone local, **supprimez-le et re-clonez** le dépôt pour éviter des conflits d'historique.
 
-Pyxelze est une application Windows (.NET 7) avec interface graphique (WinForms) permettant de gérer et manipuler des fichiers ROX (archives Zero Install). Le projet inclut également un outil CLI (rox) basé sur Node.js pour des opérations en ligne de commande.
+Pyxelze est une application Windows (.NET 7) avec interface graphique (WinForms) permettant de gérer et manipuler des fichiers ROX (archives Zero Install).
+
+Remarque : le CLI historique (`rox`) basé sur Node.js est **archivé** et conservé pour référence sous `tools/archive/roxify`. Il n'est pas requis pour construire, tester ou publier la GUI. Si nécessaire, restaurez `tools/archive/roxify` et reconstruisez manuellement le CLI (Node.js 18+ requis).
 
 ---
 
@@ -18,19 +20,14 @@ Pyxelze/
 ├── release/                 # Scripts et fichiers pour la release finale
 │   ├── installer.iss        # Script Inno Setup pour l'installateur Windows
 │   ├── build_installer.cmd  # Compile l'installateur avec Inno Setup
-│   └── roxify/              # Distribution CLI copiée (ignoré par git)
 ├── tools/
 │   ├── installer/           # Template installer Inno Setup
-│   └── roxify/              # Projet Node.js pour CLI rox
-│       ├── package.json     # Dépendances npm (roxify, pkg, esbuild)
-│       ├── index.js         # Point d'entrée CLI wrapper
-│       ├── build.cmd        # Build du CLI (bundle + exe)
-│       ├── install-rox.cmd  # Script d'installation PATH (utilisateur)
-│       ├── rox.cmd          # Wrapper Windows pour rox.exe
-│       ├── scripts/         # Scripts de postbuild (postbuild.js)
-│       ├── build/           # Sortie esbuild (rox-bundle.cjs)
-│       ├── dist/            # Distribution finale CLI (ignoré par git)
-│       └── node_modules/    # Dépendances npm (ignoré par git)
+│   └── archive/             # Code archivé (legacy tools)
+│       └── roxify/          # CLI legacy (Node.js) archivé — non requis pour build/publish
+│           ├── package.json
+│           ├── index.js
+│           └── build scripts / tests (voir dossier)
+
 ├── Properties/              # AssemblyInfo .NET
 ├── *.cs                     # Code source C# (Form1, DragHelper, etc.)
 ├── docs/                    # Documentation regroupée
@@ -51,7 +48,7 @@ Pyxelze/
 
 - **Windows 10/11**
 - **.NET 7 SDK** : [Télécharger ici](https://dotnet.microsoft.com/download/dotnet/7.0)
-- **Node.js 18+** : [Télécharger ici](https://nodejs.org/)
+- **Node.js 18+ (optionnel)** : [Télécharger ici](https://nodejs.org/) — requis uniquement pour reconstruire le CLI legacy depuis `tools/archive/roxify`
 - **Inno Setup 6** : [Télécharger ici](https://jrsoftware.org/isdl.php) (pour compiler l'installateur)
 
 ### Optionnel
@@ -194,29 +191,24 @@ build_installer.cmd
 
 ---
 
-## Workflow complet : De zéro à l'installateur
+## Workflow complet : De zéro à l'installateur (GUI)
 
 ```cmd
-# 1. Installer dépendances Node.js (une seule fois)
-cd tools\roxify
-npm ci
-cd ..\..
+# 1. Build GUI
+dotnet publish -c Release -o publish_final
 
-# 2. Build CLI rox.exe
-cd tools\roxify
-npm run build:exe
-cd ..\..
-
-# 3. Créer production unifié (GUI + CLI)
+# 2. Créer production unifié (GUI uniquement)
 build_production.cmd
 
-# 4. Compiler l'installateur
+# 3. Compiler l'installateur
 cd release
 build_installer.cmd
 cd ..
 ```
 
-Résultat final : `release\Pyxelze-Setup.exe` (~200 sec de compilation)
+Résultat final : `release\Pyxelze-Setup.exe` (temps dépendant du système). 
+
+Note : si vous devez inclure le CLI legacy, restaurez `tools/archive/roxify`, reconstruisez le CLI (`npm ci && npm run build:exe`) et copiez manuellement la distribution dans `production\` ou `release\roxify` avant de lancer `build_installer.cmd`. (Le CLI est archivé et non reconstruit automatiquement par les scripts par défaut.)
 
 ---
 
@@ -231,7 +223,7 @@ Résultat final : `release\Pyxelze-Setup.exe` (~200 sec de compilation)
 1. `dotnet publish -c Release -o publish_final` → crée l'application GUI autonome
 2. `rmdir /s /q production` + `mkdir production` → reset dossier production
 3. `xcopy /e /y publish_final\* production\` → copie GUI
-4. `xcopy /e /y tools\roxify\dist\* production\` → copie CLI (ou release\roxify si dist absent)
+4. Optionnel : copier une distribution CLI reconstruite (depuis `tools/archive/roxify` ou `release\roxify`) vers `production\` si vous souhaitez inclure le CLI.
 
 **Variables importantes** :
 
