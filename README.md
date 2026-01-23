@@ -50,7 +50,6 @@ Pyxelze/
 - **.NET 7 SDK** : [Télécharger ici](https://dotnet.microsoft.com/download/dotnet/7.0)
 - **Inno Setup 6** : [Télécharger ici](https://jrsoftware.org/isdl.php) (pour compiler l'installateur)
 
-> Note : **Node.js n'est pas requis** pour construire ou publier la GUI. Le CLI legacy basé sur Node.js est archivé sous `tools/archive/roxify` et n'est pas nécessaire pour le workflow principal (voir `docs/CONTRIBUTING.md` pour reconstruction manuelle).
 ### Optionnel
 
 - **Visual Studio 2022** (pour édition C# avec IntelliSense)
@@ -72,7 +71,6 @@ cd Pyxelze
 ```cmd
 dotnet restore
 ```
-
 
 ---
 
@@ -220,6 +218,7 @@ Note : si vous devez inclure le CLI legacy, restaurez `tools/archive/roxify`, re
 - `production\Pyxelze.exe` (GUI)
 
 > Note : Le cas d'inclusion du CLI dans `production/` est optionnel et doit être fait manuellement si vous choisissez d'ajouter le CLI reconstruit depuis `tools/archive/roxify`.
+
 ---
 
 ### make_release.cmd
@@ -265,8 +264,7 @@ Note : si vous devez inclure le CLI legacy, restaurez `tools/archive/roxify`, re
 
 ### CLI (legacy)
 
-Le CLI `roxify` est archivé dans `tools/archive/roxify` et n'est **pas** reconstruit par défaut dans les scripts du dépôt. Si vous avez un besoin exceptionnel de reconstruire le CLI, consultez `docs/CONTRIBUTING.md` pour la procédure manuelle et considérez cette opération hors du workflow standard du projet.
----
+## Le CLI `roxify` est archivé dans `tools/archive/roxify` et n'est **pas** reconstruit par défaut dans les scripts du dépôt. Si vous avez un besoin exceptionnel de reconstruire le CLI, consultez `docs/CONTRIBUTING.md` pour la procédure manuelle et considérez cette opération hors du workflow standard du projet.
 
 ## Dépannage
 
@@ -282,6 +280,7 @@ Le CLI `roxify` est archivé dans `tools/archive/roxify` et n'est **pas** recons
 ### Erreur : "tools\roxify\dist not found"
 
 **Cause** : Le CLI `roxify` n'est pas construit (il est archivé dans `tools/archive/roxify`). Si vous avez besoin du CLI, restaurez l'archive et suivez la procédure manuelle documentée dans `docs/CONTRIBUTING.md`. Sinon, ignorez cette erreur — la GUI ne nécessite pas le CLI pour fonctionner.
+
 ### Erreur : "dotnet: command not found"
 
 **Cause** : .NET 7 SDK non installé.
