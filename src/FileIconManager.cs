@@ -119,7 +119,9 @@ namespace Pyxelze
 
                         if (_iconCache.TryRemove(key, out var oldCached))
                         {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                               oldCached.SourceBitmap?.Dispose();
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         }
                   }
 
@@ -157,7 +159,9 @@ namespace Pyxelze
                   {
                         if (_iconCache.TryRemove(key, out var cached))
                         {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                               cached.SourceBitmap?.Dispose();
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         }
                   }
             }
@@ -167,33 +171,73 @@ namespace Pyxelze
                   var ico = NativeMethods.GetIcon(path, isFolder, large: false);
                   try
                   {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         var src = ico.ToBitmap();
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         return ResizeTo(src, srcSize);
                   }
                   catch
                   {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         var bmp = new Bitmap(srcSize.Width, srcSize.Height, PixelFormat.Format32bppPArgb);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         using (var g = Graphics.FromImage(bmp))
                         {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                               g.Clear(Color.Transparent);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         return bmp;
                   }
             }
 
             private static Bitmap ResizeTo(Image src, Size size)
             {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                   var dest = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppPArgb);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                   using (var g = Graphics.FromImage(dest))
                   {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         g.Clear(Color.Transparent);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         g.CompositingMode = CompositingMode.SourceOver;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         g.CompositingQuality = CompositingQuality.HighQuality;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         g.SmoothingMode = SmoothingMode.HighQuality;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         g.DrawImage(src, 0, 0, size.Width, size.Height);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                   }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                   return dest;
             }
 
@@ -203,7 +247,9 @@ namespace Pyxelze
 
                   foreach (var cached in _iconCache.Values)
                   {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         cached.SourceBitmap?.Dispose();
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                   }
 
                   _iconCache.Clear();

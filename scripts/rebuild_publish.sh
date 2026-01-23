@@ -31,16 +31,31 @@ fi
 
 echo "📋 Build & copie du binaire roxify..."
 if [ -d /home/yohan/roxify ]; then
-  echo "🔧 Compilation cible Windows (x86_64-pc-windows-gnu) pour roxify_native..."
-  (cd /home/yohan/roxify && cargo build -p roxify_native --release --target x86_64-pc-windows-gnu; echo "Exit code: $?" ) || true
+  echo "🔧 Compilation cible Windows (x86_64-pc-windows-gnu) pour roxify_native (release, no debuginfo)..."
+  (cd /home/yohan/roxify && \
+    RUSTFLAGS="-C debuginfo=0 -C link-args=-s" cargo build -p roxify_native --release --target x86_64-pc-windows-gnu; echo "Exit code: $?" ) || true
 else
   echo "⚠️  Dossier /home/yohan/roxify introuvable — impossible de compiler roxify_native"
 fi
 mkdir -p publish_final/roxify
 if [ -f /home/yohan/roxify/target/x86_64-pc-windows-gnu/release/roxify_native.exe ]; then
   cp -v /home/yohan/roxify/target/x86_64-pc-windows-gnu/release/roxify_native.exe publish_final/roxify/ || true
+  # Strip symbols to reduce embedded source paths in the binary which may trigger AV heuristics
+  if command -v strip >/dev/null 2>&1; then
+    echo "🔧 Stripping roxify_native.exe in publish_final/roxify/..."
+    strip --strip-all publish_final/roxify/roxify_native.exe || true
+  fi
 else
   echo "⚠️  roxify_native.exe non trouvé, vérifie la compilation."
+fi
+
+# Also attempt to copy to publish_with_native (used by make_installer)
+if [ -f publish_final/roxify/roxify_native.exe ]; then
+  mkdir -p "$ROOT_DIR/publish_with_native/roxify"
+  cp -v publish_final/roxify/roxify_native.exe "$ROOT_DIR/publish_with_native/roxify/" || true
+  if command -v strip >/dev/null 2>&1; then
+    strip --strip-all "$ROOT_DIR/publish_with_native/roxify/roxify_native.exe" || true
+  fi
 fi
 
 # Create a timestamped zip release and compute SHA256

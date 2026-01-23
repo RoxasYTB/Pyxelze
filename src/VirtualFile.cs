@@ -1,5 +1,3 @@
-using System;
-
 namespace Pyxelze
 {
       public class VirtualFile

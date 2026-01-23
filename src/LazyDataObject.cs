@@ -85,7 +85,9 @@ namespace Pyxelze
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] PerformPrepare START - {dragSelection.Count} items to extract\n"); } catch { }
                         var toCopy = dragSelection.GroupBy(v => v.FullPath).Select(g => g.First()).ToList();
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Calling PrepareDragTempForSelection with {toCopy.Count} items\n"); } catch { }
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         var (actualTopLevel, job) = DragHelper.PrepareDragTempForSelection(owner, toCopy, tempRoot);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         extractionJob = job;
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] PrepareDragTempForSelection returned {actualTopLevel.Count} top-level paths (job started)\n"); } catch { }
 
@@ -115,49 +117,73 @@ namespace Pyxelze
                   if (result == DragDropEffects.None)
                   {
                         // No drop: cancel background extraction
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         try { extractionJob.Cts.Cancel(); } catch { }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] No drop occurred - cancelled extraction\n"); } catch { }
                         return;
                   }
 
                   // If extraction already finished, nothing to do
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                   if (extractionJob.Finished) return;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
 
                   // Show progress UI and wait for completion (allows user to cancel)
                   try
                   {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         using (var dlg = new ExtractionProgressForm(extractionJob.Total))
                         {
                               // Start a task that updates the progress bar periodically
                               var progressTask = Task.Run(async () =>
                               {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                     while (!extractionJob.Finished)
                                     {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                           try { dlg.UpdateProgress(extractionJob.Completed); } catch { }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                                           await Task.Delay(150);
                                     }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                     try { dlg.UpdateProgress(extractionJob.Completed); } catch { }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                               });
 
                               // Create placeholders so StartExtractionAsync iterates the expected number of steps
                               var placeholderFiles = new List<string>();
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                               for (int i = 0; i < extractionJob.Total; i++) placeholderFiles.Add(i.ToString());
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
 
                               // Show dialog (modal) while background extraction runs. The extractFunc will wait until the background job reports progress.
                               await dlg.StartExtractionAsync(placeholderFiles, async (f, token) =>
                               {
                                     // f contains the index as string. Wait until background extraction has progressed to at least index+1
                                     if (!int.TryParse(f, out int idx)) idx = 0;
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                     while (!extractionJob.Finished && extractionJob.Completed <= idx && !token.IsCancellationRequested)
                                     {
                                           await Task.Delay(50);
                                     }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                     if (token.IsCancellationRequested) extractionJob.Cts.Cancel();
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                     return await Task.FromResult(extractionJob.Completed > idx && extractionJob.Error == null);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                               });
 
                               await progressTask;
                         }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                   }
                   catch (Exception ex)
                   {

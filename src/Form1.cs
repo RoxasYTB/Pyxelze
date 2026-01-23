@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Win32;
 using System.Drawing.Drawing2D;
 using System.Text.Json;
+using System.Runtime.Versioning;
 
 namespace Pyxelze
 {
@@ -35,16 +36,22 @@ namespace Pyxelze
 
         // Hover state
         private ListViewItem? hoverItem = null;
+        private bool autoExtractMode = false;
 
-        public Form1(string? archivePath = null)
+        public Form1(string? archivePath = null, bool autoExtract = false)
         {
             InitializeComponent();
             SetupInterface();
             ThemeManager.ApplyToForm(this);
+            autoExtractMode = autoExtract;
 
             if (!string.IsNullOrEmpty(archivePath) && File.Exists(archivePath))
             {
                 LoadArchive(archivePath);
+                if (autoExtractMode)
+                {
+                    this.Shown += (s, e) => AutoExtractArchive();
+                }
             }
         }
 
@@ -72,6 +79,10 @@ namespace Pyxelze
             viewMenu.DropDownItems.Add(darkModeItem);
             menuStrip.Items.Add(viewMenu);
 
+            var helpMenu = new ToolStripMenuItem("Aide");
+            helpMenu.DropDownItems.Add("À propos de Pyxelze", null, (s, e) => ShowAboutDialog());
+            menuStrip.Items.Add(helpMenu);
+
             this.MainMenuStrip = menuStrip;
             this.Controls.Add(menuStrip);
 
@@ -79,7 +90,9 @@ namespace Pyxelze
             try
             {
                 var iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appIcon.ico");
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                 if (File.Exists(iconPath)) this.Icon = new Icon(iconPath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
             }
             catch { }
 
@@ -189,6 +202,10 @@ namespace Pyxelze
                 ofd.Filter = "Fichiers PNG Rox (*.png)|*.png|Tous les fichiers (*.*)|*.*";
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
+                    if (!Program.EnsurePassphraseBeforeOpen(ofd.FileName))
+                    {
+                        return;
+                    }
                     LoadArchive(ofd.FileName);
                 }
             }
@@ -212,8 +229,12 @@ namespace Pyxelze
 
                 using (var p = Process.Start(psi))
                 {
-                    // Read output/error asynchronously and wait with timeout to avoid UI hang
-                    var outTask = Task.Run(() => p!.StandardOutput.ReadToEnd());
+                    if (p == null)
+                    {
+                        MessageBox.Show("Impossible de lancer roxify.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    var outTask = Task.Run(() => p.StandardOutput.ReadToEnd());
                     var errTask = Task.Run(() => p.StandardError.ReadToEnd());
 
                     const int timeoutMs = 10000; // 10 seconds
@@ -236,7 +257,6 @@ namespace Pyxelze
                     }
                     else
                     {
-                        // try to show rox.err.txt if present next to the binary
                         string extra = string.Empty;
                         try
                         {
@@ -249,7 +269,16 @@ namespace Pyxelze
                         }
                         catch { }
 
-                        MessageBox.Show("Erreur lors de la lecture de l'archive.\n" + stderr + extra, "Erreur rox", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        bool needsPass = (output?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("AES decryption failed") == true) || (output?.Contains("AES decryption failed") == true) || (stderr?.Contains("Encrypted payload") == true) || (output?.Contains("Encrypted payload") == true);
+                        if (needsPass)
+                        {
+                            MessageBox.Show("Ce fichier nécessite une passphrase. Utilisez le menu contextuel \"Ouvrir l'archive\" pour les fichiers chiffrés, ou fermez et réouvrez le fichier pour saisir la passphrase.", "Passphrase requise", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return;
+                        }
+                        else
+                        {
+                            MessageBox.Show("Erreur lors de la lecture de l'archive.\n" + stderr + extra, "Erreur rox", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
                     }
                 }
             }
@@ -514,7 +543,11 @@ readme.txt (100 bytes)
             Color back = ThemeManager.ListViewHeaderBack;
             Color fore = ThemeManager.ControlFore;
 
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
             using (var b = new SolidBrush(back)) e.Graphics.FillRectangle(b, e.Bounds);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
             TextFormatFlags flags = TextFormatFlags.VerticalCenter | TextFormatFlags.Left;
             TextRenderer.DrawText(e.Graphics, e.Header!.Text, e.Font!, e.Bounds, fore, flags);
         }
@@ -526,7 +559,11 @@ readme.txt (100 bytes)
             int headerHeight = textH + 12;
             var rect = new Rectangle(0, 0, listView.ClientSize.Width, headerHeight + 2);
             Color back = ThemeManager.ListViewHeaderBack;
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
             using (var b = new SolidBrush(back)) e.Graphics.FillRectangle(b, rect);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
         }
 
         private void ListView_DrawItem(object? sender, DrawListViewItemEventArgs e)
@@ -556,7 +593,11 @@ readme.txt (100 bytes)
                 back = hoverColor;
             }
 
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
             using (var b = new SolidBrush(back)) e.Graphics.FillRectangle(b, bounds);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
 
             if (e.ColumnIndex == 0)
             {
@@ -574,7 +615,9 @@ readme.txt (100 bytes)
                 {
                     int iconLeft = bounds.Left + 2;
                     int iconTop = bounds.Top + (bounds.Height - smallImageList.ImageSize.Height) / 2;
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                     e.Graphics.DrawImage(img, new Rectangle(iconLeft, iconTop, iconWidth, smallImageList.ImageSize.Height));
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                 }
 
                 // Draw Text
@@ -678,6 +721,286 @@ readme.txt (100 bytes)
             }
         }
 
+        private void AutoExtractArchive()
+        {
+            if (string.IsNullOrEmpty(currentArchive)) return;
+
+            string outputDir = Path.Combine(Path.GetDirectoryName(currentArchive) ?? "", Path.GetFileNameWithoutExtension(currentArchive));
+            ExtractAllToFolder(outputDir);
+        }
+
+        private void ShowAboutDialog()
+        {
+            if (!OperatingSystem.IsWindows()) return;
+            using var aboutForm = new AboutForm();
+            aboutForm.ShowDialog(this);
+        }
+
+        private void ExtractAllToFolder(string destFolder)
+        {
+            if (string.IsNullOrEmpty(currentArchive))
+            {
+                MessageBox.Show("Aucune archive ouverte.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(destFolder);
+
+                var filePaths = RoxRunner.GetFileList(currentArchive);
+                if (filePaths == null || filePaths.Count == 0)
+                {
+                    // Try robust temporary extraction fallback (copy rox exe to temp and extract there, then move files)
+                    var tempDir = Path.Combine(Path.GetTempPath(), "pyxelze-decompress-" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(tempDir);
+                    var roxPath = RoxRunner.GetRoxPath() ?? string.Empty;
+                    ProcessStartInfo psi2;
+                    if (!string.IsNullOrEmpty(roxPath))
+                    {
+                        try
+                        {
+                            var tempExe = Path.Combine(Path.GetTempPath(), "roxify_exec_" + Guid.NewGuid().ToString("N") + ".exe");
+                            File.Copy(roxPath, tempExe, true);
+                            try { File.SetAttributes(tempExe, FileAttributes.Normal); } catch { }
+                            try { File.Delete(tempExe + ":Zone.Identifier"); } catch { }
+                            psi2 = new ProcessStartInfo
+                            {
+                                FileName = tempExe,
+                                Arguments = $"decode \"{currentArchive}\" \"{tempDir}\"",
+                                UseShellExecute = false,
+                                CreateNoWindow = true,
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true,
+                                WorkingDirectory = tempDir
+                            };
+                            try { psi2.EnvironmentVariables["TMP"] = tempDir; psi2.EnvironmentVariables["TEMP"] = tempDir; } catch { }
+                        }
+                        catch
+                        {
+                            psi2 = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempDir}\"");
+                            psi2.WorkingDirectory = tempDir;
+                            try { psi2.EnvironmentVariables["TMP"] = tempDir; psi2.EnvironmentVariables["TEMP"] = tempDir; } catch { }
+                        }
+                    }
+                    else
+                    {
+                        psi2 = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempDir}\"");
+                        psi2.WorkingDirectory = tempDir;
+                        try { psi2.EnvironmentVariables["TMP"] = tempDir; psi2.EnvironmentVariables["TEMP"] = tempDir; } catch { }
+                    }
+
+                    string stdout2, stderr2;
+                    using (var f2 = new ProcessProgressForm("Extraction (contournement)", $"Extraction vers un répertoire temporaire pour contourner un problème de permission..."))
+                    {
+                        int exit2 = f2.RunProcess(psi2, out stdout2, out stderr2);
+                        if (exit2 == 0)
+                        {
+                            // move contents from tempDir into destFolder
+                            foreach (var entry in Directory.EnumerateFileSystemEntries(tempDir))
+                            {
+                                var name = Path.GetFileName(entry);
+                                var dest = Path.Combine(destFolder, name);
+                                if (Directory.Exists(entry))
+                                {
+                                    if (Directory.Exists(dest)) Directory.Delete(dest, true);
+                                    Program.CopyDirectory(entry, dest);
+                                }
+                                else if (File.Exists(entry))
+                                {
+                                    if (File.Exists(dest)) File.Delete(dest);
+                                    File.Copy(entry, dest, true);
+                                }
+                            }
+                            try { Directory.Delete(tempDir, true); } catch { }
+                            MessageBox.Show($"Extraction réussie vers :\n{destFolder}\n\nRemarque: extraction effectuée via un répertoire temporaire.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            if (autoExtractMode) this.Close();
+                            return;
+                        }
+                        else
+                        {
+                            // If roxify requested a passphrase, prompt and retry once
+                            bool needsPass = (stdout2?.Contains("Passphrase required for AES decryption") == true) || (stderr2?.Contains("Passphrase required for AES decryption") == true) || (stderr2?.Contains("AES decryption failed") == true) || (stdout2?.Contains("AES decryption failed") == true) || (stderr2?.Contains("Encrypted payload") == true) || (stdout2?.Contains("Encrypted payload") == true);
+                            if (needsPass)
+                            {
+                                if (!OperatingSystem.IsWindows())
+                                {
+                                    MessageBox.Show("Passphrase requise mais non prise en charge sur cette plateforme.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    try { Directory.Delete(tempDir, true); } catch { }
+                                    return;
+                                }
+
+                                string? errorMsg = null;
+                                while (true)
+                                {
+                                    var pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+                                    if (pass == null)
+                                    {
+                                        try { Directory.Delete(tempDir, true); } catch { }
+                                        MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                        return;
+                                    }
+
+                                    var esc = pass.Replace("\"", "\\\"");
+                                    var psiPass = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{tempDir}\"");
+                                    psiPass.WorkingDirectory = tempDir;
+                                    try { psiPass.EnvironmentVariables["TMP"] = tempDir; psiPass.EnvironmentVariables["TEMP"] = tempDir; } catch { }
+
+                                    string stdout3, stderr3;
+                                    using (var f3 = new ProcessProgressForm("Déchiffrement en cours", "Déchiffrement en cours..."))
+                                    {
+                                        int exit3 = f3.RunProcess(psiPass, out stdout3, out stderr3);
+                                        if (exit3 == 0)
+                                        {
+                                            foreach (var entry in Directory.EnumerateFileSystemEntries(tempDir))
+                                            {
+                                                var name = Path.GetFileName(entry);
+                                                var dest = Path.Combine(destFolder, name);
+                                                if (Directory.Exists(entry))
+                                                {
+                                                    if (Directory.Exists(dest)) Directory.Delete(dest, true);
+                                                    Program.CopyDirectory(entry, dest);
+                                                }
+                                                else if (File.Exists(entry))
+                                                {
+                                                    if (File.Exists(dest)) File.Delete(dest);
+                                                    File.Copy(entry, dest, true);
+                                                }
+                                            }
+                                            try { Directory.Delete(tempDir, true); } catch { }
+                                            MessageBox.Show($"Extraction réussie vers :\n{destFolder}\n\nRemarque: extraction effectuée via un répertoire temporaire (chiffrée).", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                            if (autoExtractMode) this.Close();
+                                            return;
+                                        }
+                                        else
+                                        {
+                                            // If decryption failed due to bad passphrase, prompt again with error message in red
+                                            if ((stderr3?.Contains("AES decryption failed") == true) || (stdout3?.Contains("AES decryption failed") == true))
+                                            {
+                                                errorMsg = "Mot de passe incorrect";
+                                                continue;
+                                            }
+
+                                            try { Directory.Delete(tempDir, true); } catch { }
+                                            MessageBox.Show($"Erreur lors du déchiffrement :\n{stderr3}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+
+                            try { Directory.Delete(tempDir, true); } catch { }
+                            MessageBox.Show("Aucun fichier trouvé dans l'archive.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+                    }
+                }
+
+                // Use a simpler decode command (avoid passing long --files lists which can exceed command-line limits)
+                var psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{destFolder}\"");
+
+                string stdout, stderr;
+                using (var f = new ProcessProgressForm("Extraction en cours", $"Extraction de {Path.GetFileName(currentArchive)}..."))
+                {
+                    int exit = f.RunProcess(psi, out stdout, out stderr);
+
+                    // If roxify requested a passphrase, prompt and retry once
+                    bool needsPassphrase = (stdout?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("AES decryption failed") == true) || (stdout?.Contains("AES decryption failed") == true) || (stderr?.Contains("Encrypted payload") == true) || (stdout?.Contains("Encrypted payload") == true);
+                    if (needsPassphrase)
+                    {
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            MessageBox.Show("Passphrase requise mais non prise en charge sur cette plateforme.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+
+                        string? errorMsg2 = null;
+                        while (true)
+                        {
+                            var pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg2);
+                            if (pass == null)
+                            {
+                                MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                return;
+                            }
+
+                            var esc = pass.Replace("\"", "\\\"");
+                            var psiPass = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{destFolder}\"");
+
+                            string stdout3, stderr3;
+                            using (var f3 = new ProcessProgressForm("Déchiffrement en cours", "Déchiffrement en cours..."))
+                            {
+                                int exit3 = f3.RunProcess(psiPass, out stdout3, out stderr3);
+                                if (exit3 == 0)
+                                {
+                                    bool hasEntries3 = false;
+                                    if (Directory.Exists(destFolder))
+                                    {
+                                        var enumerator3 = Directory.EnumerateFileSystemEntries(destFolder).GetEnumerator();
+                                        hasEntries3 = enumerator3.MoveNext();
+                                    }
+                                    if (hasEntries3)
+                                    {
+                                        MessageBox.Show($"Extraction réussie vers :\n{destFolder}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                        if (autoExtractMode) this.Close();
+                                        return;
+                                    }
+                                    else
+                                    {
+                                        MessageBox.Show($"Erreur lors du déchiffrement : aucun fichier créé.\n\nErreur : {stderr3}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                        return;
+                                    }
+                                }
+                                else
+                                {
+                                    if ((stderr3?.Contains("AES decryption failed") == true) || (stdout3?.Contains("AES decryption failed") == true))
+                                    {
+                                        errorMsg2 = "Mot de passe incorrect";
+                                        continue;
+                                    }
+
+                                    MessageBox.Show($"Erreur lors du déchiffrement.\n\nErreur : {stderr3}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    if (exit == 0)
+                    {
+                        bool hasEntries = false;
+                        if (Directory.Exists(destFolder))
+                        {
+                            var enumerator = Directory.EnumerateFileSystemEntries(destFolder).GetEnumerator();
+                            hasEntries = enumerator.MoveNext();
+                        }
+
+                        if (hasEntries)
+                        {
+                            MessageBox.Show($"Extraction réussie vers :\n{destFolder}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            if (autoExtractMode) this.Close();
+                        }
+                        else
+                        {
+                            MessageBox.Show($"Erreur lors de l'extraction : aucun fichier créé.\n\nErreur : {stderr}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                    else if (f.Cancelled)
+                    {
+                        MessageBox.Show("Opération annulée.", "Annulé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Erreur lors de l'extraction.\n\nCode de sortie : {exit}\nErreur : {stderr}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erreur lors de l'extraction : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         private void ExtractSelected()
         {
             if (listView.SelectedItems.Count == 0) return;
@@ -760,26 +1083,95 @@ readme.txt (100 bytes)
 
             try
             {
-                // Use native decompress with --files to extract only the requested file
                 var tempOut = Path.Combine(Path.GetTempPath(), "pyxelze_extract_" + Guid.NewGuid().ToString("N"));
                 try
                 {
                     Directory.CreateDirectory(tempOut);
                     var safeInternal = internalPath.Replace('\\', '/');
-                    var psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" \"{tempOut}\" --files \"{safeInternal}\"");
-                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running: {psi.FileName} {psi.Arguments}\n"); } catch { }
+
+                    string? cachedPass = null;
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(Program.CachedPassphrase))
+                        {
+                            cachedPass = Program.CachedPassphrase;
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractFileSingle using cached passphrase\n"); } catch { }
+                        }
+                    }
+                    catch { }
+
+                    ProcessStartInfo psi;
+                    if (!string.IsNullOrEmpty(cachedPass))
+                    {
+                        var esc = cachedPass.Replace("\"", "\\\"");
+                        psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{tempOut}\"");
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running WITH CACHED PASS: {psi.FileName} {psi.Arguments}\n"); } catch { }
+                    }
+                    else
+                    {
+                        psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempOut}\"");
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running NO CACHE: {psi.FileName} {psi.Arguments}\n"); } catch { }
+                    }
+
                     using (var p = Process.Start(psi))
                     {
                         var stdout = p!.StandardOutput.ReadToEnd();
                         var stderr = p.StandardError.ReadToEnd();
                         p.WaitForExit();
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Exit={p.ExitCode}, stdout={stdout.Length} bytes, stderr={stderr.Length} bytes\n"); } catch { }
-                        if (p.ExitCode != 0)
+
+                        bool needsPass = (stdout?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("AES decryption failed") == true) || (stdout?.Contains("AES decryption failed") == true) || (stderr?.Contains("Encrypted payload") == true) || (stdout?.Contains("Encrypted payload") == true);
+                        if (p.ExitCode != 0 && needsPass)
                         {
-                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Decompress failed:\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
-                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Decompress failed: exit={p.ExitCode}\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
+                            if (!OperatingSystem.IsWindows())
+                            {
+                                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Passphrase required but platform unsupported\n"); } catch { }
+                                return false;
+                            }
+
+                            string? errorMsg = null;
+                            while (true)
+                            {
+                                var pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+                                if (pass == null) return false;
+
+                                var esc = pass.Replace("\"", "\\\"");
+                                var psiPass = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{tempOut}\"");
+                                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running with passphrase: {psiPass.FileName} {psiPass.Arguments}\n"); } catch { }
+                                using (var p2 = Process.Start(psiPass))
+                                {
+                                    var stdout2 = p2!.StandardOutput.ReadToEnd();
+                                    var stderr2 = p2.StandardError.ReadToEnd();
+                                    p2.WaitForExit();
+                                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Exit={p2.ExitCode}, stdout={stdout2.Length}, stderr={stderr2.Length}\n"); } catch { }
+
+                                    if (p2.ExitCode == 0)
+                                    {
+                                        // success, proceed to locate file
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        if ((stderr2?.Contains("AES decryption failed") == true) || (stdout2?.Contains("AES decryption failed") == true))
+                                        {
+                                            errorMsg = "Mot de passe incorrect";
+                                            continue;
+                                        }
+
+                                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Extraction failed after pass try:\nStdout:\n{stdout2}\nStderr:\n{stderr2}\n"); } catch { }
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                        else if (p.ExitCode != 0)
+                        {
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Extraction failed:\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Extraction failed: exit={p.ExitCode}\nStdout:\n{stdout}\nStderr:\n{stderr}\n"); } catch { }
                             return false;
                         }
+                        // cleanup out.raw if created by decompress (no-pass case)
+                        try { var outRaw = Path.Combine(tempOut, "out.raw"); if (File.Exists(outRaw)) File.Delete(outRaw); } catch { }
                     }
 
                     var sourceRel = internalPath.Replace('/', Path.DirectorySeparatorChar);
@@ -824,9 +1216,9 @@ readme.txt (100 bytes)
             return allFiles.Where(f => !f.IsFolder && f.FullPath.StartsWith(folderInternalPath + "/")).ToList();
         }
 
-        public int ExtractMultipleFiles(IList<string> internalPaths, string tempOut)
+        public int ExtractMultipleFiles(IList<string> internalPaths, string tempOut, bool useFiles = false)
         {
-            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles: {internalPaths.Count} files -> {tempOut}\n"); } catch { }
+            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles: {internalPaths.Count} files -> {tempOut}, cachedPass={!string.IsNullOrEmpty(Program.CachedPassphrase)}\n"); } catch { }
 
             if (string.IsNullOrEmpty(currentArchive))
             {
@@ -850,9 +1242,45 @@ readme.txt (100 bytes)
             {
                 Directory.CreateDirectory(tempOut);
                 var safeList = internalPaths.Select(s => s.Replace('\\', '/').Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
-                var filesArg = string.Join(",", safeList);
-                var psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" \"{tempOut}\" --files \"{filesArg}\"");
-                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles: {psi.FileName} {psi.Arguments}\n"); } catch { }
+                var filesArg = string.Join(",", safeList.Select(f => $"\"{f}\""));
+
+                ProcessStartInfo psi;
+                string? cachedPass = null;
+                try { if (!string.IsNullOrEmpty(Program.CachedPassphrase)) cachedPass = Program.CachedPassphrase; else { Program.LoadCachedPassphrase(); if (!string.IsNullOrEmpty(Program.CachedPassphrase)) cachedPass = Program.CachedPassphrase; } } catch { }
+
+                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Using cached passphrase: {!string.IsNullOrEmpty(cachedPass)}\n"); } catch { }
+
+                if (useFiles)
+                {
+                    if (!string.IsNullOrEmpty(cachedPass))
+                    {
+                        var esc = cachedPass.Replace("\"", "\\\"");
+                        psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --files {filesArg} --passphrase \"{esc}\" \"{tempOut}\"");
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles (useFiles) WITH CACHED PASSPHRASE\n"); } catch { }
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Command: {psi.FileName} {psi.Arguments}\n"); } catch { }
+                    }
+                    else
+                    {
+                        psi = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --files {filesArg} \"{tempOut}\"");
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles (useFiles) NO CACHE\n"); } catch { }
+                    }
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(cachedPass))
+                    {
+                        var esc = cachedPass.Replace("\"", "\\\"");
+                        psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{tempOut}\"");
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles (decode) WITH CACHED PASSPHRASE\n"); } catch { }
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Command: {psi.FileName} {psi.Arguments}\n"); } catch { }
+                    }
+                    else
+                    {
+                        psi = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" \"{tempOut}\"");
+                        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles (decode) NO CACHE\n"); } catch { }
+                    }
+                }
+
                 using (var p = Process.Start(psi))
                 {
                     var stdout = p!.StandardOutput.ReadToEnd();
@@ -866,7 +1294,88 @@ readme.txt (100 bytes)
 
                     try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles exit={p.ExitCode}, stdout_len={stdout.Length}, stderr_len={stderr.Length}\nStdout:\n{truncStdout}\nStderr:\n{truncStderr}\n"); } catch { }
 
-                    if (p.ExitCode != 0)
+                    bool needsPass = (stdout?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("Passphrase required for AES decryption") == true) || (stderr?.Contains("AES decryption failed") == true) || (stdout?.Contains("AES decryption failed") == true) || (stderr?.Contains("Encrypted payload") == true) || (stdout?.Contains("Encrypted payload") == true);
+
+                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] needsPass={needsPass}, hadCache={!string.IsNullOrEmpty(cachedPass)}, exitCode={p.ExitCode}\n"); } catch { }
+
+                    if (needsPass)
+                    {
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Passphrase required but platform unsupported for ExtractMultipleFiles\n"); } catch { }
+                            return 0;
+                        }
+
+                        if (!string.IsNullOrEmpty(cachedPass))
+                        {
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Had cached passphrase but still got passphrase error - cache invalid, clearing\n"); } catch { }
+                            try { Program.ClearCachedPassphrase(); } catch { }
+                            cachedPass = null;
+                        }
+
+                        string? pass = null;
+
+                        string? errorMsg = null;
+                        while (true)
+                        {
+                            if (pass == null)
+                            {
+                                pass = PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+                                if (pass == null) return 0;
+                            }
+
+                            var esc = pass.Replace("\"", "\\\"");
+                            ProcessStartInfo psiPass;
+                            if (useFiles)
+                            {
+                                // put --files before --passphrase to match expected CLI usage
+                                psiPass = RoxRunner.CreateRoxProcess($"decompress \"{currentArchive}\" --files {filesArg} --passphrase \"{esc}\" \"{tempOut}\"");
+                            }
+                            else
+                            {
+                                psiPass = RoxRunner.CreateRoxProcess($"decode \"{currentArchive}\" --passphrase \"{esc}\" \"{tempOut}\"");
+                            }
+                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Running ExtractMultipleFiles with passphrase: {psiPass.FileName} [masked args]\n"); } catch { }
+
+                            using (var p2 = Process.Start(psiPass))
+                            {
+                                var stdout2 = p2!.StandardOutput.ReadToEnd();
+                                var stderr2 = p2.StandardError.ReadToEnd();
+                                p2.WaitForExit();
+
+                                int limit2 = 20000;
+                                string truncStdout2 = stdout2.Length > limit2 ? stdout2.Substring(0, limit2) + "\n...(truncated)..." : stdout2;
+                                string truncStderr2 = stderr2.Length > limit2 ? stderr2.Substring(0, limit2) + "\n...(truncated)..." : stderr2;
+
+                                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles exit={p2.ExitCode}, stdout_len={stdout2.Length}, stderr_len={stderr2.Length}\nStdout:\n{truncStdout2}\nStderr:\n{truncStderr2}\n"); } catch { }
+
+                                if (p2.ExitCode == 0)
+                                {
+                                    // Remove out.raw artifacts sometimes produced by decompress
+                                    try { var outRaw = Path.Combine(tempOut, "out.raw"); if (File.Exists(outRaw)) File.Delete(outRaw); } catch { }
+
+                                    // cache successful passphrase for subsequent drag & drop (persist)
+                                    try { Program.SaveCachedPassphrase(pass); } catch { }
+                                    break;
+                                }
+                                else
+                                {
+                                    if ((stderr2?.Contains("AES decryption failed") == true) || (stdout2?.Contains("AES decryption failed") == true))
+                                    {
+                                        // clear cached passphrase if it failed
+                                        try { Program.ClearCachedPassphrase(); } catch { }
+                                        errorMsg = "Mot de passe incorrect";
+                                        pass = null; // prompt again
+                                        continue;
+                                    }
+
+                                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles failed after pass try:\nStdout:\n{stdout2}\nStderr:\n{stderr2}\n"); } catch { }
+                                    return 0;
+                                }
+                            }
+                        }
+                    }
+                    else if (p.ExitCode != 0)
                     {
                         try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_cache_errors.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] ExtractMultipleFiles failed: exit={p.ExitCode}\nCommand: {psi.FileName} {psi.Arguments}\nStdout:\n{truncStdout}\nStderr:\n{truncStderr}\n"); } catch { }
                         return 0;
@@ -911,54 +1420,132 @@ readme.txt (100 bytes)
                 // Try to create keys directly
                 try
                 {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                     using (var key = Registry.ClassesRoot.CreateSubKey(@"*\\shell\\Pyxelze"))
                     {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         key.SetValue("", "");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         key.SetValue("MUIVerb", "Pyxelze");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         key.SetValue("Icon", exePath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         key.SetValue("SubCommands", "open;decode");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         using (var shellKey = key.CreateSubKey(@"shell"))
                         {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                             using (var openKey = shellKey.CreateSubKey("open"))
                             {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 openKey.SetValue("MUIVerb", "Ouvrir l'archive");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 openKey.SetValue("Icon", exePath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 using (var cmdKey = openKey.CreateSubKey("command"))
                                 {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                     cmdKey.SetValue("", $"\"{exePath}\" \"%1\"");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                                 }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                             }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                             using (var decodeKey = shellKey.CreateSubKey("decode"))
                             {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 decodeKey.SetValue("MUIVerb", "Décoder l'archive ROX");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 decodeKey.SetValue("Icon", exePath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 using (var cmdKey = decodeKey.CreateSubKey("command"))
                                 {
-                                    cmdKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+                                    var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
+                                    if (File.Exists(roxPath))
+                                    {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+                                        cmdKey.SetValue("", $"\"{exePath}\" decode \"%1\"");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+                                    }
+                                    else
+                                    {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+                                        cmdKey.SetValue("", $"\"{exePath}\" extract \"%1\"");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+                                    }
                                 }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                             }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                     }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
 
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                     using (var dirKey = Registry.ClassesRoot.CreateSubKey(@"Directory\\shell\\Pyxelze"))
                     {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         dirKey.SetValue("", "");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         dirKey.SetValue("MUIVerb", "Pyxelze");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         dirKey.SetValue("Icon", exePath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         dirKey.SetValue("SubCommands", "encode");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                         using (var shellKey = dirKey.CreateSubKey(@"shell"))
                         {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                             using (var encodeKey = shellKey.CreateSubKey("encode"))
                             {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 encodeKey.SetValue("MUIVerb", "Encoder en archive ROX");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 encodeKey.SetValue("Icon", exePath);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                                 using (var cmdKey = encodeKey.CreateSubKey("command"))
                                 {
-                                    cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+                                    var roxPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "roxify", "roxify_native.exe");
+                                    if (File.Exists(roxPath))
+                                    {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+                                        cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+                                    }
+                                    else
+                                    {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+                                        cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+                                    }
                                 }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                             }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                         }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                     }
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
 
                     MessageBox.Show("Intégration réussie ! Faites un clic droit sur un fichier ou dossier pour voir les options.");
                     return;
@@ -993,8 +1580,16 @@ readme.txt (100 bytes)
                 // Try direct deletion
                 try
                 {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                     Registry.ClassesRoot.DeleteSubKeyTree(@"*\\shell\\Pyxelze", false);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                     Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\\shell\\Pyxelze", false);
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
                     MessageBox.Show("Intégration supprimée.");
                     return;
                 }
@@ -1023,8 +1618,16 @@ readme.txt (100 bytes)
         {
             try
             {
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                 using (var k1 = Registry.ClassesRoot.OpenSubKey(@"*\\shell\\Pyxelze")) if (k1 != null) return true;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
                 using (var k2 = Registry.ClassesRoot.OpenSubKey(@"Directory\\shell\\Pyxelze")) if (k2 != null) return true;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
             }
             catch { }
             return false;

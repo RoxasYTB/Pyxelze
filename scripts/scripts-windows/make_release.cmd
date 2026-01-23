@@ -7,6 +7,7 @@ set DST_DIR=%ROOT_DIR%release\roxify
 
 if not exist "%SRC_DIR%" (
   echo ERROR: Source dist not found. Run "cd tools\roxify && npm run build:exe" first.
+  echo If you need the Windows packaged CLI (rox.exe), run "cd tools\roxify && npm run build:pkg:full" to generate it.
   exit /b 1
 )
 

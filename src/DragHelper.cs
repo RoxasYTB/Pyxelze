@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Runtime.Versioning;
 
 namespace Pyxelze
 {
+      [SupportedOSPlatform("windows")]
       internal static class DragHelper
       {
             private static bool HasParentFolderInSelection(string filePath, IList<VirtualFile> selection)
@@ -50,7 +46,7 @@ namespace Pyxelze
                   return actual;
             }
 
-            // Prépare un dossier temporaire contenant les items sélectionnés en utilisant --files.
+            // Prépare un dossier temporaire contenant les items sélectionnés (extraction via decode, éviter les longues listes --files).
             // Extrait les fichiers en préservant leur structure mais retourne uniquement les chemins de premier niveau
             public class ExtractionJob
             {
@@ -137,7 +133,7 @@ namespace Pyxelze
                   try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Starting background extraction for {rels.Count} items\n"); } catch { }
 
                   // Start background extraction without showing UI. We'll only show UI if drop actually occurs and extraction hasn't finished.
-                  job.WorkTask = Task.Run(async () =>
+                  job.WorkTask = Task.Run(() =>
                   {
                         try
                         {
@@ -168,7 +164,7 @@ namespace Pyxelze
                                           else
                                           {
                                                 var filePaths = filesUnder.Select(f => f.FullPath).ToList();
-                                                int extracted = owner.ExtractMultipleFiles(filePaths, dragTempRoot);
+                                                int extracted = owner.ExtractMultipleFiles(filePaths, dragTempRoot, true);
                                                 try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Background Batch extracted {extracted}/{filePaths.Count} files\n"); } catch { }
 
                                                 if (extracted > 0)

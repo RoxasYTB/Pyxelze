@@ -59,9 +59,15 @@ namespace Pyxelze
 
             SHGetFileInfo(lookupPath, attributes, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
 
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
             if (shinfo.hIcon == IntPtr.Zero) return SystemIcons.Application;
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
 
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
+#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
             Icon icon = (Icon)Icon.FromHandle(shinfo.hIcon).Clone();
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
+#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
             DestroyIcon(shinfo.hIcon);
             return icon;
         }
