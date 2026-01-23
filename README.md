@@ -264,7 +264,7 @@ Note : si vous devez inclure le CLI legacy, restaurez `tools/archive/roxify`, re
 
 ### CLI (legacy)
 
-## Le CLI `roxify` est archivé dans `tools/archive/roxify` et n'est **pas** reconstruit par défaut dans les scripts du dépôt. Si vous avez un besoin exceptionnel de reconstruire le CLI, consultez `docs/CONTRIBUTING.md` pour la procédure manuelle et considérez cette opération hors du workflow standard du projet.
+Le CLI `roxify` est archivé dans `tools/archive/roxify` et n'est **pas** reconstruit par défaut dans les scripts du dépôt. Si vous avez un besoin exceptionnel de reconstruire le CLI, consultez `docs/CONTRIBUTING.md` pour la procédure manuelle et considérez cette opération hors du workflow standard du projet.
 
 ## Dépannage
 
