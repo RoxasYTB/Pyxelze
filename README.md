@@ -1,5 +1,7 @@
 # Pyxelze
 
+> ⚠️ Note : l'historique du dépôt a été réécrit le 2026-01-23 pour retirer des artefacts binaires et réduire la taille du dépôt. Si vous possédez un clone local, **supprimez-le et re-clonez** le dépôt pour éviter des conflits d'historique.
+
 Pyxelze est une application Windows (.NET 7) avec interface graphique (WinForms) permettant de gérer et manipuler des fichiers ROX (archives Zero Install). Le projet inclut également un outil CLI (rox) basé sur Node.js pour des opérations en ligne de commande.
 
 ---
@@ -114,33 +116,17 @@ Sortie : `publish_final\Pyxelze.exe` (avec toutes les DLL nécessaires)
 
 ---
 
-### Publish minimal release (Linux → Windows)
+### CLI (legacy)
 
-Pour publier uniquement l'application GUI (avec le binaire natif roxify) vers un dossier minimal `publish_with_native`, utiliser le script suivant depuis la racine du dépôt :
+Le CLI `roxify` était historiquement inclus dans `tools/roxify` (Node.js). Pour cette version, le CLI a été **archivé** et n'est plus construit ni inclus automatiquement. Le code source du CLI est conservé sous `tools/archive/roxify` pour référence ou reconstruction manuelle si nécessaire.
 
-```bash
-./scripts/publish_pyxelze.sh
+Si vous avez besoin de reconstruire le CLI :
+
+```cmd
+cd tools/archive/roxify
+npm ci
+npm run build:exe
 ```
-
-Ce script :
-
-- construit `tools/roxify` s'il manque `roxify_native.exe`,
-- exécute `dotnet publish` sur `Pyxelze.csproj` (sortie : `publish_with_native`),
-- nettoie `rox.exe` s'il est présent pour garder la release minimale.
-
----
-
-### Build CLI (roxify native)
-
-To build the latest native Windows CLI from the published package, run the helper script from the repository root:
-
-```bash
-./scripts/build_roxify_native.sh
-```
-
-This script fetches `roxify@latest`, compiles the Rust native component for Windows and places artifacts into `tools/roxify/dist/` and `tools/roxify/node_modules/roxify/`.
-
-Note: Building `rox.exe` via `pkg` is deprecated and is not required for Pyxelze; `roxify_native.exe` is the preferred Windows CLI for distribution.
 
 ---
 
@@ -157,7 +143,7 @@ build_production.cmd
 3. Copie `publish_final\*` → `production\`
 4. Copie `tools\roxify\dist\*` → `production\` (ou `release\roxify\*` si dist manquant)
 
-Résultat : `production/` contient Pyxelze.exe + `roxify_native.exe` (ou `libroxify_native.node`) + `node.exe` + tous les fichiers nécessaires. Note: `rox.exe` n'est plus inclus par défaut — l'exécutable natif `roxify_native.exe` est privilégié pour les builds Windows.
+Résultat : `production/` contient Pyxelze.exe + rox.exe + node.exe + tous les fichiers nécessaires.
 
 ---
 
@@ -181,7 +167,7 @@ make_release.cmd
 1. Build production unifié : `build_production.cmd`
 2. Inno Setup 6 installé dans `C:\Program Files (x86)\Inno Setup 6\`
 
-#### Compiler (Windows)
+#### Compiler
 
 ```cmd
 cd release
@@ -193,20 +179,6 @@ build_installer.cmd
 1. Vérifie que `production\Pyxelze.exe` existe
 2. Compile `installer.iss` avec Inno Setup (ISCC.exe)
 3. Génère `release\Pyxelze-Setup.exe`
-
-#### Automatisation depuis Linux (scripts)
-
-Des scripts sont fournis pour automatiser la génération depuis un hôte Linux :
-
-- `scripts/publish_release.sh`
-  - construit `tools/roxify` (si `npm` présent), lance `dotnet publish -c Release -r win-x64 --no-self-contained -o publish_with_native` et crée une archive horodatée dans `release/` (SHA256 inclus).
-  - Usage : `./scripts/publish_release.sh [--no-installer]`
-- `scripts/make_installer.sh`
-  - compile l'installateur Inno via `wine` en utilisant `ISCC.exe` présent dans une prefix wine.
-  - Recherche `ISCC.exe` automatiquement dans `~/.wine/drive_c/Program Files (x86)/Inno Setup 6/ISCC.exe` ou accepte `--iscc-path "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe"`.
-  - Usage : `./scripts/make_installer.sh [--publish-dir DIR] [--out-dir DIR] [--iscc-path PATH]`
-
-> Remarque : l'installateur cible Windows. Pour valider l'apparence dans "Applications et fonctionnalités" (nom + icône), installe `release/Pyxelze_Setup.exe` sur une machine Windows ou VM Windows. La compilation et des tests basiques peuvent être faits avec `wine`, mais la validation finale (affichage exact dans les Paramètres Windows) doit se faire sur Windows réel.
 
 #### Configuration installer (release/installer.iss)
 
@@ -230,8 +202,10 @@ cd tools\roxify
 npm ci
 cd ..\..
 
-# 2. Build CLI (native)
-./scripts/build_roxify_native.sh
+# 2. Build CLI rox.exe
+cd tools\roxify
+npm run build:exe
+cd ..\..
 
 # 3. Créer production unifié (GUI + CLI)
 build_production.cmd
@@ -267,12 +241,10 @@ Résultat final : `release\Pyxelze-Setup.exe` (~200 sec de compilation)
 **Sorties** :
 
 - `production\Pyxelze.exe` (GUI)
-- `production\roxify_native.exe` (CLI) ou `libroxify_native.node` (si usage natif)
-- `production\node.exe` (Node.js runtime pour roxify)
+- `production\rox.exe` (CLI)
+- `production\node.exe` (Node.js runtime pour rox)
 - `production\rox.cmd` (wrapper Windows)
 - `production\node_modules\` (dépendances roxify)
-
-Note: `rox.exe` produced via `pkg` is deprecated and is not included by default.
 
 ---
 
@@ -317,20 +289,25 @@ Note: `rox.exe` produced via `pkg` is deprecated and is not included by default.
 
 ---
 
-### tools/roxify/build.cmd (legacy)
+### tools/roxify/build.cmd
 
-**Objectif** : Ancien workflow pour créer `rox.exe` via `pkg` (deprecated). Préfère la compilation native.
+**Objectif** : Build CLI rox.exe avec esbuild + pkg.
 
-**Notes** :
+**Étapes** :
 
-- Use `./scripts/build_roxify_native.sh` to fetch `roxify@latest` and build the native Windows CLI (`roxify_native.exe`).
-- The `pkg`-based `rox.exe` build is deprecated and not required for Pyxelze.
+1. `npm ci` : Installe dépendances (roxify, pkg, esbuild)
+2. `npm run build:exe` :
+   - `esbuild` bundle `node_modules/roxify/dist/cli.js` → `build/rox-bundle.cjs`
+   - `scripts/postbuild.js` :
+     - Compile `rox-bundle.cjs` avec `pkg` → `rox.exe`
+     - Copie `rox.exe`, `node.exe`, `node_modules/`, `rox.cmd`, `install-rox.cmd` → `dist/`
 
-**Sorties (actuelles)** :
+**Sorties** :
 
-- `tools\roxify\dist\roxify_native.exe` (preferred)
+- `tools\roxify\dist\rox.exe`
 - `tools\roxify\dist\node.exe`
-- `tools\roxify\dist\rox.cmd` (wrapper)
+- `tools\roxify\dist\rox.cmd`
+- `tools\roxify\dist\install-rox.cmd`
 - `tools\roxify\dist\node_modules\` (dépendances runtime)
 
 ---
@@ -458,7 +435,18 @@ R : Après `npm run build:exe`, exécuter `tools\roxify\dist\rox.cmd --help`.
 
 ## Licence
 
-(À compléter selon la licence du projet)
+Ce projet est distribué sous **Creative Commons Attribution‑NonCommercial 4.0 International (CC BY‑NC 4.0)**. Voir le fichier `LICENSE` à la racine du dépôt pour le texte légal complet.
+
+---
+
+## Contributing & Security
+
+Les documents de contribution et de sécurité ont été centralisés dans le dossier `docs/` :
+
+- `docs/CONTRIBUTING.md` — guide de contribution
+- `docs/SECURITY.md` — signalement des vulnérabilités
+
+Voir aussi : `docs/CLEANUP.md` (historique du dépôt et notes de nettoyage)
 
 ---
 
