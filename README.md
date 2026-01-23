@@ -1,5 +1,7 @@
 # Pyxelze
 
+> ⚠️ Note : l'historique du dépôt a été réécrit le 2026-01-23 pour retirer des artefacts binaires et réduire la taille du dépôt. Si vous possédez un clone local, **supprimez-le et re-clonez** le dépôt pour éviter des conflits d'historique.
+
 Pyxelze est une application Windows (.NET 7) avec interface graphique (WinForms) permettant de gérer et manipuler des fichiers ROX (archives Zero Install). Le projet inclut également un outil CLI (rox) basé sur Node.js pour des opérations en ligne de commande.
 
 ---
@@ -114,26 +116,17 @@ Sortie : `publish_final\Pyxelze.exe` (avec toutes les DLL nécessaires)
 
 ---
 
-### Build CLI (rox.exe)
+### CLI (legacy)
 
-#### Depuis tools/roxify
+Le CLI `roxify` était historiquement inclus dans `tools/roxify` (Node.js). Pour cette version, le CLI a été **archivé** et n'est plus construit ni inclus automatiquement. Le code source du CLI est conservé sous `tools/archive/roxify` pour référence ou reconstruction manuelle si nécessaire.
+
+Si vous avez besoin de reconstruire le CLI :
 
 ```cmd
-cd tools\roxify
+cd tools/archive/roxify
 npm ci
 npm run build:exe
-cd ..\..
 ```
-
-Sortie : `tools\roxify\dist\` (contient rox.exe, node.exe, rox.cmd, install-rox.cmd, node_modules)
-
-#### Workflow complet :
-
-1. `npm run build:exe` → bundle esbuild (rox-bundle.cjs) + pkg (rox.exe)
-2. Postbuild script (`scripts/postbuild.js`) copie :
-   - `rox.exe` + `node.exe` → `dist/`
-   - `node_modules/` → `dist/node_modules/`
-   - `rox.cmd`, `install-rox.cmd` → `dist/`
 
 ---
 
@@ -443,6 +436,17 @@ R : Après `npm run build:exe`, exécuter `tools\roxify\dist\rox.cmd --help`.
 ## Licence
 
 Ce projet est distribué sous **Creative Commons Attribution‑NonCommercial 4.0 International (CC BY‑NC 4.0)**. Voir le fichier `LICENSE` à la racine du dépôt pour le texte légal complet.
+
+---
+
+## Contributing & Security
+
+Les documents de contribution et de sécurité ont été centralisés dans le dossier `docs/` :
+
+- `docs/CONTRIBUTING.md` — guide de contribution
+- `docs/SECURITY.md` — signalement des vulnérabilités
+
+Voir aussi : `docs/CLEANUP.md` (historique du dépôt et notes de nettoyage)
 
 ---
 

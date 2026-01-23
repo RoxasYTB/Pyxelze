@@ -1,0 +1,11 @@
+/bin/ export-ignore
+/obj/ export-ignore
+/release/ export-ignore
+/release/** export-ignore
+/production/ export-ignore
+/publish_final/ export-ignore
+/tools/roxify/dist/ export-ignore
+/tools/roxify/node_modules/ export-ignore
+/*.zip export-ignore
+*.exe export-ignore
+*.pdb export-ignore

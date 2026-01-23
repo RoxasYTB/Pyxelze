@@ -1,6 +1,6 @@
 @echo off
 setlocal
-rem Create production release folder by copying tools/roxify/dist -> release\roxify
+rem No-op: tools/roxify (Node CLI) archived under tools/archive/roxify; nothing to copy
 set ROOT_DIR=%~dp0
 set SRC_DIR=%ROOT_DIR%tools\roxify\dist
 set DST_DIR=%ROOT_DIR%release\roxify
