@@ -1,13 +1,12 @@
 @echo off
 setlocal
-rem Builds the Inno Setup installer using the production release folder
+rem Builds the Inno Setup installer using a specified release/publish folder
 rem Usage: build_installer.cmd [<ReleaseDir>]
 set RELEASE_DIR=%~1
-if "%RELEASE_DIR%"=="" set RELEASE_DIR=%~dp0\..\..\release
-set RELEASE_DIR=%~f0
+if "%RELEASE_DIR%"=="" set RELEASE_DIR=%~dp0\..\..\publish_with_native
 rem normalize path
 pushd %~dp0 >nul
-set RELEASE_DIR=%~dp0\..\..\release
+for %%I in ("%RELEASE_DIR%") do set RELEASE_DIR=%%~fI
 popd >nul
 
 if not exist "%RELEASE_DIR%" (
@@ -25,5 +24,5 @@ if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" (
 )
 
 echo Building installer using release folder: %RELEASE_DIR%
-%ISCC% /DProjectPath="%RELEASE_DIR%\.." /DReleaseDir="%RELEASE_DIR%" "%~dp0\installer.iss"
+%ISCC% /DReleaseDir="%RELEASE_DIR%" "%~dp0\installer.iss"
 endlocal
