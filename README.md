@@ -448,6 +448,17 @@ Ce projet est distribué sous **Creative Commons Attribution‑NonCommercial 4.0
 
 ---
 
+## Contributing & Security
+
+Les documents de contribution et de sécurité ont été centralisés dans le dossier `docs/` :
+
+- `docs/CONTRIBUTING.md` — guide de contribution
+- `docs/SECURITY.md` — signalement des vulnérabilités
+
+Voir aussi : `docs/CLEANUP.md` (historique du dépôt et notes de nettoyage)
+
+---
+
 ## Contact / Support
 
 - **Repository GitHub** : https://github.com/RoxasYTB/Pyxelze

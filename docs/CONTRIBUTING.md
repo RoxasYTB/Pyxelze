@@ -8,6 +8,7 @@ Thanks for your interest in contributing! A few basic rules:
 - Run formatting: `dotnet format` and linting before submitting.
 
 Pull request checklist:
+
 - [ ] CI passes
 - [ ] No secrets in the diff
 - [ ] Update `CHANGELOG.md` (if relevant)
