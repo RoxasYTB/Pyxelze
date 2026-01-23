@@ -442,7 +442,7 @@ R : Après `npm run build:exe`, exécuter `tools\roxify\dist\rox.cmd --help`.
 
 ## Licence
 
-(À compléter selon la licence du projet)
+Ce projet est distribué sous **Creative Commons Attribution‑NonCommercial 4.0 International (CC BY‑NC 4.0)**. Voir le fichier `LICENSE` à la racine du dépôt pour le texte légal complet.
 
 ---
 
