@@ -36,7 +36,7 @@ Pyxelze/
 ├── Pyxelze.sln              # Solution Visual Studio
 ├── appIcon.ico              # Icône de l'application
 ├── build_production.cmd     # Créé le dossier production unifié
-├── make_release.cmd         # Copie tools/roxify/dist -> release/roxify
+├── make_release.cmd         # Copie distribution CLI historique (no-op si CLI archivé)
 └── .gitignore               # Ignore bin/, obj/, production/, logs/, *.exe, etc.
 ```
 
@@ -48,9 +48,9 @@ Pyxelze/
 
 - **Windows 10/11**
 - **.NET 7 SDK** : [Télécharger ici](https://dotnet.microsoft.com/download/dotnet/7.0)
-- **Node.js 18+ (optionnel)** : [Télécharger ici](https://nodejs.org/) — requis uniquement pour reconstruire le CLI legacy depuis `tools/archive/roxify`
 - **Inno Setup 6** : [Télécharger ici](https://jrsoftware.org/isdl.php) (pour compiler l'installateur)
 
+> Note : **Node.js n'est pas requis** pour construire ou publier la GUI. Le CLI legacy basé sur Node.js est archivé sous `tools/archive/roxify` et n'est pas nécessaire pour le workflow principal (voir `docs/CONTRIBUTING.md` pour reconstruction manuelle).
 ### Optionnel
 
 - **Visual Studio 2022** (pour édition C# avec IntelliSense)
@@ -73,13 +73,6 @@ cd Pyxelze
 dotnet restore
 ```
 
-### 3. Installer les dépendances Node.js (CLI rox)
-
-```cmd
-cd tools\roxify
-npm ci
-cd ..\..
-```
 
 ---
 
@@ -115,19 +108,11 @@ Sortie : `publish_final\Pyxelze.exe` (avec toutes les DLL nécessaires)
 
 ### CLI (legacy)
 
-Le CLI `roxify` était historiquement inclus dans `tools/roxify` (Node.js). Pour cette version, le CLI a été **archivé** et n'est plus construit ni inclus automatiquement. Le code source du CLI est conservé sous `tools/archive/roxify` pour référence ou reconstruction manuelle si nécessaire.
-
-Si vous avez besoin de reconstruire le CLI :
-
-```cmd
-cd tools/archive/roxify
-npm ci
-npm run build:exe
-```
+Le CLI `roxify` était historiquement inclus dans `tools/roxify` (Node.js). Pour cette version, le CLI a été **archivé** sous `tools/archive/roxify` et n'est pas reconstruit automatiquement. Si vous avez un besoin exceptionnel de le reconstruire, suivez la procédure documentée dans `docs/CONTRIBUTING.md` (reconstruction manuelle hors du workflow normal).
 
 ---
 
-### Créer le dossier de production unifié (GUI + CLI)
+### Créer le dossier de production unifié (GUI)
 
 ```cmd
 build_production.cmd
@@ -138,7 +123,7 @@ build_production.cmd
 1. `dotnet publish -c Release -o publish_final` (GUI)
 2. Crée `production/` vide
 3. Copie `publish_final\*` → `production\`
-4. Copie `tools\roxify\dist\*` → `production\` (ou `release\roxify\*` si dist manquant)
+4. (Optionnel) Copier une distribution CLI reconstruite (depuis `tools/archive/roxify` ou `release\roxify`) vers `production\` si vous souhaitez inclure le CLI.
 
 Résultat : `production/` contient Pyxelze.exe + rox.exe + node.exe + tous les fichiers nécessaires.
 
@@ -206,7 +191,7 @@ build_installer.cmd
 cd ..
 ```
 
-Résultat final : `release\Pyxelze-Setup.exe` (temps dépendant du système). 
+Résultat final : `release\Pyxelze-Setup.exe` (temps dépendant du système).
 
 Note : si vous devez inclure le CLI legacy, restaurez `tools/archive/roxify`, reconstruisez le CLI (`npm ci && npm run build:exe`) et copiez manuellement la distribution dans `production\` ou `release\roxify` avant de lancer `build_installer.cmd`. (Le CLI est archivé et non reconstruit automatiquement par les scripts par défaut.)
 
@@ -233,11 +218,8 @@ Note : si vous devez inclure le CLI legacy, restaurez `tools/archive/roxify`, re
 **Sorties** :
 
 - `production\Pyxelze.exe` (GUI)
-- `production\rox.exe` (CLI)
-- `production\node.exe` (Node.js runtime pour rox)
-- `production\rox.cmd` (wrapper Windows)
-- `production\node_modules\` (dépendances roxify)
 
+> Note : Le cas d'inclusion du CLI dans `production/` est optionnel et doit être fait manuellement si vous choisissez d'ajouter le CLI reconstruit depuis `tools/archive/roxify`.
 ---
 
 ### make_release.cmd
@@ -281,27 +263,9 @@ Note : si vous devez inclure le CLI legacy, restaurez `tools/archive/roxify`, re
 
 ---
 
-### tools/roxify/build.cmd
+### CLI (legacy)
 
-**Objectif** : Build CLI rox.exe avec esbuild + pkg.
-
-**Étapes** :
-
-1. `npm ci` : Installe dépendances (roxify, pkg, esbuild)
-2. `npm run build:exe` :
-   - `esbuild` bundle `node_modules/roxify/dist/cli.js` → `build/rox-bundle.cjs`
-   - `scripts/postbuild.js` :
-     - Compile `rox-bundle.cjs` avec `pkg` → `rox.exe`
-     - Copie `rox.exe`, `node.exe`, `node_modules/`, `rox.cmd`, `install-rox.cmd` → `dist/`
-
-**Sorties** :
-
-- `tools\roxify\dist\rox.exe`
-- `tools\roxify\dist\node.exe`
-- `tools\roxify\dist\rox.cmd`
-- `tools\roxify\dist\install-rox.cmd`
-- `tools\roxify\dist\node_modules\` (dépendances runtime)
-
+Le CLI `roxify` est archivé dans `tools/archive/roxify` et n'est **pas** reconstruit par défaut dans les scripts du dépôt. Si vous avez un besoin exceptionnel de reconstruire le CLI, consultez `docs/CONTRIBUTING.md` pour la procédure manuelle et considérez cette opération hors du workflow standard du projet.
 ---
 
 ## Dépannage
@@ -317,16 +281,7 @@ Note : si vous devez inclure le CLI legacy, restaurez `tools/archive/roxify`, re
 
 ### Erreur : "tools\roxify\dist not found"
 
-**Cause** : CLI rox non construit.
-**Solution** :
-
-```cmd
-cd tools\roxify
-npm ci
-npm run build:exe
-cd ..\..
-```
-
+**Cause** : Le CLI `roxify` n'est pas construit (il est archivé dans `tools/archive/roxify`). Si vous avez besoin du CLI, restaurez l'archive et suivez la procédure manuelle documentée dans `docs/CONTRIBUTING.md`. Sinon, ignorez cette erreur — la GUI ne nécessite pas le CLI pour fonctionner.
 ### Erreur : "dotnet: command not found"
 
 **Cause** : .NET 7 SDK non installé.
@@ -409,7 +364,7 @@ git commit -m "Remove build artifacts from git"
 R : `publish_final` contient uniquement le GUI publié par .NET. `production` contient GUI + CLI fusionnés (utilisé par l'installateur).
 
 **Q : Pourquoi roxify est dans tools/ et release/ ?**
-R : `tools/roxify` = code source CLI + build system. `release/roxify` = copie de `dist/` pour fallback si `dist` absent lors de `build_production.cmd`.
+R : Le code CLI historique est archivé sous `tools/archive/roxify` (legacy). `release/roxify` était une copie de `dist/` pour fallback — aujourd'hui l'inclusion du CLI dans la distribution est **optionnelle** et doit être faite manuellement si vous décidez de le reconstruire.
 
 **Q : Comment mettre à jour la version de l'installateur ?**
 R : Modifier `AppVersion=1.0.0` dans `release/installer.iss`.
@@ -421,7 +376,7 @@ R : Non. `PrivilegesRequired=lowest` dans `installer.iss` → installation utili
 R : Ouvrir `Pyxelze.sln` dans Visual Studio 2022, F5 pour lancer en mode Debug.
 
 **Q : Comment tester le CLI sans installer ?**
-R : Après `npm run build:exe`, exécuter `tools\roxify\dist\rox.cmd --help`.
+R : Le CLI est archivé. Si nécessaire, restaurez `tools/archive/roxify`, reconstruisez le CLI manuellement (voir `docs/CONTRIBUTING.md`) et exécutez la distribution reconstruite.
 
 ---
 
