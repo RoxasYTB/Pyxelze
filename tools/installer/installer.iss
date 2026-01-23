@@ -8,6 +8,7 @@ DefaultGroupName=Pyxelze
 OutputDir=..\..\releases
 OutputBaseFilename=Pyxelze-Setup
 SetupIconFile=..\..\appIcon.ico
+LicenseFile=..\..\LICENSE
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
