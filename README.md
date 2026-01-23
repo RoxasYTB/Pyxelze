@@ -1,5 +1,7 @@
 # Pyxelze
 
+> ⚠️ Note : l'historique du dépôt a été réécrit le 2026-01-23 pour retirer des artefacts binaires et réduire la taille du dépôt. Si vous possédez un clone local, **supprimez-le et re-clonez** le dépôt pour éviter des conflits d'historique.
+
 Pyxelze est une application Windows (.NET 7) avec interface graphique (WinForms) permettant de gérer et manipuler des fichiers ROX (archives Zero Install). Le projet inclut également un outil CLI (rox) basé sur Node.js pour des opérations en ligne de commande.
 
 ---
