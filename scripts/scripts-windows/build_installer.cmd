@@ -1,18 +1,17 @@
 @echo off
 setlocal
 
-set ROOT=%~dp0
-set PUBLISH_DIR=%ROOT%publish_final
-set INSTALLER_DIR=%ROOT%tools\installer
-set OUTPUT_DIR=%ROOT%installer_output
+set SCRIPT_DIR=%~dp0
+set ROOT=%SCRIPT_DIR%..\..
+set PUBLISH_DIR=%ROOT%\publish_final
+set INSTALLER_DIR=%SCRIPT_DIR%tools\installer
+set OUTPUT_DIR=%ROOT%\installer_output
 
 if not exist "%PUBLISH_DIR%\Pyxelze.exe" (
-    if exist "%PUBLISH_DIR%\Pyxelze" (
-        echo Found publish binary without extension, adding .exe extension
-        copy /Y "%PUBLISH_DIR%\Pyxelze" "%PUBLISH_DIR%\Pyxelze.exe" >nul
-    ) else (
-        echo ERROR: Publish folder not found. Run "dotnet publish -c Release -o publish_final" first.
-        exit /b 1
+    echo Building release...
+    dotnet publish "%ROOT%\Pyxelze.csproj" -c Release -o "%PUBLISH_DIR%" --self-contained false
+    if not exist "%PUBLISH_DIR%\roxify" (
+        xcopy /E /I /Y "%ROOT%\bin\Release\net8.0-windows\roxify" "%PUBLISH_DIR%\roxify"
     )
 )
 

@@ -1,258 +1,150 @@
 using System.Collections.Concurrent;
-using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using Microsoft.Win32;
 
-namespace Pyxelze
+namespace Pyxelze;
+
+internal class FileIconManager : IDisposable
 {
-      internal class FileIconManager : IDisposable
-      {
-            private readonly ConcurrentDictionary<string, CachedIcon> _iconCache = new();
-            private readonly ImageList _imageList;
-            private readonly System.Threading.Timer _cacheCleanupTimer;
-            private readonly object _updateLock = new();
-            private readonly Action<string> _onIconChanged;
+    private readonly ConcurrentDictionary<string, CachedIcon> _iconCache = new();
+    private readonly ImageList _imageList;
+    private readonly ImageList? _largeImageList;
+    private readonly System.Threading.Timer _cacheCleanupTimer;
+    private readonly object _updateLock = new();
+    private readonly Action<string> _onIconChanged;
 
-            private class CachedIcon
+    private class CachedIcon
+    {
+        public Bitmap SourceBitmap { get; set; } = null!;
+        public DateTime LastAccessed { get; set; }
+        public bool IsValid { get; set; } = true;
+    }
+
+    public FileIconManager(ImageList imageList, ImageList? largeImageList, Action<string> onIconChanged)
+    {
+        _imageList = imageList;
+        _largeImageList = largeImageList;
+        _onIconChanged = onIconChanged;
+        _cacheCleanupTimer = new System.Threading.Timer(CleanupCache, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+
+        AddDefaultIcon("folder", "C:\\", true);
+        AddDefaultIcon("file", "file.txt", false);
+    }
+
+    private static Bitmap CreatePaddedIcon(Image src, Size targetSize)
+    {
+        int iconW = Math.Min(targetSize.Width, targetSize.Height) - 4;
+        var padded = new Bitmap(targetSize.Width, targetSize.Height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+        using var g = Graphics.FromImage(padded);
+        g.Clear(Color.Transparent);
+        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+        int x = (targetSize.Width - iconW) / 2;
+        int y = (targetSize.Height - iconW) / 2;
+        g.DrawImage(src, x, y, iconW, iconW);
+        return padded;
+    }
+
+    private void AddDefaultIcon(string key, string path, bool isFolder)
+    {
+        try
+        {
+            var bmp = IconHelper.GetSourceBitmap(path, isFolder, new Size(16, 16));
+            _iconCache[key] = new CachedIcon { SourceBitmap = bmp, LastAccessed = DateTime.Now };
+            if (!_imageList.Images.ContainsKey(key))
+                _imageList.Images.Add(key, CreatePaddedIcon(bmp, _imageList.ImageSize));
+            if (_largeImageList != null && !_largeImageList.Images.ContainsKey(key))
             {
-                  public Bitmap SourceBitmap { get; set; } = null!;
-                  public DateTime LastAccessed { get; set; }
-                  public bool IsValid { get; set; } = true;
+                var largeBmp = IconHelper.GetSourceBitmap(path, isFolder, _largeImageList.ImageSize);
+                _largeImageList.Images.Add(key, largeBmp);
             }
+        }
+        catch { }
+    }
 
-            public FileIconManager(ImageList imageList, Action<string> onIconChanged)
+    public string GetIconKey(string fileName, bool isFolder) =>
+        isFolder ? "folder" : Path.GetExtension(fileName).ToLower();
+
+    public void EnsureIconLoaded(string fileName, bool isFolder)
+    {
+        string key = GetIconKey(fileName, isFolder);
+        if (_imageList.Images.ContainsKey(key) && _iconCache.TryGetValue(key, out var cached) && cached.IsValid)
+        {
+            cached.LastAccessed = DateTime.Now;
+            return;
+        }
+        LoadIcon(fileName, isFolder, key);
+    }
+
+    private void LoadIcon(string fileName, bool isFolder, string key)
+    {
+        lock (_updateLock)
+        {
+            try
             {
-                  _imageList = imageList;
-                  _onIconChanged = onIconChanged;
-                  _cacheCleanupTimer = new System.Threading.Timer(CleanupCache, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+                var sourceBitmap = IconHelper.GetSourceBitmap(fileName, isFolder, new Size(32, 32));
+                _iconCache[key] = new CachedIcon { SourceBitmap = sourceBitmap, LastAccessed = DateTime.Now };
 
-                  try
-                  {
-                        var folderBmp = GetSourceBitmap("C:\\", true, _imageList.ImageSize);
-                        _iconCache["folder"] = new CachedIcon { SourceBitmap = folderBmp, LastAccessed = DateTime.Now, IsValid = true };
-                        if (!_imageList.Images.ContainsKey("folder")) _imageList.Images.Add("folder", ResizeTo(folderBmp, _imageList.ImageSize));
-                  }
-                  catch { }
+                if (_imageList.Images.ContainsKey(key))
+                    _imageList.Images.RemoveByKey(key);
+                _imageList.Images.Add(key, CreatePaddedIcon(sourceBitmap, _imageList.ImageSize));
 
-                  try
-                  {
-                        var fileBmp = GetSourceBitmap("file.txt", false, _imageList.ImageSize);
-                        _iconCache["file"] = new CachedIcon { SourceBitmap = fileBmp, LastAccessed = DateTime.Now, IsValid = true };
-                        if (!_imageList.Images.ContainsKey("file")) _imageList.Images.Add("file", ResizeTo(fileBmp, _imageList.ImageSize));
-                  }
-                  catch { }
+                if (_largeImageList != null)
+                {
+                    var largeSrc = IconHelper.GetSourceBitmap(fileName, isFolder, _largeImageList.ImageSize);
+                    if (_largeImageList.Images.ContainsKey(key))
+                        _largeImageList.Images.RemoveByKey(key);
+                    _largeImageList.Images.Add(key, largeSrc);
+                }
             }
-
-            public string GetIconKey(string fileName, bool isFolder)
+            catch
             {
-                  return isFolder ? "folder" : Path.GetExtension(fileName).ToLower();
+                if (!_imageList.Images.ContainsKey("file"))
+                {
+                    var fallback = IconHelper.GetSourceBitmap("file.txt", false, new Size(32, 32));
+                    _iconCache[key] = new CachedIcon { SourceBitmap = fallback, LastAccessed = DateTime.Now };
+                    _imageList.Images.Add(key, CreatePaddedIcon(fallback, _imageList.ImageSize));
+                }
             }
+        }
+    }
 
-            public void EnsureIconLoaded(string fileName, bool isFolder)
-            {
-                  string key = GetIconKey(fileName, isFolder);
+    public void RefreshIcon(string extension)
+    {
+        string key = extension.ToLower();
+        if (_iconCache.TryGetValue(key, out var cached)) cached.IsValid = false;
 
-                  if (_imageList.Images.ContainsKey(key) && _iconCache.TryGetValue(key, out var cached) && cached.IsValid)
-                  {
-                        cached.LastAccessed = DateTime.Now;
-                        return;
-                  }
+        lock (_updateLock)
+        {
+            if (_imageList.Images.ContainsKey(key))
+                _imageList.Images.RemoveByKey(key);
+            if (_iconCache.TryRemove(key, out var old))
+                old.SourceBitmap?.Dispose();
+        }
 
-                  LoadIcon(fileName, isFolder, key);
-            }
+        if (!string.IsNullOrEmpty(key) && key != "folder")
+            LoadIcon("dummy" + key, false, key);
 
-            private void LoadIcon(string fileName, bool isFolder, string key)
-            {
-                  lock (_updateLock)
-                  {
-                        try
-                        {
-                              var sourceBitmap = GetSourceBitmap(fileName, isFolder, new Size(32, 32));
+        _onIconChanged?.Invoke(key);
+    }
 
-                              _iconCache[key] = new CachedIcon
-                              {
-                                    SourceBitmap = sourceBitmap,
-                                    LastAccessed = DateTime.Now,
-                                    IsValid = true
-                              };
+    public IEnumerable<string> CachedExtensions =>
+        _iconCache.Keys.Where(k => k.StartsWith("."));
 
-                              if (_imageList.Images.ContainsKey(key))
-                              {
-                                    _imageList.Images.RemoveByKey(key);
-                              }
+    private void CleanupCache(object? state)
+    {
+        var threshold = DateTime.Now.AddMinutes(-10);
+        foreach (var key in _iconCache.Where(kvp => kvp.Value.LastAccessed < threshold).Select(kvp => kvp.Key).ToList())
+        {
+            if (_iconCache.TryRemove(key, out var cached))
+                cached.SourceBitmap?.Dispose();
+        }
+    }
 
-                              _imageList.Images.Add(key, ResizeTo(sourceBitmap, _imageList.ImageSize));
-                        }
-                        catch
-                        {
-                              if (!_imageList.Images.ContainsKey("file"))
-                              {
-                                    var fallback = GetSourceBitmap("file.txt", false, new Size(32, 32));
-                                    _iconCache[key] = new CachedIcon
-                                    {
-                                          SourceBitmap = fallback,
-                                          LastAccessed = DateTime.Now,
-                                          IsValid = true
-                                    };
-                                    _imageList.Images.Add(key, ResizeTo(fallback, _imageList.ImageSize));
-                              }
-                        }
-                  }
-            }
-
-            public void RefreshIcon(string extension)
-            {
-                  string key = extension.ToLower();
-
-                  if (_iconCache.TryGetValue(key, out var cached))
-                  {
-                        cached.IsValid = false;
-                  }
-
-                  lock (_updateLock)
-                  {
-                        if (_imageList.Images.ContainsKey(key))
-                        {
-                              _imageList.Images.RemoveByKey(key);
-                        }
-
-                        if (_iconCache.TryRemove(key, out var oldCached))
-                        {
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                              oldCached.SourceBitmap?.Dispose();
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-                        }
-                  }
-
-                  try
-                  {
-                        // Try to proactively reload the extension icon using a sample name
-                        if (!string.IsNullOrEmpty(key) && key != "folder")
-                        {
-                              LoadIcon("dummy" + key, false, key);
-                        }
-                  }
-                  catch { }
-
-                  _onIconChanged?.Invoke(key);
-            }
-
-            public void RefreshAllIcons()
-            {
-                  var keys = _iconCache.Keys.ToList();
-                  foreach (var key in keys)
-                  {
-                        RefreshIcon(key);
-                  }
-            }
-
-            private void CleanupCache(object? state)
-            {
-                  var threshold = DateTime.Now.AddMinutes(-10);
-                  var keysToRemove = _iconCache
-                      .Where(kvp => kvp.Value.LastAccessed < threshold)
-                      .Select(kvp => kvp.Key)
-                      .ToList();
-
-                  foreach (var key in keysToRemove)
-                  {
-                        if (_iconCache.TryRemove(key, out var cached))
-                        {
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                              cached.SourceBitmap?.Dispose();
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-                        }
-                  }
-            }
-
-            private static Bitmap GetSourceBitmap(string path, bool isFolder, Size srcSize)
-            {
-                  var ico = NativeMethods.GetIcon(path, isFolder, large: false);
-                  try
-                  {
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        var src = ico.ToBitmap();
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-                        return ResizeTo(src, srcSize);
-                  }
-                  catch
-                  {
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        var bmp = new Bitmap(srcSize.Width, srcSize.Height, PixelFormat.Format32bppPArgb);
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        using (var g = Graphics.FromImage(bmp))
-                        {
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                              g.Clear(Color.Transparent);
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-                        }
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-                        return bmp;
-                  }
-            }
-
-            private static Bitmap ResizeTo(Image src, Size size)
-            {
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                  var dest = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppPArgb);
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                  using (var g = Graphics.FromImage(dest))
-                  {
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        g.Clear(Color.Transparent);
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        g.CompositingMode = CompositingMode.SourceOver;
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        g.CompositingQuality = CompositingQuality.HighQuality;
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        g.SmoothingMode = SmoothingMode.HighQuality;
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        g.DrawImage(src, 0, 0, size.Width, size.Height);
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-                  }
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-                  return dest;
-            }
-
-            public void Dispose()
-            {
-                  _cacheCleanupTimer?.Dispose();
-
-                  foreach (var cached in _iconCache.Values)
-                  {
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-                        cached.SourceBitmap?.Dispose();
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-                  }
-
-                  _iconCache.Clear();
-            }
-      }
+    public void Dispose()
+    {
+        _cacheCleanupTimer?.Dispose();
+        foreach (var cached in _iconCache.Values)
+            cached.SourceBitmap?.Dispose();
+        _iconCache.Clear();
+    }
 }

@@ -1,29 +1,13 @@
-using System;
-using System.Drawing;
-using System.Windows.Forms;
+namespace Pyxelze;
 
-namespace Pyxelze
+internal class ExtendedListView : ListView
 {
-      // Extended ListView to catch scroll/resize and force header repaint
-      public class ExtendedListView : ListView
-      {
-            private const int WM_HSCROLL = 0x114;
-            private const int WM_VSCROLL = 0x115;
-            private const int WM_MOUSEWHEEL = 0x20A;
+    private const int WM_ERASEBKGND = 0x0014;
 
-            protected override void WndProc(ref Message m)
-            {
-                  base.WndProc(ref m);
-                  if (m.Msg == WM_HSCROLL || m.Msg == WM_VSCROLL || m.Msg == WM_MOUSEWHEEL)
-                  {
-                        try
-                        {
-                              int textH = TextRenderer.MeasureText("Ag", this.Font).Height;
-                              int headerHeight = textH + 12;
-                              Invalidate(new Rectangle(0, 0, this.ClientSize.Width, headerHeight + 2));
-                        }
-                        catch { }
-                  }
-            }
-      }
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WM_ERASEBKGND)
+            return;
+        base.WndProc(ref m);
+    }
 }
