@@ -1,119 +1,105 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+namespace Pyxelze;
 
-namespace Pyxelze
+internal class ExtractionProgressForm : Form
 {
-      public class ExtractionProgressForm : Form
-      {
-            private ProgressBar bar;
-            private Label lbl;
-            private Button btnCancel;
-            private CancellationTokenSource? cts;
-            public bool Cancelled => cts?.IsCancellationRequested ?? false;
+    private readonly ProgressBar bar;
+    private readonly Label lbl;
+    private CancellationTokenSource? cts;
 
-            public ExtractionProgressForm(int max)
+    public bool Cancelled => cts?.IsCancellationRequested ?? false;
+
+    public ExtractionProgressForm(int max)
+    {
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        StartPosition = FormStartPosition.CenterParent;
+        Width = 440;
+        Height = 160;
+        Text = "Extraction en cours";
+        BackColor = ThemeManager.WindowBack;
+        ForeColor = ThemeManager.WindowFore;
+        MaximizeBox = false;
+        MinimizeBox = false;
+
+        lbl = new Label
+        {
+            AutoSize = false, Width = 400, Height = 20, Top = 15, Left = 15,
+            Text = "Extraction des fichiers...",
+            ForeColor = ThemeManager.ControlFore
+        };
+        Controls.Add(lbl);
+
+        bar = new ProgressBar
+        {
+            Width = 400, Height = 22, Top = 45, Left = 15,
+            Minimum = 0, Maximum = Math.Max(1, max)
+        };
+        Controls.Add(bar);
+
+        var btnCancel = new Button
+        {
+            Text = "Annuler", Top = 80, Left = 330, Width = 85, Height = 28,
+            BackColor = ThemeManager.ControlBack,
+            ForeColor = ThemeManager.ControlFore,
+            FlatStyle = FlatStyle.Flat
+        };
+        btnCancel.Click += (s, e) => cts?.Cancel();
+        Controls.Add(btnCancel);
+
+        cts = new CancellationTokenSource();
+    }
+
+    public void UpdateProgress(int current)
+    {
+        if (bar.InvokeRequired)
+        {
+            Invoke(() => UpdateProgress(current));
+            return;
+        }
+        bar.Value = Math.Min(current, bar.Maximum);
+        lbl.Text = $"Extraction: {current}/{bar.Maximum} fichier(s)";
+        Application.DoEvents();
+    }
+
+    public void RunExtraction(IList<string> files, Func<string, CancellationToken, Task<bool>> extractFunc)
+    {
+        cts = new CancellationTokenSource();
+        Task.Run(async () =>
+        {
+            int i = 0;
+            foreach (var f in files)
             {
-                  this.FormBorderStyle = FormBorderStyle.FixedDialog;
-                  this.StartPosition = FormStartPosition.CenterParent;
-                  this.Width = 420;
-                  this.Height = 120;
-                  this.Text = "Extraction en cours";
-
-                  this.BackColor = ThemeManager.WindowBack;
-                  this.ForeColor = ThemeManager.WindowFore;
-
-                  lbl = new Label();
-                  lbl.AutoSize = false;
-                  lbl.BackColor = ThemeManager.ControlBack;
-                  lbl.ForeColor = ThemeManager.ControlFore;
-                  lbl.Width = 380;
-                  lbl.Height = 20;
-                  lbl.Top = 10;
-                  lbl.Left = 10;
-                  lbl.Text = "Extraction des fichiers...";
-                  this.Controls.Add(lbl);
-
-                  bar = new ProgressBar();
-                  bar.Width = 380;
-                  bar.Height = 20;
-                  bar.Top = 40;
-                  bar.Left = 10;
-                  bar.Minimum = 0;
-                  bar.Maximum = Math.Max(1, max);
-                  bar.BackColor = ThemeManager.ControlBack;
-                  bar.ForeColor = ThemeManager.ControlFore;
-                  this.Controls.Add(bar);
-
-                  btnCancel = new Button();
-                  btnCancel.Text = "Annuler";
-                  btnCancel.BackColor = ThemeManager.ControlBack;
-                  btnCancel.ForeColor = ThemeManager.ControlFore;
-                  btnCancel.Top = 70;
-                  btnCancel.Left = 310;
-                  btnCancel.Click += (s, e) => cts?.Cancel();
-                  this.Controls.Add(btnCancel);
-
-                  cts = new CancellationTokenSource();
+                if (cts.IsCancellationRequested) break;
+                await extractFunc(f, cts.Token);
+                i++;
+                UpdateProgress(i);
             }
+            BeginInvoke(() => Close());
+        });
+        ShowDialog();
+    }
 
-            public void UpdateProgress(int current)
+    public Task<bool> StartExtractionAsync(IList<string> files, Func<string, CancellationToken, Task<bool>> extractFunc)
+    {
+        cts = new CancellationTokenSource();
+        var tcs = new TaskCompletionSource<bool>();
+
+        Show();
+
+        Task.Run(async () =>
+        {
+            int i = 0;
+            bool allOk = true;
+            foreach (var f in files)
             {
-                  if (bar.InvokeRequired)
-                  {
-                        this.Invoke((Action)(() => UpdateProgress(current)));
-                        return;
-                  }
-                  bar.Value = Math.Min(current, bar.Maximum);
-                  lbl.Text = $"Extraction: {current}/{bar.Maximum} fichier(s)";
-                  Application.DoEvents();
+                if (cts.IsCancellationRequested) { allOk = false; break; }
+                bool ok = await extractFunc(f, cts.Token);
+                if (!ok) allOk = false;
+                i++;
+                UpdateProgress(i);
             }
+            BeginInvoke(() => { Close(); tcs.SetResult(allOk); });
+        });
 
-            public void RunExtraction(IList<string> files, Func<string, CancellationToken, Task<bool>> extractFunc)
-            {
-                  cts = new CancellationTokenSource();
-                  Task.Run(async () =>
-                  {
-                        int i = 0;
-                        foreach (var f in files)
-                        {
-                              if (cts.IsCancellationRequested) break;
-                              bool ok = await extractFunc(f, cts.Token);
-                              i++;
-                              UpdateProgress(i);
-                        }
-                        this.BeginInvoke((Action)(() => this.Close()));
-                  });
-
-                  // modal run
-                  this.ShowDialog();
-            }
-
-            public Task<bool> StartExtractionAsync(IList<string> files, Func<string, CancellationToken, Task<bool>> extractFunc)
-            {
-                  cts = new CancellationTokenSource();
-                  var tcs = new TaskCompletionSource<bool>();
-
-                  this.Show();
-
-                  Task.Run(async () =>
-                  {
-                        int i = 0;
-                        bool allOk = true;
-                        foreach (var f in files)
-                        {
-                              if (cts.IsCancellationRequested) { allOk = false; break; }
-                              bool ok = await extractFunc(f, cts.Token);
-                              if (!ok) allOk = false;
-                              i++;
-                              UpdateProgress(i);
-                        }
-                        this.BeginInvoke((Action)(() => { this.Close(); tcs.SetResult(allOk); }));
-                  });
-
-                  return tcs.Task;
-            }
-      }
+        return tcs.Task;
+    }
 }

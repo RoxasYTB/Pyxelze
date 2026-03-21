@@ -1,93 +1,87 @@
-using System.Runtime.Versioning;
+namespace Pyxelze;
 
-namespace Pyxelze
+internal static class PassphrasePrompt
 {
-      internal static class PassphrasePrompt
-      {
-            public static string? Prompt(string title, string message, string? errorMessage = null)
+    public static string? Prompt(string title, string message, string? errorMessage = null)
+    {
+        int margin = 15;
+        int y = margin;
+        int formW = 420;
+
+        using var form = new Form
+        {
+            Text = title,
+            Width = formW,
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            StartPosition = FormStartPosition.CenterParent,
+            MaximizeBox = false,
+            MinimizeBox = false,
+            BackColor = ThemeManager.WindowBack,
+            ForeColor = ThemeManager.WindowFore
+        };
+
+        var lbl = new Label
+        {
+            Text = message,
+            Left = margin, Top = y,
+            Width = formW - margin * 2 - 20,
+            Height = 35,
+            ForeColor = ThemeManager.WindowFore
+        };
+        form.Controls.Add(lbl);
+        y += lbl.Height + 5;
+
+        if (!string.IsNullOrEmpty(errorMessage))
+        {
+            var lblError = new Label
             {
-                  using (var f = new Form())
-                  {
-                        f.FormBorderStyle = FormBorderStyle.FixedDialog;
-                        f.StartPosition = FormStartPosition.CenterParent;
-                        f.Width = 520;
-                        f.Height = 200;
-                        f.Text = title;
+                Text = errorMessage,
+                Left = margin, Top = y,
+                Width = formW - margin * 2 - 20,
+                Height = 20,
+                ForeColor = Color.Red
+            };
+            form.Controls.Add(lblError);
+            y += lblError.Height + 5;
+        }
 
-                        var lbl = new Label();
-                        lbl.AutoSize = false;
-                        lbl.Width = 480;
-                        lbl.Height = 20;
-                        lbl.Top = 10;
-                        lbl.Left = 10;
-                        lbl.Text = message;
-                        f.Controls.Add(lbl);
+        var txt = new TextBox
+        {
+            Left = margin, Top = y,
+            Width = formW - margin * 2 - 20,
+            UseSystemPasswordChar = true,
+            BackColor = ThemeManager.WindowBack,
+            ForeColor = ThemeManager.WindowFore
+        };
+        form.Controls.Add(txt);
+        y += txt.Height + 20;
 
-                        var lblError = new Label();
-                        lblError.AutoSize = false;
-                        lblError.Width = 480;
-                        lblError.Height = 20;
-                        lblError.Top = 35;
-                        lblError.Left = 10;
-                        lblError.ForeColor = Color.Red;
-                        lblError.Text = errorMessage ?? "";
-                        lblError.Visible = !string.IsNullOrEmpty(lblError.Text);
-                        f.Controls.Add(lblError);
+        var btnOk = new Button
+        {
+            Text = "OK", DialogResult = DialogResult.OK,
+            Width = 85, Height = 28,
+            Left = formW - margin - 20 - 85 - 10 - 85, Top = y,
+            BackColor = ThemeManager.ControlBack,
+            ForeColor = ThemeManager.ControlFore,
+            FlatStyle = FlatStyle.Flat
+        };
+        var btnCancel = new Button
+        {
+            Text = "Annuler", DialogResult = DialogResult.Cancel,
+            Width = 85, Height = 28,
+            Left = formW - margin - 20 - 85, Top = y,
+            BackColor = ThemeManager.ControlBack,
+            ForeColor = ThemeManager.ControlFore,
+            FlatStyle = FlatStyle.Flat
+        };
+        form.Controls.Add(btnOk);
+        form.Controls.Add(btnCancel);
+        y += btnCancel.Height + margin;
 
-                        var tb = new TextBox();
-                        tb.Width = 440;
-                        tb.Left = 10;
-                        tb.Top = 65;
-                        tb.UseSystemPasswordChar = true;
-                        f.Controls.Add(tb);
+        form.Height = y + 40;
+        form.AcceptButton = btnOk;
+        form.CancelButton = btnCancel;
 
-                        var btnOk = new Button();
-                        btnOk.Text = "OK";
-                        btnOk.Top = 105;
-                        btnOk.Left = 260;
-                        btnOk.DialogResult = DialogResult.OK;
-                        f.Controls.Add(btnOk);
-
-                        var btnCancel = new Button();
-                        btnCancel.Text = "Annuler";
-                        btnCancel.Top = 105;
-                        btnCancel.Left = 345;
-                        btnCancel.DialogResult = DialogResult.Cancel;
-                        f.Controls.Add(btnCancel);
-
-                        f.AcceptButton = btnOk;
-                        f.CancelButton = btnCancel;
-
-                        if (lblError.Visible)
-                        {
-                              tb.Focus();
-                              tb.SelectAll();
-                              var origColor = tb.BackColor;
-                              var flashTimer = new System.Windows.Forms.Timer();
-                              int flashes = 0;
-                              flashTimer.Interval = 150;
-                              flashTimer.Tick += (s, e) =>
-                              {
-                                    flashes++;
-                                    if (flashes > 5)
-                                    {
-                                          tb.BackColor = origColor;
-                                          flashTimer.Stop();
-                                          flashTimer.Dispose();
-                                          return;
-                                    }
-                                    tb.BackColor = (flashes % 2 == 1) ? Color.LightPink : origColor;
-                              };
-                              flashTimer.Start();
-                        }
-
-                        var dr = f.ShowDialog();
-                        if (dr == DialogResult.OK)
-                        {
-                              return tb.Text;
-                        }
-                        return null;
-                  }
-            }
-      }
+        return form.ShowDialog() == DialogResult.OK ? txt.Text : null;
+    }
 }

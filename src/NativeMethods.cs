@@ -1,88 +1,59 @@
 using System.Runtime.InteropServices;
 
-namespace Pyxelze
+namespace Pyxelze;
+
+public static class NativeMethods
 {
-    public static class NativeMethods
+    private const uint SHGFI_ICON = 0x100;
+    private const uint SHGFI_SMALLICON = 0x1;
+    private const uint SHGFI_USEFILEATTRIBUTES = 0x10;
+    private const uint SHGFI_TYPENAME = 0x400;
+    private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
+    private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SHFILEINFO
     {
-        private const uint SHGFI_ICON = 0x100;
-        private const uint SHGFI_SMALLICON = 0x1;
-        private const uint SHGFI_USEFILEATTRIBUTES = 0x10;
-        private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
-        private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+        public IntPtr hIcon;
+        public int iIcon;
+        public uint dwAttributes;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+        public string szDisplayName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
+        public string szTypeName;
+    }
 
-        [StructLayout(LayoutKind.Sequential)]
-        public struct SHFILEINFO
-        {
-            public IntPtr hIcon;
-            public int iIcon;
-            public uint dwAttributes;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
-            public string szDisplayName;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
-            public string szTypeName;
-        };
+    [DllImport("shell32.dll")]
+    private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
 
-        [DllImport("shell32.dll")]
-        private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyIcon(IntPtr hIcon);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool DestroyIcon(IntPtr hIcon);
+    public static Icon GetIcon(string path, bool isFolder, bool large = false)
+    {
+        var shinfo = new SHFILEINFO();
+        uint flags = SHGFI_ICON | SHGFI_USEFILEATTRIBUTES;
+        if (!large) flags |= SHGFI_SMALLICON;
 
-        private const uint SHGFI_TYPENAME = 0x400;
+        uint attributes = isFolder ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+        string lookupPath = isFolder ? "C:\\DummyFolder" :
+            (string.IsNullOrEmpty(Path.GetExtension(path)) ? "file.txt" : "file" + Path.GetExtension(path));
 
-        public static Icon GetIcon(string path, bool isFolder, bool large = false)
-        {
-            SHFILEINFO shinfo = new SHFILEINFO();
-            uint flags = SHGFI_ICON | SHGFI_USEFILEATTRIBUTES;
-            if (!large) flags |= SHGFI_SMALLICON;
+        SHGetFileInfo(lookupPath, attributes, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
 
-            uint attributes = isFolder ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+        if (shinfo.hIcon == IntPtr.Zero) return SystemIcons.Application;
+        var icon = (Icon)Icon.FromHandle(shinfo.hIcon).Clone();
+        DestroyIcon(shinfo.hIcon);
+        return icon;
+    }
 
-            string lookupPath;
-            if (isFolder)
-            {
-                lookupPath = "C:\\DummyFolder";
-            }
-            else
-            {
-                string ext = Path.GetExtension(path);
-                if (string.IsNullOrEmpty(ext))
-                {
-                    lookupPath = "file.txt";
-                }
-                else
-                {
-                    lookupPath = "file" + ext;
-                }
-            }
-
-            SHGetFileInfo(lookupPath, attributes, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
-
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-            if (shinfo.hIcon == IntPtr.Zero) return SystemIcons.Application;
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-#pragma warning disable CA1416 // Valider la compatibilité de la plateforme
-            Icon icon = (Icon)Icon.FromHandle(shinfo.hIcon).Clone();
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-#pragma warning restore CA1416 // Valider la compatibilité de la plateforme
-            DestroyIcon(shinfo.hIcon);
-            return icon;
-        }
-
-        public static string GetFileTypeName(string fileName)
-        {
-            SHFILEINFO shinfo = new SHFILEINFO();
-            uint flags = SHGFI_TYPENAME | SHGFI_USEFILEATTRIBUTES;
-
-            string ext = Path.GetExtension(fileName);
-            string lookupPath = string.IsNullOrEmpty(ext) ? "file" : "file" + ext;
-
-            SHGetFileInfo(lookupPath, FILE_ATTRIBUTE_NORMAL, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
-
-            return string.IsNullOrWhiteSpace(shinfo.szTypeName) ? "Fichier" : shinfo.szTypeName;
-        }
+    public static string GetFileTypeName(string fileName)
+    {
+        var shinfo = new SHFILEINFO();
+        var ext = Path.GetExtension(fileName);
+        var lookupPath = string.IsNullOrEmpty(ext) ? "file" : "file" + ext;
+        SHGetFileInfo(lookupPath, FILE_ATTRIBUTE_NORMAL, ref shinfo, (uint)Marshal.SizeOf(shinfo), SHGFI_TYPENAME | SHGFI_USEFILEATTRIBUTES);
+        return string.IsNullOrWhiteSpace(shinfo.szTypeName) ? "Fichier" : shinfo.szTypeName;
     }
 }

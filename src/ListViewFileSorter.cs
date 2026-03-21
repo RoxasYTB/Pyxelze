@@ -1,55 +1,39 @@
-using System;
-using System.Collections;
-using System.IO;
+namespace Pyxelze;
 
-namespace Pyxelze
+internal class ListViewFileSorter : System.Collections.IComparer
 {
-      public class ListViewFileSorter : IComparer
-      {
-            private Func<int> getSortColumn;
-            private Func<System.Windows.Forms.SortOrder> getSortOrder;
+    private readonly Func<int> _getColumn;
+    private readonly Func<SortOrder> _getOrder;
 
-            public ListViewFileSorter(Func<int> getSortColumn, Func<System.Windows.Forms.SortOrder> getSortOrder)
-            {
-                  this.getSortColumn = getSortColumn;
-                  this.getSortOrder = getSortOrder;
-            }
+    public ListViewFileSorter(Func<int> getColumn, Func<SortOrder> getOrder)
+    {
+        _getColumn = getColumn;
+        _getOrder = getOrder;
+    }
 
-            public int Compare(object? x, object? y)
-            {
-                  var ix = x as System.Windows.Forms.ListViewItem;
-                  var iy = y as System.Windows.Forms.ListViewItem;
-                  if (ix == null || iy == null) return 0;
-                  var a = ix.Tag as VirtualFile;
-                  var b = iy.Tag as VirtualFile;
-                  if (a == null || b == null) return string.Compare(ix.Text, iy.Text, StringComparison.OrdinalIgnoreCase);
+    public int Compare(object? x, object? y)
+    {
+        if (x is not ListViewItem a || y is not ListViewItem b) return 0;
 
-                  // Folders always first
-                  if (a.IsFolder && !b.IsFolder) return -1;
-                  if (!a.IsFolder && b.IsFolder) return 1;
+        if (a.Tag?.ToString() == "UP") return -1;
+        if (b.Tag?.ToString() == "UP") return 1;
 
-                  int col = getSortColumn();
-                  var order = getSortOrder();
+        var vfA = a.Tag as VirtualFile;
+        var vfB = b.Tag as VirtualFile;
 
-                  int cmp = 0;
-                  switch (col)
-                  {
-                        case 0: // Name
-                              cmp = string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
-                              break;
-                        case 1: // Size
-                              cmp = a.Size.CompareTo(b.Size);
-                              break;
-                        case 2: // Type/extension
-                              cmp = string.Compare(Path.GetExtension(a.Name), Path.GetExtension(b.Name), StringComparison.OrdinalIgnoreCase);
-                              break;
-                        default:
-                              cmp = string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
-                              break;
-                  }
+        if (vfA?.IsFolder == true && vfB?.IsFolder != true) return -1;
+        if (vfA?.IsFolder != true && vfB?.IsFolder == true) return 1;
 
-                  if (order == System.Windows.Forms.SortOrder.Descending) cmp = -cmp;
-                  return cmp;
-            }
-      }
+        int col = _getColumn();
+        int result = col switch
+        {
+            1 => (vfA?.Size ?? 0).CompareTo(vfB?.Size ?? 0),
+            _ => string.Compare(
+                a.SubItems.Count > col ? a.SubItems[col].Text : "",
+                b.SubItems.Count > col ? b.SubItems[col].Text : "",
+                StringComparison.OrdinalIgnoreCase)
+        };
+
+        return _getOrder() == SortOrder.Descending ? -result : result;
+    }
 }

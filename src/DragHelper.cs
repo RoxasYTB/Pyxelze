@@ -1,242 +1,209 @@
-using System.Runtime.Versioning;
+namespace Pyxelze;
 
-namespace Pyxelze
+internal static class DragHelper
 {
-      [SupportedOSPlatform("windows")]
-      internal static class DragHelper
-      {
-            private static bool HasParentFolderInSelection(string filePath, IList<VirtualFile> selection)
+    public class ExtractionJob
+    {
+        public Task WorkTask = Task.CompletedTask;
+        public CancellationTokenSource Cts = new();
+        public int Total;
+        public int Completed;
+        public List<string> ExtractedPaths = new();
+        public HashSet<string> TopLevelPaths = new(StringComparer.OrdinalIgnoreCase);
+        public bool Finished;
+        public Exception? Error;
+    }
+
+    public static IList<string> PrepareExtractedFilePaths(string archivePath, IList<string> internalPaths, string tempRoot)
+    {
+        Directory.CreateDirectory(tempRoot);
+        var selectedItems = internalPaths.Distinct().ToList();
+        var actual = new List<string>();
+
+        using var dlg = new ExtractionProgressForm(selectedItems.Count);
+        dlg.RunExtraction(selectedItems, async (internalPath, token) =>
+        {
+            if (token.IsCancellationRequested) return false;
+            var rel = internalPath.Replace('/', Path.DirectorySeparatorChar);
+            var outPath = Path.Combine(tempRoot, rel);
+            Directory.CreateDirectory(Path.GetDirectoryName(outPath) ?? tempRoot);
+            var ok = ExtractionService.ExtractFileSingle(archivePath, internalPath, outPath);
+            if (ok && File.Exists(outPath)) actual.Add(outPath);
+            return await Task.FromResult(ok);
+        });
+
+        return actual;
+    }
+
+    public static (IList<string>, ExtractionJob) PrepareDragTempForSelection(
+        string archivePath, IList<VirtualFile> allFiles, IList<VirtualFile> selection, string dragTempRoot)
+    {
+        Logger.LogDnd($"PrepareDragTempForSelection: creating {dragTempRoot}");
+        Directory.CreateDirectory(dragTempRoot);
+
+        var selectedItems = selection.GroupBy(v => v.FullPath).Select(g => g.First()).ToList();
+        var topLevelPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        CreatePlaceholders(selectedItems, dragTempRoot, topLevelPaths);
+
+        var job = new ExtractionJob { Total = selectedItems.Count };
+
+        Logger.LogDnd($"Starting background extraction for {selectedItems.Count} items");
+
+        job.WorkTask = Task.Run(() =>
+        {
+            try
             {
-                  var parts = filePath.Split('/');
-                  for (int i = 1; i < parts.Length; i++)
-                  {
-                        var parentPath = string.Join("/", parts.Take(i));
-                        if (selection.Any(v => v.IsFolder && v.FullPath == parentPath))
-                              return true;
-                  }
-                  return false;
+                int i = 0;
+                foreach (var vf in selectedItems)
+                {
+                    if (job.Cts.IsCancellationRequested) break;
+                    Logger.LogDnd($"Background Extracting: {vf.FullPath}");
+
+                    if (vf.IsFolder)
+                        ExtractFolder(archivePath, allFiles, vf, selectedItems, dragTempRoot, job);
+                    else
+                        ExtractFile(archivePath, vf, selectedItems, dragTempRoot, job);
+
+                    i++;
+                    job.Completed = i;
+                }
+                job.Finished = true;
+            }
+            catch (Exception ex)
+            {
+                job.Error = ex;
+                job.Finished = true;
+                Logger.LogDnd($"Background extraction error: {ex}");
+            }
+        });
+
+        Logger.LogDnd($"Background extraction started (topLevelPaths={topLevelPaths.Count})");
+        return (topLevelPaths.ToList(), job);
+    }
+
+    private static bool HasParentFolderInSelection(string filePath, IList<VirtualFile> selection)
+    {
+        var parts = filePath.Split('/');
+        for (int i = 1; i < parts.Length; i++)
+        {
+            var parentPath = string.Join("/", parts.Take(i));
+            if (selection.Any(v => v.IsFolder && v.FullPath == parentPath))
+                return true;
+        }
+        return false;
+    }
+
+    private static void CreatePlaceholders(List<VirtualFile> selectedItems, string dragTempRoot,
+        HashSet<string> topLevelPaths)
+    {
+        foreach (var v in selectedItems)
+        {
+            var parts = v.FullPath.Split('/');
+            if (parts.Length == 0) continue;
+
+            try
+            {
+                if (v.IsFolder)
+                {
+                    var top = Path.Combine(dragTempRoot, parts[0]);
+                    try { Directory.CreateDirectory(top); topLevelPaths.Add(top); } catch { }
+                }
+                else if (parts.Length == 1)
+                {
+                    CreateFilePlaceholder(dragTempRoot, parts[0], topLevelPaths);
+                }
+                else
+                {
+                    if (HasParentFolderInSelection(v.FullPath, selectedItems))
+                    {
+                        var top = Path.Combine(dragTempRoot, parts[0]);
+                        try { Directory.CreateDirectory(top); topLevelPaths.Add(top); } catch { }
+                    }
+                    else
+                    {
+                        CreateFilePlaceholder(dragTempRoot, Path.GetFileName(v.FullPath), topLevelPaths);
+                    }
+                }
+            }
+            catch { }
+        }
+    }
+
+    private static void CreateFilePlaceholder(string root, string fileName, HashSet<string> topLevelPaths)
+    {
+        var topFile = Path.Combine(root, fileName);
+        try
+        {
+            if (Directory.Exists(topFile)) try { Directory.Delete(topFile, true); } catch { }
+            if (!File.Exists(topFile)) File.WriteAllBytes(topFile, []);
+            topLevelPaths.Add(topFile);
+        }
+        catch { }
+    }
+
+    private static void ExtractFolder(string archivePath, IList<VirtualFile> allFiles,
+        VirtualFile vf, List<VirtualFile> selectedItems, string dragTempRoot, ExtractionJob job)
+    {
+        try
+        {
+            var filesUnder = ExtractionService.GetFilesUnder(allFiles, vf.FullPath);
+            if (filesUnder.Count == 0)
+            {
+                var folderRel = vf.FullPath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+                try { Directory.CreateDirectory(Path.Combine(dragTempRoot, folderRel)); } catch { }
+                AddTopLevel(vf.FullPath, dragTempRoot, job);
+                return;
             }
 
-            public static IList<string> PrepareExtractedFilePaths(Form1 owner, IList<string> internalPaths, string tempRoot)
+            foreach (var f in filesUnder)
             {
-                  // Legacy: keep for compatibility (extract individual files via ExtractFileSingle)
-                  Directory.CreateDirectory(tempRoot);
-
-                  var rels = internalPaths.Distinct().ToList();
-                  var actual = new List<string>();
-
-                  using (var dlg = new ExtractionProgressForm(rels.Count))
-                  {
-                        dlg.RunExtraction(rels, async (internalPath, token) =>
-                        {
-                              try
-                              {
-                                    if (token.IsCancellationRequested) return await Task.FromResult(false);
-                                    var rel = internalPath.Replace('/', Path.DirectorySeparatorChar);
-                                    var outPath = Path.Combine(tempRoot, rel);
-                                    Directory.CreateDirectory(Path.GetDirectoryName(outPath) ?? tempRoot);
-                                    var ok = owner.ExtractFileSingle(internalPath, outPath);
-                                    if (ok && File.Exists(outPath)) actual.Add(outPath);
-                                    return await Task.FromResult(ok);
-                              }
-                              catch { return await Task.FromResult(false); }
-                        });
-                  }
-
-                  return actual;
+                if (job.Cts.IsCancellationRequested) break;
+                var origPath = string.IsNullOrEmpty(f.OriginalPath) ? f.FullPath : f.OriginalPath;
+                var relFile = f.FullPath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+                var outPath = Path.Combine(dragTempRoot, relFile);
+                try { Directory.CreateDirectory(Path.GetDirectoryName(outPath) ?? dragTempRoot); } catch { }
+                var ok = ExtractionService.ExtractFileSingle(archivePath, origPath, outPath);
+                if (ok && File.Exists(outPath)) job.ExtractedPaths.Add(outPath);
             }
+            AddTopLevel(vf.FullPath, dragTempRoot, job);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDnd($"ExtractFolder error: {ex}");
+        }
+    }
 
-            // Prépare un dossier temporaire contenant les items sélectionnés (extraction via decode, éviter les longues listes --files).
-            // Extrait les fichiers en préservant leur structure mais retourne uniquement les chemins de premier niveau
-            public class ExtractionJob
-            {
-                  public Task WorkTask = Task.CompletedTask;
-                  public CancellationTokenSource Cts = new CancellationTokenSource();
-                  public int Total = 0;
-                  public int Completed = 0;
-                  public List<string> ExtractedPaths = new List<string>();
-                  public HashSet<string> TopLevelPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                  public bool Finished = false;
-                  public Exception? Error = null;
-            }
+    private static void ExtractFile(string archivePath, VirtualFile vf, List<VirtualFile> selectedItems,
+        string dragTempRoot, ExtractionJob job)
+    {
+        var relFile = vf.FullPath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
+        bool hasParent = HasParentFolderInSelection(vf.FullPath, selectedItems);
+        string fileName = Path.GetFileName(relFile);
+        string outFile = hasParent ? Path.Combine(dragTempRoot, relFile) : Path.Combine(dragTempRoot, fileName);
 
-            public static (IList<string>, ExtractionJob) PrepareDragTempForSelection(Form1 owner, IList<VirtualFile> internalPaths, string dragTempRoot)
-            {
-                  try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] PrepareDragTempForSelection: creating {dragTempRoot}\n"); } catch { }
-                  Directory.CreateDirectory(dragTempRoot);
+        try { Directory.CreateDirectory(Path.GetDirectoryName(outFile) ?? dragTempRoot); } catch { }
 
-                  var rels = internalPaths.GroupBy(v => v.FullPath).Select(g => g.First()).ToList();
-                  var extractedPaths = new List<string>();
-                  var topLevelPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var ok = ExtractionService.ExtractFileSingle(archivePath, string.IsNullOrEmpty(vf.OriginalPath) ? vf.FullPath : vf.OriginalPath, outFile);
+        Logger.LogDnd($"Background ExtractFileSingle returned: {ok}, file exists: {File.Exists(outFile)}");
 
-                  // Create visible top-level directories or file placeholders immediately so Explorer has something to reference
-                  foreach (var v in rels)
-                  {
-                        var parts = v.FullPath.Split('/');
-                        if (parts.Length == 0) continue;
+        if (!ok || !File.Exists(outFile)) return;
 
-                        try
-                        {
-                              // If the selection item is an explicit folder, create that top-level folder
-                              if (v.IsFolder)
-                              {
-                                    var top = Path.Combine(dragTempRoot, parts[0]);
-                                    try { Directory.CreateDirectory(top); topLevelPaths.Add(top); } catch { }
-                                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Placeholder folder created: {top}\n"); } catch { }
-                              }
-                              else if (parts.Length == 1)
-                              {
-                                    // A top-level file (e.g., package.json) — create an empty file placeholder
-                                    var topFile = Path.Combine(dragTempRoot, parts[0]);
-                                    try
-                                    {
-                                          if (Directory.Exists(topFile)) { try { Directory.Delete(topFile, true); } catch { } }
-                                          if (!File.Exists(topFile)) File.WriteAllBytes(topFile, new byte[0]);
-                                          topLevelPaths.Add(topFile);
-                                          try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Placeholder file created: {topFile}\n"); } catch { }
-                                    }
-                                    catch { }
-                              }
-                              else
-                              {
-                                    // Nested file — check if parent folder is selected
-                                    bool hasParent = HasParentFolderInSelection(v.FullPath, rels);
-                                    if (hasParent)
-                                    {
-                                          // Create the containing top-level folder so Explorer sees a folder
-                                          var top = Path.Combine(dragTempRoot, parts[0]);
-                                          try { Directory.CreateDirectory(top); topLevelPaths.Add(top); } catch { }
-                                          try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Placeholder top-level folder for nested file created: {top}\n"); } catch { }
-                                    }
-                                    else
-                                    {
-                                          // No parent selected, create file placeholder at root
-                                          var fileName = Path.GetFileName(v.FullPath.Replace('/', Path.DirectorySeparatorChar));
-                                          var topFile = Path.Combine(dragTempRoot, fileName);
-                                          try
-                                          {
-                                                if (Directory.Exists(topFile)) { try { Directory.Delete(topFile, true); } catch { } }
-                                                if (!File.Exists(topFile)) File.WriteAllBytes(topFile, new byte[0]);
-                                                topLevelPaths.Add(topFile);
-                                                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Placeholder file at root created: {topFile}\n"); } catch { }
-                                          }
-                                          catch { }
-                                    }
-                              }
-                        }
-                        catch { }
-                  }
+        job.ExtractedPaths.Add(outFile);
+        if (hasParent)
+        {
+            var parts = relFile.Split(Path.DirectorySeparatorChar);
+            if (parts.Length > 0) job.TopLevelPaths.Add(Path.Combine(dragTempRoot, parts[0]));
+        }
+        else
+        {
+            job.TopLevelPaths.Add(outFile);
+        }
+    }
 
-                  var job = new ExtractionJob();
-                  job.Total = rels.Count;
-
-                  try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Starting background extraction for {rels.Count} items\n"); } catch { }
-
-                  // Start background extraction without showing UI. We'll only show UI if drop actually occurs and extraction hasn't finished.
-                  job.WorkTask = Task.Run(() =>
-                  {
-                        try
-                        {
-                              int i = 0;
-                              foreach (var vf in rels)
-                              {
-                                    if (job.Cts.IsCancellationRequested) break;
-                                    var internalPath = vf.FullPath;
-                                    try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Background Extracting: {internalPath}\n"); } catch { }
-
-                                    if (vf.IsFolder)
-                                    {
-                                          var filesUnder = owner.GetFilesUnder(internalPath);
-                                          if (filesUnder.Count == 0)
-                                          {
-                                                // ensure empty folder folder exists (already created top-level)
-                                                var folderRel = internalPath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
-                                                var top = Path.Combine(dragTempRoot, folderRel);
-                                                try { Directory.CreateDirectory(top); } catch { }
-                                                var parts = internalPath.Split('/');
-                                                if (parts.Length > 0)
-                                                {
-                                                      var topLevel = Path.Combine(dragTempRoot, parts[0]);
-                                                      job.TopLevelPaths.Add(topLevel);
-                                                      try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Added empty top-level (folder): {topLevel}\n"); } catch { }
-                                                }
-                                          }
-                                          else
-                                          {
-                                                var filePaths = filesUnder.Select(f => f.FullPath).ToList();
-                                                int extracted = owner.ExtractMultipleFiles(filePaths, dragTempRoot, true);
-                                                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Background Batch extracted {extracted}/{filePaths.Count} files\n"); } catch { }
-
-                                                if (extracted > 0)
-                                                {
-                                                      foreach (var f in filesUnder)
-                                                      {
-                                                            var rel = f.FullPath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
-                                                            var outPath = Path.Combine(dragTempRoot, rel);
-                                                            if (File.Exists(outPath)) job.ExtractedPaths.Add(outPath);
-                                                      }
-                                                      var parts = internalPath.Split('/');
-                                                      if (parts.Length > 0)
-                                                      {
-                                                            var topLevel = Path.Combine(dragTempRoot, parts[0]);
-                                                            job.TopLevelPaths.Add(topLevel);
-                                                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Added top-level (folder): {topLevel}\n"); } catch { }
-                                                      }
-                                                }
-                                                else
-                                                {
-                                                      try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Background folder extraction failed or no files for {internalPath}\n"); } catch { }
-                                                }
-                                          }
-                                    }
-                                    else
-                                    {
-                                          var relFile = internalPath.Replace('/', Path.DirectorySeparatorChar).TrimStart(Path.DirectorySeparatorChar);
-                                          bool hasParent = HasParentFolderInSelection(internalPath, rels);
-                                          string outFile;
-                                          string fileName = Path.GetFileName(relFile);
-                                          if (hasParent) outFile = Path.Combine(dragTempRoot, relFile);
-                                          else outFile = Path.Combine(dragTempRoot, fileName);
-
-                                          try { Directory.CreateDirectory(Path.GetDirectoryName(outFile) ?? dragTempRoot); } catch { }
-                                          var okFile = owner.ExtractFileSingle(internalPath, outFile);
-                                          try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Background ExtractFileSingle returned: {okFile}, file exists: {File.Exists(outFile)}\n"); } catch { }
-                                          if (okFile && File.Exists(outFile))
-                                          {
-                                                job.ExtractedPaths.Add(outFile);
-                                                if (hasParent)
-                                                {
-                                                      var parts = relFile.Split(Path.DirectorySeparatorChar);
-                                                      if (parts.Length > 0)
-                                                      {
-                                                            var topLevel = Path.Combine(dragTempRoot, parts[0]);
-                                                            job.TopLevelPaths.Add(topLevel);
-                                                            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Background Added top-level: {topLevel}\n"); } catch { }
-                                                      }
-                                                }
-                                                else
-                                                {
-                                                      job.TopLevelPaths.Add(outFile);
-                                                      try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Background Added flat file: {outFile}\n"); } catch { }
-                                                }
-                                          }
-                                    }
-
-                                    i++;
-                                    job.Completed = i;
-                              }
-                              job.Finished = true;
-                        }
-                        catch (Exception ex)
-                        {
-                              job.Error = ex;
-                              job.Finished = true;
-                              try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Background extraction error: {ex}\n"); } catch { }
-                        }
-                  });
-
-                  try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "pyxelze_dnd.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] Background extraction started (topLevelPaths={topLevelPaths.Count})\n"); } catch { }
-                  return (topLevelPaths.ToList(), job);
-            }
-      }
+    private static void AddTopLevel(string internalPath, string dragTempRoot, ExtractionJob job)
+    {
+        var parts = internalPath.Split('/');
+        if (parts.Length > 0) job.TopLevelPaths.Add(Path.Combine(dragTempRoot, parts[0]));
+    }
 }
