@@ -39,11 +39,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "fileassoc"; Description: "Associer les fichiers .png (Rox) avec Pyxelze"; GroupDescription: "Associations de fichiers:"
 
 [Files]
-Source: "{#PublishDir}\Pyxelze.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#PublishDir}\Pyxelze.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#PublishDir}\Pyxelze.deps.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#PublishDir}\Pyxelze.runtimeconfig.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#PublishDir}\appIcon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "roxify\*,roxify"
 Source: "{#PublishDir}\roxify\*"; DestDir: "{app}\roxify"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -57,9 +53,36 @@ Root: HKCR; Subkey: "Pyxelze.RoxArchive"; ValueType: string; ValueName: ""; Valu
 Root: HKCR; Subkey: "Pyxelze.RoxArchive\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\appIcon.ico,0"; Tasks: fileassoc
 Root: HKCR; Subkey: "Pyxelze.RoxArchive\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
+Root: HKCR; Subkey: "*\shell\Pyxelze"; ValueType: string; ValueName: ""; ValueData: ""; Flags: uninsdeletekey
+Root: HKCR; Subkey: "*\shell\Pyxelze"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Pyxelze"
+Root: HKCR; Subkey: "*\shell\Pyxelze"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\{#MyAppExeName}"
+Root: HKCR; Subkey: "*\shell\Pyxelze"; ValueType: string; ValueName: "SubCommands"; ValueData: "open;decode"
+Root: HKCR; Subkey: "*\shell\Pyxelze\shell\open"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Ouvrir l'archive"
+Root: HKCR; Subkey: "*\shell\Pyxelze\shell\open"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\{#MyAppExeName}"
+Root: HKCR; Subkey: "*\shell\Pyxelze\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+Root: HKCR; Subkey: "*\shell\Pyxelze\shell\decode"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Décoder"
+Root: HKCR; Subkey: "*\shell\Pyxelze\shell\decode"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\{#MyAppExeName}"
+Root: HKCR; Subkey: "*\shell\Pyxelze\shell\decode\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" decode ""%1"""
+Root: HKCR; Subkey: "Directory\shell\Pyxelze"; ValueType: string; ValueName: ""; ValueData: ""; Flags: uninsdeletekey
+Root: HKCR; Subkey: "Directory\shell\Pyxelze"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Pyxelze"
+Root: HKCR; Subkey: "Directory\shell\Pyxelze"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\{#MyAppExeName}"
+Root: HKCR; Subkey: "Directory\shell\Pyxelze"; ValueType: string; ValueName: "SubCommands"; ValueData: "encode"
+Root: HKCR; Subkey: "Directory\shell\Pyxelze\shell\encode"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Encoder"
+Root: HKCR; Subkey: "Directory\shell\Pyxelze\shell\encode"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\{#MyAppExeName}"
+Root: HKCR; Subkey: "Directory\shell\Pyxelze\shell\encode\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" compress ""%1"""
+
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Parameters: "register-contextmenu"; StatusMsg: "Installation du menu contextuel..."; Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
-[UninstallRun]
-Filename: "{app}\{#MyAppExeName}"; Parameters: "unregister-contextmenu"; Flags: runhidden waituntilterminated
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
+
+[Code]
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+  begin
+    RegDeleteKeyIncludingSubkeys(HKEY_CLASSES_ROOT, '*\shell\Pyxelze');
+    RegDeleteKeyIncludingSubkeys(HKEY_CLASSES_ROOT, 'Directory\shell\Pyxelze');
+  end;
+end;
