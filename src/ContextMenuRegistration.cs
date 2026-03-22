@@ -19,7 +19,7 @@ internal static class ContextMenuRegistration
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question) == DialogResult.Yes)
             {
-                RunElevated("register-contextmenu");
+                RunElevated("register-contextmenu-ui");
             }
         }
     }
@@ -38,12 +38,34 @@ internal static class ContextMenuRegistration
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question) == DialogResult.Yes)
             {
-                RunElevated("unregister-contextmenu");
+                RunElevated("unregister-contextmenu-ui");
             }
         }
     }
 
     public static void RegisterDirect()
+    {
+        RegisterKeys();
+        MessageBox.Show("Intégration au menu contextuel installée.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    public static void RegisterSilent()
+    {
+        RegisterKeys();
+    }
+
+    public static void UnregisterDirect()
+    {
+        UnregisterKeys();
+        MessageBox.Show("Intégration supprimée.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    public static void UnregisterSilent()
+    {
+        UnregisterKeys();
+    }
+
+    private static void RegisterKeys()
     {
         var exePath = Application.ExecutablePath;
 
@@ -85,15 +107,12 @@ internal static class ContextMenuRegistration
                 cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
             }
         }
-
-        MessageBox.Show("Intégration au menu contextuel installée.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
-    public static void UnregisterDirect()
+    private static void UnregisterKeys()
     {
         Registry.ClassesRoot.DeleteSubKeyTree(@"*\shell\Pyxelze", false);
         Registry.ClassesRoot.DeleteSubKeyTree(@"Directory\shell\Pyxelze", false);
-        MessageBox.Show("Intégration supprimée.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     public static bool IsInstalled()

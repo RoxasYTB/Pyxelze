@@ -4,7 +4,7 @@ namespace Pyxelze;
 
 static class Program
 {
-    public const string BuildStamp = "20260321-000000";
+    public const string BuildStamp = "20260322-000000";
 
     [SupportedOSPlatform("windows")]
     [STAThread]
@@ -19,9 +19,15 @@ static class Program
             switch (args[0].ToLower())
             {
                 case "register-contextmenu":
-                    ContextMenuRegistration.RegisterDirect();
+                    ContextMenuRegistration.RegisterSilent();
                     return;
                 case "unregister-contextmenu":
+                    ContextMenuRegistration.UnregisterSilent();
+                    return;
+                case "register-contextmenu-ui":
+                    ContextMenuRegistration.RegisterDirect();
+                    return;
+                case "unregister-contextmenu-ui":
                     ContextMenuRegistration.UnregisterDirect();
                     return;
                 case "version":
