@@ -8,37 +8,41 @@ internal static class ToolbarIcons
     private const string SegoeFluentFont = "Segoe Fluent Icons";
     private const string SegoeMdl2Font = "Segoe MDL2 Assets";
 
+    public const string GlyphNew = "\uE7C3";
     public const string GlyphOpen = "\uE8E5";
+    public const string GlyphAdd = "\uE710";
     public const string GlyphExtractAll = "\uE896";
     public const string GlyphExtract = "\uE78C";
+    public const string GlyphInfo = "\uE946";
     public const string GlyphUp = "\uE70E";
     public const string GlyphHome = "\uEA8A";
     public const string GlyphFolder = "\uF12B";
     public const string GlyphChevronRight = "\uE76C";
-    public const string GlyphAdd = "\uE710";
-
-    private static readonly Lazy<FontFamily?> _iconFontFamily = new(ResolveIconFont);
 
     private static readonly Dictionary<string, Color> DarkGlyphColors = new()
     {
-        { GlyphOpen, Color.FromArgb(100, 200, 255) },
-        { GlyphExtractAll, Color.FromArgb(120, 230, 150) },
-        { GlyphExtract, Color.FromArgb(160, 220, 120) },
-        { GlyphUp, Color.FromArgb(255, 200, 100) },
+        { GlyphNew, Color.FromArgb(255, 100, 100) },
+        { GlyphOpen, Color.FromArgb(255, 170, 70) },
+        { GlyphAdd, Color.FromArgb(255, 230, 70) },
+        { GlyphExtractAll, Color.FromArgb(100, 220, 100) },
+        { GlyphExtract, Color.FromArgb(100, 160, 255) },
+        { GlyphInfo, Color.FromArgb(180, 120, 255) },
+        { GlyphUp, Color.FromArgb(200, 100, 255) },
         { GlyphHome, Color.FromArgb(100, 180, 255) },
         { GlyphFolder, Color.FromArgb(255, 210, 90) },
-        { GlyphAdd, Color.FromArgb(100, 220, 100) },
     };
 
     private static readonly Dictionary<string, Color> LightGlyphColors = new()
     {
-        { GlyphOpen, Color.FromArgb(0, 100, 200) },
-        { GlyphExtractAll, Color.FromArgb(20, 140, 60) },
-        { GlyphExtract, Color.FromArgb(40, 130, 40) },
-        { GlyphUp, Color.FromArgb(180, 120, 0) },
+        { GlyphNew, Color.FromArgb(200, 30, 30) },
+        { GlyphOpen, Color.FromArgb(210, 120, 0) },
+        { GlyphAdd, Color.FromArgb(180, 160, 0) },
+        { GlyphExtractAll, Color.FromArgb(20, 140, 20) },
+        { GlyphExtract, Color.FromArgb(30, 90, 200) },
+        { GlyphInfo, Color.FromArgb(120, 60, 200) },
+        { GlyphUp, Color.FromArgb(140, 40, 180) },
         { GlyphHome, Color.FromArgb(0, 90, 180) },
         { GlyphFolder, Color.FromArgb(200, 160, 0) },
-        { GlyphAdd, Color.FromArgb(30, 150, 30) },
     };
 
     public static Color GetGlyphColor(string glyph)
@@ -46,6 +50,8 @@ internal static class ToolbarIcons
         var map = ThemeManager.DarkMode ? DarkGlyphColors : LightGlyphColors;
         return map.TryGetValue(glyph, out var c) ? c : ThemeManager.ControlFore;
     }
+
+    private static readonly Lazy<FontFamily?> _iconFontFamily = new(ResolveIconFont);
 
     private static FontFamily? ResolveIconFont()
     {

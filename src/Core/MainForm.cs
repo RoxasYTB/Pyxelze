@@ -176,13 +176,12 @@ public partial class MainForm : Form
 
         toolbar.Items.AddRange(new ToolStripItem[]
         {
+            MakeBtn("Nouveau", ToolbarIcons.GlyphNew, NewArchive),
             MakeBtn("Ouvrir", ToolbarIcons.GlyphOpen, OpenArchiveDialog),
-            new ToolStripSeparator(),
             MakeBtn("Ajouter", ToolbarIcons.GlyphAdd, AddFilesDialog),
-            new ToolStripSeparator(),
             MakeBtn("Tout extraire", ToolbarIcons.GlyphExtractAll, ExtractAll),
             MakeBtn("Extraire", ToolbarIcons.GlyphExtract, ExtractSelected),
-            new ToolStripSeparator(),
+            MakeBtn("Infos", ToolbarIcons.GlyphInfo, ShowArchiveInfo),
             MakeBtn("Remonter", ToolbarIcons.GlyphUp, NavigateUp)
         });
 
@@ -469,7 +468,7 @@ public partial class MainForm : Form
         if (addressBar == null) return;
         if (isEmptyArchive)
         {
-            addressBar.Text = "Nouvelle archive — Glissez des fichiers ou utilisez Ajouter";
+            addressBar.Text = "Nouvelle archive";
             return;
         }
         var archivePart = string.IsNullOrEmpty(currentArchive) ? "" : currentArchive.Replace("\\", "/");
@@ -758,6 +757,69 @@ public partial class MainForm : Form
             DefaultExt = "png"
         };
         return sfd.ShowDialog() == DialogResult.OK ? sfd.FileName : null;
+    }
+
+    private void NewArchive()
+    {
+        if (!isEmptyArchive && !string.IsNullOrEmpty(currentArchive))
+        {
+            if (MessageBox.Show("Fermer l'archive actuelle et créer une nouvelle archive vide ?",
+                "Nouvelle archive", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+        }
+        CleanupEmptyArchive();
+        currentArchive = "";
+        allFiles.Clear();
+        currentPath = "";
+        this.Text = "Pyxelze";
+        CreateEmptyArchive();
+    }
+
+    private void ShowArchiveInfo()
+    {
+        if (string.IsNullOrEmpty(currentArchive) || isEmptyArchive)
+        {
+            MessageBox.Show("Aucune archive ouverte.", "Infos", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        var fi = new FileInfo(currentArchive);
+        var totalFiles = allFiles.Count(f => !f.IsFolder);
+        var totalFolders = allFiles.Count(f => f.IsFolder);
+        var totalSize = allFiles.Where(f => !f.IsFolder).Sum(f => f.Size);
+
+        var hasPass = false;
+        try
+        {
+            var (exit, stdout, _) = ProcessHelper.RunRox($"havepassphrase \"{currentArchive}\"", 5000);
+            hasPass = exit == 0 && stdout.Contains("Passphrase detected");
+        }
+        catch { }
+
+        var lines = new List<string>
+        {
+            $"Nom : {fi.Name}",
+            $"Emplacement : {fi.DirectoryName}",
+            $"Taille de l'archive : {SizeFormatter.Format(fi.Length)}",
+            $"Taille du contenu : {SizeFormatter.Format(totalSize)}",
+            "",
+            $"Fichiers : {totalFiles}",
+            $"Dossiers : {totalFolders}",
+            "",
+            $"Chiffrement : {(hasPass ? "Oui (passphrase)" : "Non")}",
+            "",
+            $"Créé le : {fi.CreationTime:dd/MM/yyyy HH:mm:ss}",
+            $"Modifié le : {fi.LastWriteTime:dd/MM/yyyy HH:mm:ss}",
+            $"Dernier accès : {fi.LastAccessTime:dd/MM/yyyy HH:mm:ss}",
+        };
+
+        if (fi.Length > 0 && totalSize > 0)
+        {
+            var ratio = (double)fi.Length / totalSize * 100;
+            lines.Add($"Ratio de compression : {ratio:0.#}%");
+        }
+
+        MessageBox.Show(string.Join("\n", lines), $"Infos - {fi.Name}", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     private void AddFilesDialog()
