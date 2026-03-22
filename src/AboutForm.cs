@@ -4,7 +4,7 @@ namespace Pyxelze;
 
 internal class AboutForm : Form
 {
-    private const string AppVersion = "1.2.1";
+    private const string AppVersion = "1.2.2";
     private const string RepoUrl = "https://github.com/RoxasYTB/Pyxelze";
 
     public AboutForm()

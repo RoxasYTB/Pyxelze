@@ -1,54 +1,72 @@
+using System.Diagnostics;
 using System.Net.Http;
-using System.Security.Cryptography;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Pyxelze;
 
 internal static class UpdateChecker
 {
-    private const string UpdateUrl = "https://aperture-sciences.com/pyxelze";
-    private const string HashUrl = "https://aperture-sciences.com/pyxelze/sha256";
-    private const string DownloadUrl = "https://aperture-sciences.com/pyxelze/Pyxelze.exe";
+    private const string GitHubApiUrl = "https://api.github.com/repos/RoxasYTB/Pyxelze/releases/latest";
+    private const string CurrentVersion = "1.2.2";
 
-    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(15) };
+    private static readonly HttpClient _httpClient = new()
+    {
+        Timeout = TimeSpan.FromSeconds(15),
+        DefaultRequestHeaders =
+        {
+            { "User-Agent", "Pyxelze-Updater" },
+            { "Accept", "application/vnd.github.v3+json" }
+        }
+    };
 
-    public static async Task<(bool updateAvailable, string? remoteHash)> CheckForUpdateAsync()
+    public static async Task<(bool updateAvailable, string? latestVersion, string? downloadUrl)> CheckForUpdateAsync()
     {
         try
         {
-            var localHash = GetLocalExecutableHash();
-            if (localHash == null) return (false, null);
+            var json = await _httpClient.GetStringAsync(GitHubApiUrl);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
 
-            var remoteHash = (await _httpClient.GetStringAsync(HashUrl)).Trim().ToLowerInvariant();
-            if (string.IsNullOrEmpty(remoteHash)) return (false, null);
+            var tagName = root.GetProperty("tag_name").GetString()?.TrimStart('v', 'V') ?? "";
+            Logger.Log($"UpdateCheck: current={CurrentVersion}, remote={tagName}");
 
-            bool needsUpdate = !string.Equals(localHash, remoteHash, StringComparison.OrdinalIgnoreCase);
-            Logger.Log($"UpdateCheck: local={localHash}, remote={remoteHash}, needsUpdate={needsUpdate}");
-            return (needsUpdate, remoteHash);
+            if (!Version.TryParse(CurrentVersion, out var local) || !Version.TryParse(tagName, out var remote))
+                return (false, null, null);
+
+            if (remote <= local)
+                return (false, tagName, null);
+
+            string? downloadUrl = null;
+            if (root.TryGetProperty("assets", out var assets))
+            {
+                foreach (var asset in assets.EnumerateArray())
+                {
+                    var name = asset.GetProperty("name").GetString() ?? "";
+                    if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    {
+                        downloadUrl = asset.GetProperty("browser_download_url").GetString();
+                        break;
+                    }
+                }
+            }
+
+            downloadUrl ??= root.GetProperty("html_url").GetString();
+
+            return (true, tagName, downloadUrl);
         }
         catch (Exception ex)
         {
             Logger.Log($"UpdateCheck failed: {ex.Message}");
-            return (false, null);
+            return (false, null, null);
         }
     }
 
-    public static string? GetLocalExecutableHash()
+    public static async Task<bool> DownloadUpdateAsync(string url, string destinationPath, Action<int>? onProgress = null)
     {
         try
         {
-            using var sha256 = SHA256.Create();
-            using var stream = File.OpenRead(Application.ExecutablePath);
-            var hashBytes = sha256.ComputeHash(stream);
-            return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-        }
-        catch { return null; }
-    }
-
-    public static async Task<bool> DownloadUpdateAsync(string destinationPath, Action<int>? onProgress = null)
-    {
-        try
-        {
-            using var response = await _httpClient.GetAsync(DownloadUrl, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1;
@@ -77,35 +95,47 @@ internal static class UpdateChecker
         }
     }
 
-    public static void ShowUpdateNotification(Form parent)
+    public static void ShowUpdateNotification(Form parent, string? version = null, string? downloadUrl = null)
     {
-        Task.Run(async () =>
+        if (version == null || downloadUrl == null)
         {
-            var (updateAvailable, remoteHash) = await CheckForUpdateAsync();
-            if (!updateAvailable) return;
-
-            parent.BeginInvoke(() =>
+            Task.Run(async () =>
             {
-                var result = MessageBox.Show(
-                    "Une mise à jour de Pyxelze est disponible.\n\nVoulez-vous la télécharger maintenant ?",
-                    "Mise à jour disponible",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Information);
-
-                if (result == DialogResult.Yes)
-                    PerformUpdate(parent);
+                var (available, ver, url) = await CheckForUpdateAsync();
+                if (!available || ver == null || url == null) return;
+                parent.BeginInvoke(() => PromptAndUpdate(parent, ver, url));
             });
-        });
+            return;
+        }
+
+        PromptAndUpdate(parent, version, downloadUrl);
     }
 
-    private static async void PerformUpdate(Form parent)
+    private static void PromptAndUpdate(Form parent, string version, string downloadUrl)
     {
-        var tempPath = Path.Combine(Path.GetTempPath(), $"Pyxelze-update-{Guid.NewGuid():N}.exe");
+        var result = MessageBox.Show(
+            $"Une mise à jour de Pyxelze est disponible (v{version}).\n\nVoulez-vous la télécharger maintenant ?",
+            "Mise à jour disponible",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Information);
+
+        if (result == DialogResult.Yes)
+        {
+            if (downloadUrl.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                PerformInstallerUpdate(parent, downloadUrl);
+            else
+                Process.Start(new ProcessStartInfo(downloadUrl) { UseShellExecute = true });
+        }
+    }
+
+    private static async void PerformInstallerUpdate(Form parent, string downloadUrl)
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"Pyxelze-Setup-update.exe");
 
         using var progressForm = new ProcessProgressForm("Mise à jour", "Téléchargement de la mise à jour...");
         progressForm.Show(parent);
 
-        bool success = await DownloadUpdateAsync(tempPath);
+        bool success = await DownloadUpdateAsync(downloadUrl, tempPath);
         progressForm.Close();
 
         if (!success)
@@ -114,28 +144,15 @@ internal static class UpdateChecker
             return;
         }
 
-        var currentExe = Application.ExecutablePath;
-        var backupPath = currentExe + ".bak";
-
         try
         {
-            if (File.Exists(backupPath)) File.Delete(backupPath);
-            File.Move(currentExe, backupPath);
-            File.Move(tempPath, currentExe);
-
-            MessageBox.Show(
-                "Mise à jour installée. L'application va redémarrer.",
-                "Mise à jour",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-
-            Application.Restart();
+            Process.Start(new ProcessStartInfo(tempPath) { UseShellExecute = true });
+            Application.Exit();
         }
         catch (Exception ex)
         {
-            Logger.Log($"Update install failed: {ex}");
-            try { if (File.Exists(backupPath) && !File.Exists(currentExe)) File.Move(backupPath, currentExe); } catch { }
-            MessageBox.Show($"Échec de l'installation : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Logger.Log($"Update launch failed: {ex}");
+            MessageBox.Show($"Échec du lancement de l'installateur : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }
