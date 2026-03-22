@@ -42,7 +42,7 @@ internal class ExtractionProgressForm : Form
             ForeColor = ThemeManager.ControlFore,
             FlatStyle = FlatStyle.Flat
         };
-        btnCancel.Click += (s, e) => cts?.Cancel();
+        btnCancel.Click += (s, e) => { cts?.Cancel(); Close(); };
         Controls.Add(btnCancel);
 
         cts = new CancellationTokenSource();
@@ -57,49 +57,5 @@ internal class ExtractionProgressForm : Form
         }
         bar.Value = Math.Min(current, bar.Maximum);
         lbl.Text = $"Extraction: {current}/{bar.Maximum} fichier(s)";
-        Application.DoEvents();
-    }
-
-    public void RunExtraction(IList<string> files, Func<string, CancellationToken, Task<bool>> extractFunc)
-    {
-        cts = new CancellationTokenSource();
-        Task.Run(async () =>
-        {
-            int i = 0;
-            foreach (var f in files)
-            {
-                if (cts.IsCancellationRequested) break;
-                await extractFunc(f, cts.Token);
-                i++;
-                UpdateProgress(i);
-            }
-            BeginInvoke(() => Close());
-        });
-        ShowDialog();
-    }
-
-    public Task<bool> StartExtractionAsync(IList<string> files, Func<string, CancellationToken, Task<bool>> extractFunc)
-    {
-        cts = new CancellationTokenSource();
-        var tcs = new TaskCompletionSource<bool>();
-
-        Show();
-
-        Task.Run(async () =>
-        {
-            int i = 0;
-            bool allOk = true;
-            foreach (var f in files)
-            {
-                if (cts.IsCancellationRequested) { allOk = false; break; }
-                bool ok = await extractFunc(f, cts.Token);
-                if (!ok) allOk = false;
-                i++;
-                UpdateProgress(i);
-            }
-            BeginInvoke(() => { Close(); tcs.SetResult(allOk); });
-        });
-
-        return tcs.Task;
     }
 }

@@ -1,5 +1,5 @@
 #define MyAppName "Pyxelze"
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.1"
 #define MyAppPublisher "Pyxelze"
 #define MyAppURL "https://github.com/RoxasYTB/Pyxelze"
 #define MyAppExeName "Pyxelze.exe"
@@ -58,4 +58,8 @@ Root: HKCR; Subkey: "Pyxelze.RoxArchive\DefaultIcon"; ValueType: string; ValueNa
 Root: HKCR; Subkey: "Pyxelze.RoxArchive\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
 [Run]
+Filename: "{app}\{#MyAppExeName}"; Parameters: "register-contextmenu"; StatusMsg: "Installation du menu contextuel..."; Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+Filename: "{app}\{#MyAppExeName}"; Parameters: "unregister-contextmenu"; Flags: runhidden waituntilterminated

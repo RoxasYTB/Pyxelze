@@ -330,7 +330,7 @@ public partial class MainForm : Form
             if (exit == 0 && !string.IsNullOrWhiteSpace(stdout))
             {
                 allFiles = ArchiveParser.Parse(stdout);
-
+                DetectAndPromptPassphrase(path);
             }
             else if (stderr == "Timeout")
             {
@@ -355,6 +355,42 @@ public partial class MainForm : Form
         }
 
         RefreshView();
+    }
+
+    private void DetectAndPromptPassphrase(string archivePath)
+    {
+        var (exit, stdout, _) = ProcessHelper.RunRox($"havepassphrase \"{archivePath}\"", 5000);
+        if (exit != 0 || !stdout.Contains("Passphrase detected")) return;
+
+        PassphraseManager.Clear();
+        string? errorMsg = null;
+        while (true)
+        {
+            var pass = PassphraseManager.PromptForPassphrase(errorMsg);
+            if (pass == null) return;
+
+            var tempDir = TempHelper.CreateTempDir("pyxelze_verify_pass");
+            try
+            {
+                var passArg = PassphraseManager.BuildPassphraseArg(pass);
+                var (vExit, vStdout, vStderr) = ProcessHelper.RunRox($"decompress \"{archivePath}\" {passArg} \"{tempDir}\"", 15000);
+                if (vExit == 0)
+                {
+                    PassphraseManager.Save(pass);
+                    return;
+                }
+                if (PassphraseManager.IsDecryptionFailure(vStdout, vStderr))
+                {
+                    errorMsg = "Mot de passe incorrect";
+                    continue;
+                }
+                return;
+            }
+            finally
+            {
+                TempHelper.SafeDelete(tempDir);
+            }
+        }
     }
 
     private void RefreshView()
@@ -497,8 +533,7 @@ public partial class MainForm : Form
         try
         {
             dragDataObject.SetData("Preferred DropEffect", new MemoryStream(BitConverter.GetBytes((uint)DragDropEffects.Copy)));
-            var result = DoDragDrop(dragDataObject, DragDropEffects.Copy);
-            try { if (dragDataObject is LazyDataObject ldo) ldo.FinalizeAfterDropAsync(result).GetAwaiter().GetResult(); } catch { }
+            DoDragDrop(dragDataObject, DragDropEffects.Copy);
         }
         finally
         {
@@ -516,6 +551,8 @@ public partial class MainForm : Form
         bool success = ExtractionService.ExtractWithProgress(currentArchive, destFolder);
         if (success)
             MessageBox.Show($"Extraction réussie vers :\n{destFolder}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        else
+            MessageBox.Show($"Échec de l'extraction.\nVoir le journal: {Logger.LogPath}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 
     private void AutoExtractArchive()
@@ -532,29 +569,59 @@ public partial class MainForm : Form
         using var fbd = new FolderBrowserDialog();
         if (fbd.ShowDialog() != DialogResult.OK) return;
 
-        foreach (ListViewItem item in listView.SelectedItems)
+        var extractTemp = TempHelper.CreateTempDir("pyxelze_sel_extract");
+        try
         {
-            if (item.Tag is not VirtualFile vf) continue;
-            if (!vf.IsFolder)
+            if (!ExtractionService.DecompressArchiveToDir(currentArchive, extractTemp))
             {
-                var origPath = string.IsNullOrEmpty(vf.OriginalPath) ? vf.FullPath : vf.OriginalPath;
-                ExtractionService.ExtractFileSingle(currentArchive, origPath, Path.Combine(fbd.SelectedPath, vf.Name));
+                MessageBox.Show("Échec de l'extraction.\nVoir le journal.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
-            else
+
+            int successCount = 0, failCount = 0;
+            foreach (ListViewItem item in listView.SelectedItems)
             {
-                var destFolder = Path.Combine(fbd.SelectedPath, vf.Name);
-                Directory.CreateDirectory(destFolder);
-                foreach (var f in ExtractionService.GetFilesUnder(allFiles, vf.FullPath))
+                if (item.Tag is not VirtualFile vf) continue;
+                if (!vf.IsFolder)
                 {
-                    var rel = f.FullPath[(vf.FullPath.Length + 1)..];
-                    var dest = Path.Combine(destFolder, rel);
-                    Directory.CreateDirectory(Path.GetDirectoryName(dest) ?? destFolder);
-                    var origPath = string.IsNullOrEmpty(f.OriginalPath) ? f.FullPath : f.OriginalPath;
-                    ExtractionService.ExtractFileSingle(currentArchive, origPath, dest);
+                    var origPath = string.IsNullOrEmpty(vf.OriginalPath) ? vf.FullPath : vf.OriginalPath;
+                    var src = ExtractionService.FindExtractedFile(extractTemp, origPath);
+                    if (src != null)
+                    {
+                        var dest = Path.Combine(fbd.SelectedPath, vf.Name);
+                        try { File.Copy(src, dest, true); successCount++; } catch { failCount++; }
+                    }
+                    else failCount++;
+                }
+                else
+                {
+                    var destFolder = Path.Combine(fbd.SelectedPath, vf.Name);
+                    Directory.CreateDirectory(destFolder);
+                    foreach (var f in ExtractionService.GetFilesUnder(allFiles, vf.FullPath))
+                    {
+                        var rel = f.FullPath[(vf.FullPath.Length + 1)..];
+                        var dest = Path.Combine(destFolder, rel);
+                        Directory.CreateDirectory(Path.GetDirectoryName(dest) ?? destFolder);
+                        var origPath = string.IsNullOrEmpty(f.OriginalPath) ? f.FullPath : f.OriginalPath;
+                        var src = ExtractionService.FindExtractedFile(extractTemp, origPath);
+                        if (src != null)
+                        {
+                            try { File.Copy(src, dest, true); successCount++; } catch { failCount++; }
+                        }
+                        else failCount++;
+                    }
                 }
             }
+
+            if (failCount == 0)
+                MessageBox.Show($"Extraction réussie ({successCount} fichier(s)).", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            else
+                MessageBox.Show($"Extraction partielle : {successCount} réussi(s), {failCount} échoué(s).\nVoir le journal: {Logger.LogPath}", "Avertissement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
-        MessageBox.Show("Extraction termin\u00e9e !");
+        finally
+        {
+            TempHelper.SafeDelete(extractTemp);
+        }
     }
 
     private void ExtractToCurrentLocation()
@@ -562,29 +629,59 @@ public partial class MainForm : Form
         if (listView.SelectedItems.Count == 0) return;
         var destPath = Path.GetDirectoryName(currentArchive) ?? Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
-        foreach (ListViewItem item in listView.SelectedItems)
+        var extractTemp = TempHelper.CreateTempDir("pyxelze_loc_extract");
+        try
         {
-            if (item.Tag is not VirtualFile vf) continue;
-            if (!vf.IsFolder)
+            if (!ExtractionService.DecompressArchiveToDir(currentArchive, extractTemp))
             {
-                var origPath = string.IsNullOrEmpty(vf.OriginalPath) ? vf.FullPath : vf.OriginalPath;
-                ExtractionService.ExtractFileSingle(currentArchive, origPath, Path.Combine(destPath, vf.Name));
+                MessageBox.Show("Échec de l'extraction.\nVoir le journal.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
-            else
+
+            int successCount = 0, failCount = 0;
+            foreach (ListViewItem item in listView.SelectedItems)
             {
-                var destFolder = Path.Combine(destPath, vf.Name);
-                Directory.CreateDirectory(destFolder);
-                foreach (var f in ExtractionService.GetFilesUnder(allFiles, vf.FullPath))
+                if (item.Tag is not VirtualFile vf) continue;
+                if (!vf.IsFolder)
                 {
-                    var rel = f.FullPath[(vf.FullPath.Length + 1)..];
-                    var dest = Path.Combine(destFolder, rel);
-                    Directory.CreateDirectory(Path.GetDirectoryName(dest) ?? destFolder);
-                    var origPath = string.IsNullOrEmpty(f.OriginalPath) ? f.FullPath : f.OriginalPath;
-                    ExtractionService.ExtractFileSingle(currentArchive, origPath, dest);
+                    var origPath = string.IsNullOrEmpty(vf.OriginalPath) ? vf.FullPath : vf.OriginalPath;
+                    var src = ExtractionService.FindExtractedFile(extractTemp, origPath);
+                    if (src != null)
+                    {
+                        var dest = Path.Combine(destPath, vf.Name);
+                        try { File.Copy(src, dest, true); successCount++; } catch { failCount++; }
+                    }
+                    else failCount++;
+                }
+                else
+                {
+                    var destFolder = Path.Combine(destPath, vf.Name);
+                    Directory.CreateDirectory(destFolder);
+                    foreach (var f in ExtractionService.GetFilesUnder(allFiles, vf.FullPath))
+                    {
+                        var rel = f.FullPath[(vf.FullPath.Length + 1)..];
+                        var dest = Path.Combine(destFolder, rel);
+                        Directory.CreateDirectory(Path.GetDirectoryName(dest) ?? destFolder);
+                        var origPath = string.IsNullOrEmpty(f.OriginalPath) ? f.FullPath : f.OriginalPath;
+                        var src = ExtractionService.FindExtractedFile(extractTemp, origPath);
+                        if (src != null)
+                        {
+                            try { File.Copy(src, dest, true); successCount++; } catch { failCount++; }
+                        }
+                        else failCount++;
+                    }
                 }
             }
+
+            if (failCount == 0)
+                MessageBox.Show($"Extraction réussie ({successCount} fichier(s)).", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            else
+                MessageBox.Show($"Extraction partielle : {successCount} réussi(s), {failCount} échoué(s).\nVoir le journal: {Logger.LogPath}", "Avertissement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
-        MessageBox.Show("Extraction termin\u00e9e !");
+        finally
+        {
+            TempHelper.SafeDelete(extractTemp);
+        }
     }
 
     public string CurrentArchive => currentArchive;

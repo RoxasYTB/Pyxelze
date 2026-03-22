@@ -29,6 +29,7 @@ internal static class ExtractionService
     public static bool ExtractWithProgress(string archivePath, string outputDir)
     {
         Directory.CreateDirectory(outputDir);
+        Logger.Log($"ExtractWithProgress: {archivePath} -> {outputDir}");
 
         if (ProcessHelper.DirectoryHasEntries(outputDir))
         {
@@ -45,13 +46,15 @@ internal static class ExtractionService
             $"Extraction de {Path.GetFileName(archivePath)}...",
             psi, out var stdout, out var stderr);
 
-        if (PassphraseManager.NeedsPassphrase(stdout, stderr))
+        Logger.Log($"ExtractWithProgress result: exit={exit} stdout={stdout?.Trim()} stderr={stderr?.Trim()} hasEntries={ProcessHelper.DirectoryHasEntries(outputDir)}");
+
+        if (PassphraseManager.NeedsPassphrase(stdout ?? "", stderr ?? ""))
             return ExtractWithPassphraseLoop(archivePath, outputDir);
 
         if (exit == 0 && ProcessHelper.DirectoryHasEntries(outputDir))
             return true;
 
-        if (AntivirusHelper.IsAccessDenied(stderr))
+        if (AntivirusHelper.IsAccessDenied(stderr ?? ""))
             return HandleAccessDenied(archivePath, outputDir);
 
         return false;
@@ -66,10 +69,17 @@ internal static class ExtractionService
         try
         {
             if (!DecompressFiles(archivePath, tempOut, internalPath))
+            {
+                Logger.LogDnd($"DecompressFiles failed, falling back to DecodeArchiveToDir");
                 if (!DecodeArchiveToDir(archivePath, tempOut))
+                {
+                    Logger.LogDnd($"DecodeArchiveToDir also failed");
                     return false;
+                }
+            }
 
             var sourceFull = FindExtractedFile(tempOut, internalPath);
+            Logger.LogDnd($"FindExtractedFile: {sourceFull}");
             if (sourceFull == null) return false;
 
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Path.GetTempPath());
@@ -91,7 +101,8 @@ internal static class ExtractionService
         var cachedPass = PassphraseManager.CachedPassphrase;
         if (!string.IsNullOrEmpty(cachedPass))
             args = $"decompress \"{archivePath}\" {PassphraseManager.BuildPassphraseArg(cachedPass)} \"{outputDir}\" --files \"{escaped}\"";
-        var (exit, _, _) = ProcessHelper.RunRox(args);
+        var (exit, stdout, stderr) = ProcessHelper.RunRox(args);
+        Logger.LogDnd($"DecompressFiles: exit={exit} stdout={stdout?.Trim()} stderr={stderr?.Trim()} hasEntries={ProcessHelper.DirectoryHasEntries(outputDir)}");
         return exit == 0 && ProcessHelper.DirectoryHasEntries(outputDir);
     }
 
@@ -119,6 +130,33 @@ internal static class ExtractionService
             ? new()
             : allFiles.Where(f => !f.IsFolder && f.FullPath.StartsWith(folderInternalPath + "/")).ToList();
 
+    public static bool DecompressArchiveToDir(string archivePath, string outputDir)
+    {
+        Directory.CreateDirectory(outputDir);
+        string args = $"decompress \"{archivePath}\" \"{outputDir}\"";
+        var cachedPass = PassphraseManager.CachedPassphrase;
+        if (!string.IsNullOrEmpty(cachedPass))
+            args = $"decompress \"{archivePath}\" {PassphraseManager.BuildPassphraseArg(cachedPass)} \"{outputDir}\"";
+
+        var (exit, stdout, stderr) = ProcessHelper.RunRox(args);
+        Logger.Log($"DecompressArchiveToDir: exit={exit} stdout={stdout?.Trim()} stderr={stderr?.Trim()} hasEntries={ProcessHelper.DirectoryHasEntries(outputDir)}");
+
+        if (PassphraseManager.NeedsPassphrase(stdout ?? "", stderr ?? "") && exit != 0)
+            return RunPassphraseRetryLoop(archivePath, outputDir);
+
+        return exit == 0;
+    }
+
+    public static string? FindExtractedFile(string tempOut, string internalPath)
+    {
+        var sourceRel = internalPath.Replace('/', Path.DirectorySeparatorChar);
+        var sourceFull = Path.Combine(tempOut, sourceRel);
+        if (File.Exists(sourceFull)) return sourceFull;
+
+        var matches = Directory.GetFiles(tempOut, Path.GetFileName(internalPath), SearchOption.AllDirectories);
+        return matches.Length > 0 ? matches[0] : null;
+    }
+
     private static bool DecodeArchiveToDir(string archivePath, string outputDir)
     {
         string args = $"decompress \"{archivePath}\" \"{outputDir}\"";
@@ -127,8 +165,9 @@ internal static class ExtractionService
             args = $"decompress \"{archivePath}\" {PassphraseManager.BuildPassphraseArg(cachedPass)} \"{outputDir}\"";
 
         var (exit, stdout, stderr) = ProcessHelper.RunRox(args);
+        Logger.Log($"DecodeArchiveToDir: exit={exit} stdout={stdout?.Trim()} stderr={stderr?.Trim()} hasEntries={ProcessHelper.DirectoryHasEntries(outputDir)}");
 
-        if (PassphraseManager.NeedsPassphrase(stdout, stderr) && exit != 0)
+        if (PassphraseManager.NeedsPassphrase(stdout ?? "", stderr ?? "") && exit != 0)
             return RunPassphraseRetryLoop(archivePath, outputDir);
 
         return exit == 0;
@@ -147,16 +186,6 @@ internal static class ExtractionService
             if (PassphraseManager.IsDecryptionFailure(stdout, stderr)) { errorMsg = "Mot de passe incorrect"; continue; }
             return false;
         }
-    }
-
-    private static string? FindExtractedFile(string tempOut, string internalPath)
-    {
-        var sourceRel = internalPath.Replace('/', Path.DirectorySeparatorChar);
-        var sourceFull = Path.Combine(tempOut, sourceRel);
-        if (File.Exists(sourceFull)) return sourceFull;
-
-        var matches = Directory.GetFiles(tempOut, Path.GetFileName(internalPath), SearchOption.AllDirectories);
-        return matches.Length > 0 ? matches[0] : null;
     }
 
     public static bool ExtractWithPassphraseLoop(string archivePath, string outputDir, string? initialPass = null)

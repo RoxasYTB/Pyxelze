@@ -4,13 +4,13 @@ namespace Pyxelze;
 
 internal class AboutForm : Form
 {
-    private const string AppVersion = "1.2.0";
+    private const string AppVersion = "1.2.1";
     private const string RepoUrl = "https://github.com/RoxasYTB/Pyxelze";
 
     public AboutForm()
     {
         Text = "À propos de Pyxelze";
-        Size = new Size(480, 460);
+        Size = new Size(480, 490);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
         MaximizeBox = false;
@@ -37,7 +37,7 @@ internal class AboutForm : Form
             Text = "Pyxelze",
             Font = new Font("Segoe UI", 24, FontStyle.Bold),
             AutoSize = true,
-            Location = new Point(left + 56, y - 2),
+            Location = new Point(left + 56, y),
             ForeColor = accent
         };
 
@@ -46,11 +46,11 @@ internal class AboutForm : Form
             Text = $"v{AppVersion}",
             Font = new Font("Segoe UI", 11, FontStyle.Regular),
             AutoSize = true,
-            Location = new Point(left + 56, y + 36),
+            Location = new Point(left + 56, y + 42),
             ForeColor = dimmed
         };
 
-        y = 80;
+        y = 84;
         var lblDesc = new Label
         {
             Text = "Explorateur et archiveur de fichiers ROX — stéganographie PNG\navec compression transparente via le moteur roxify.",
@@ -128,7 +128,7 @@ internal class AboutForm : Form
         {
             Text = "Fermer",
             DialogResult = DialogResult.OK,
-            Location = new Point(Size.Width - 120, Size.Height - 80),
+            Location = new Point(Size.Width - 120, Size.Height - 90),
             Width = 88,
             Height = 32,
             FlatStyle = FlatStyle.Flat,
