@@ -15,6 +15,7 @@ internal static class ToolbarIcons
     public const string GlyphHome = "\uEA8A";
     public const string GlyphFolder = "\uF12B";
     public const string GlyphChevronRight = "\uE76C";
+    public const string GlyphAdd = "\uE710";
 
     private static readonly Lazy<FontFamily?> _iconFontFamily = new(ResolveIconFont);
 
@@ -26,6 +27,7 @@ internal static class ToolbarIcons
         { GlyphUp, Color.FromArgb(255, 200, 100) },
         { GlyphHome, Color.FromArgb(100, 180, 255) },
         { GlyphFolder, Color.FromArgb(255, 210, 90) },
+        { GlyphAdd, Color.FromArgb(100, 220, 100) },
     };
 
     private static readonly Dictionary<string, Color> LightGlyphColors = new()
@@ -36,6 +38,7 @@ internal static class ToolbarIcons
         { GlyphUp, Color.FromArgb(180, 120, 0) },
         { GlyphHome, Color.FromArgb(0, 90, 180) },
         { GlyphFolder, Color.FromArgb(200, 160, 0) },
+        { GlyphAdd, Color.FromArgb(30, 150, 30) },
     };
 
     public static Color GetGlyphColor(string glyph)

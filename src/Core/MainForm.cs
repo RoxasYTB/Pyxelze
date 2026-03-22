@@ -32,6 +32,9 @@ public partial class MainForm : Form
     private int zoomLevel = 0;
     private static readonly View[] ViewModes = { View.Details, View.List, View.SmallIcon, View.LargeIcon };
     private bool isDraggingFromSelf = false;
+    private ToolStripButton btnUp = null!;
+    private bool isEmptyArchive = false;
+    private string? emptyArchiveTempPath = null;
 
     public MainForm(string? archivePath = null, bool autoExtract = false)
     {
@@ -47,6 +50,10 @@ public partial class MainForm : Form
             LoadArchive(archivePath);
             if (autoExtractMode)
                 this.Shown += (s, e) => AutoExtractArchive();
+        }
+        else
+        {
+            CreateEmptyArchive();
         }
 
         UpdateChecker.ShowUpdateNotification(this);
@@ -171,11 +178,16 @@ public partial class MainForm : Form
         {
             MakeBtn("Ouvrir", ToolbarIcons.GlyphOpen, OpenArchiveDialog),
             new ToolStripSeparator(),
+            MakeBtn("Ajouter", ToolbarIcons.GlyphAdd, AddFilesDialog),
+            new ToolStripSeparator(),
             MakeBtn("Tout extraire", ToolbarIcons.GlyphExtractAll, ExtractAll),
             MakeBtn("Extraire", ToolbarIcons.GlyphExtract, ExtractSelected),
             new ToolStripSeparator(),
             MakeBtn("Remonter", ToolbarIcons.GlyphUp, NavigateUp)
         });
+
+        btnUp = (ToolStripButton)toolbar.Items[^1];
+        btnUp.Enabled = false;
 
         this.Controls.Add(toolbar);
     }
@@ -305,6 +317,10 @@ public partial class MainForm : Form
         var previousFiles = allFiles.ToList();
         var previousPath = currentPath;
         var previousTitle = this.Text;
+        var wasEmpty = isEmptyArchive;
+
+        if (isEmptyArchive)
+            CleanupEmptyArchive();
 
         currentArchive = path;
         this.Text = $"Pyxelze - {Path.GetFileName(path)}";
@@ -415,6 +431,8 @@ public partial class MainForm : Form
         iconManager?.EnsureIconLoaded("C:\\DummyFolder", true);
         iconManager?.EnsureIconLoaded("file.txt", false);
 
+        btnUp.Enabled = !string.IsNullOrEmpty(currentPath);
+
         if (!string.IsNullOrEmpty(currentPath))
         {
             var upItem = new ListViewItem("...") { Tag = "UP", ImageKey = "folder" };
@@ -449,6 +467,11 @@ public partial class MainForm : Form
     private void UpdateAddressBar()
     {
         if (addressBar == null) return;
+        if (isEmptyArchive)
+        {
+            addressBar.Text = "Nouvelle archive — Glissez des fichiers ou utilisez Ajouter";
+            return;
+        }
         var archivePart = string.IsNullOrEmpty(currentArchive) ? "" : currentArchive.Replace("\\", "/");
         var virtualPart = string.IsNullOrEmpty(currentPath) ? "" : "/" + currentPath;
         addressBar.Text = archivePart + virtualPart;
@@ -573,21 +596,71 @@ public partial class MainForm : Form
         if (isDraggingFromSelf) return;
         if (e.Data?.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return;
 
-        if (string.IsNullOrEmpty(currentArchive) || !File.Exists(currentArchive))
+        if (isEmptyArchive || (!string.IsNullOrEmpty(currentArchive) && File.Exists(currentArchive)))
         {
-            var file = files[0];
-            if (File.Exists(file))
-                LoadArchive(file);
+            AddFilesToArchive(files);
             return;
         }
 
-        AddFilesToArchive(files);
+        var file = files[0];
+        if (File.Exists(file))
+            LoadArchive(file);
     }
 
     private void AddFilesToArchive(string[] filePaths)
     {
         var validFiles = filePaths.Where(f => File.Exists(f) || Directory.Exists(f)).ToArray();
         if (validFiles.Length == 0) return;
+
+        if (isEmptyArchive)
+        {
+            var savePath = PromptSaveNewArchive();
+            if (savePath == null) return;
+
+            var buildTemp = TempHelper.CreateTempDir("pyxelze_new_archive");
+            try
+            {
+                foreach (var src in validFiles)
+                {
+                    var dest = Path.Combine(buildTemp, Path.GetFileName(src));
+                    if (Directory.Exists(src))
+                        TempHelper.CopyDirectory(src, dest);
+                    else
+                        File.Copy(src, dest, true);
+                }
+
+                var pass = PassphrasePrompt.Prompt(
+                    "Passphrase (optionnel)",
+                    "Saisir une passphrase pour chiffrer (laisser vide pour ne pas chiffrer) :");
+                if (pass == null) return;
+
+                var passArg = string.IsNullOrEmpty(pass) ? "" : $" {PassphraseManager.BuildPassphraseArg(pass)}";
+                var psi = RoxRunner.CreateRoxProcess($"encode \"{buildTemp}\" \"{savePath}\"{passArg}");
+
+                int exit = ProcessHelper.RunWithProgress(
+                    "Création de l'archive",
+                    "Encodage de la nouvelle archive...",
+                    psi, out _, out var stderr);
+
+                if (exit != 0)
+                {
+                    MessageBox.Show("Échec de la création de l'archive.\n" + stderr, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                if (!string.IsNullOrEmpty(pass))
+                    PassphraseManager.Save(pass);
+
+                CleanupEmptyArchive();
+                LoadArchive(savePath);
+                MessageBox.Show($"Archive créée avec {validFiles.Length} fichier(s).", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            finally
+            {
+                TempHelper.SafeDelete(buildTemp);
+            }
+            return;
+        }
 
         var archiveName = Path.GetFileName(currentArchive);
         var msg = validFiles.Length == 1
@@ -618,17 +691,17 @@ public partial class MainForm : Form
             }
 
             var cachedPass = PassphraseManager.CachedPassphrase;
-            var passArg = string.IsNullOrEmpty(cachedPass) ? "" : $" {PassphraseManager.BuildPassphraseArg(cachedPass)}";
-            var psi = RoxRunner.CreateRoxProcess($"encode \"{extractTemp}\" \"{currentArchive}\"{passArg}");
+            var passArg2 = string.IsNullOrEmpty(cachedPass) ? "" : $" {PassphraseManager.BuildPassphraseArg(cachedPass)}";
+            var psi2 = RoxRunner.CreateRoxProcess($"encode \"{extractTemp}\" \"{currentArchive}\"{passArg2}");
 
-            int exit = ProcessHelper.RunWithProgress(
+            int exit2 = ProcessHelper.RunWithProgress(
                 "Ré-encodage de l'archive",
                 "Ajout des fichiers et ré-encodage...",
-                psi, out _, out var stderr);
+                psi2, out _, out var stderr2);
 
-            if (exit != 0)
+            if (exit2 != 0)
             {
-                MessageBox.Show("Échec du ré-encodage de l'archive.\n" + stderr, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Échec du ré-encodage de l'archive.\n" + stderr2, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -639,6 +712,64 @@ public partial class MainForm : Form
         {
             TempHelper.SafeDelete(extractTemp);
         }
+    }
+
+    private void CreateEmptyArchive()
+    {
+        isEmptyArchive = true;
+        var tempDir = TempHelper.CreateTempDir("pyxelze_empty");
+        var dummyFile = Path.Combine(tempDir, ".pyxelze_empty");
+        File.WriteAllText(dummyFile, "");
+
+        var tempArchive = Path.Combine(Path.GetTempPath(), $"pyxelze_empty_{Guid.NewGuid():N}.png");
+        var psi = RoxRunner.CreateRoxProcess($"encode \"{tempDir}\" \"{tempArchive}\"");
+        var (exit, _, _) = ProcessHelper.RunProcess(psi, 15000);
+
+        TempHelper.SafeDelete(tempDir);
+
+        if (exit == 0 && File.Exists(tempArchive))
+        {
+            emptyArchiveTempPath = tempArchive;
+            currentArchive = tempArchive;
+            allFiles.Clear();
+            currentPath = "";
+            this.Text = "Pyxelze - Nouvelle archive";
+            UpdateAddressBar();
+            RefreshView();
+        }
+    }
+
+    private void CleanupEmptyArchive()
+    {
+        isEmptyArchive = false;
+        if (!string.IsNullOrEmpty(emptyArchiveTempPath))
+        {
+            TempHelper.SafeDeleteFile(emptyArchiveTempPath);
+            emptyArchiveTempPath = null;
+        }
+    }
+
+    private string? PromptSaveNewArchive()
+    {
+        using var sfd = new SaveFileDialog
+        {
+            Filter = "Fichiers PNG Rox (*.png)|*.png",
+            Title = "Enregistrer la nouvelle archive",
+            DefaultExt = "png"
+        };
+        return sfd.ShowDialog() == DialogResult.OK ? sfd.FileName : null;
+    }
+
+    private void AddFilesDialog()
+    {
+        using var ofd = new OpenFileDialog
+        {
+            Title = "Ajouter des fichiers à l'archive",
+            Multiselect = true,
+            Filter = "Tous les fichiers (*.*)|*.*"
+        };
+        if (ofd.ShowDialog() != DialogResult.OK) return;
+        AddFilesToArchive(ofd.FileNames);
     }
 
     private void ExtractAll()
@@ -797,6 +928,7 @@ public partial class MainForm : Form
     {
         if (disposing)
         {
+            CleanupEmptyArchive();
             components?.Dispose();
             associationWatcher?.Dispose();
             iconManager?.Dispose();
