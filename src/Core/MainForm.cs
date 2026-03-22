@@ -557,7 +557,35 @@ public partial class MainForm : Form
         var tag = listView.SelectedItems[0].Tag;
 
         if (tag?.ToString() == "UP") { NavigateUp(); return; }
-        if (tag is VirtualFile vf && vf.IsFolder) { currentPath = vf.FullPath; RefreshView(); }
+        if (tag is VirtualFile vf)
+        {
+            if (vf.IsFolder) { currentPath = vf.FullPath; RefreshView(); return; }
+            OpenFileFromArchive(vf);
+        }
+    }
+
+    private void OpenFileFromArchive(VirtualFile vf)
+    {
+        if (string.IsNullOrEmpty(currentArchive)) return;
+
+        var tempDir = TempHelper.CreateTempDir("pyxelze_open");
+        var outputPath = Path.Combine(tempDir, Path.GetFileName(vf.FullPath));
+
+        if (!ExtractionService.ExtractFileSingle(currentArchive, vf.FullPath, outputPath))
+        {
+            TempHelper.SafeDelete(tempDir);
+            MessageBox.Show("Impossible d'extraire le fichier.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(outputPath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Impossible d'ouvrir le fichier : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private void ListView_ColumnClick(object? sender, ColumnClickEventArgs e)
