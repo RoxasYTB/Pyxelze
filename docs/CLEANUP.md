@@ -1,4 +1,4 @@
-Nettoyage de l'historique — Résumé
+﻿Nettoyage de l'historique - Résumé
 
 Ce dépôt a subi une réécriture complète de l'historique pour retirer les fichiers binaires et artefacts lourds (installateurs, exécutables, archives de release, dossiers `bin/`, `obj/`, `release/`, `production/`, `publish_final/`, `tools/roxify/dist/`, etc.).
 
@@ -17,7 +17,7 @@ Que fais-je maintenant :
 
 - L'historique a été nettoyé (réécriture avec `git filter-branch` + `git-filter-repo`), et le remote a été mis à jour en force (branches + tags).
 
-IMPORTANT — Actions à effectuer pour les contributeurs :
+IMPORTANT - Actions à effectuer pour les contributeurs :
 
 1. **Ne pas** faire `git pull` sur vos clones locaux : cela va créer un historique incompatible.
 2. Re-cloner le dépôt depuis GitHub :
