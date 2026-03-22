@@ -8,7 +8,7 @@ namespace Pyxelze;
 internal static class UpdateChecker
 {
     private const string GitHubApiUrl = "https://api.github.com/repos/RoxasYTB/Pyxelze/releases/latest";
-    private const string CurrentVersion = "1.2.4";
+    private const string CurrentVersion = "1.2.5";
 
     private static readonly HttpClient _httpClient = new()
     {
