@@ -73,6 +73,8 @@ internal class ProcessProgressForm : Form
         psi.CreateNoWindow = true;
         psi.RedirectStandardOutput = true;
         psi.RedirectStandardError = true;
+        psi.StandardOutputEncoding = System.Text.Encoding.UTF8;
+        psi.StandardErrorEncoding = System.Text.Encoding.UTF8;
 
         var task = Task.Run(() =>
         {

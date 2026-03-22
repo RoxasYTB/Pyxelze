@@ -1,7 +1,12 @@
+using System.Runtime.InteropServices;
+
 namespace Pyxelze;
 
 internal static class DragHelper
 {
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int GetShortPathName(string lpszLongPath, char[] lpszShortPath, int cchBuffer);
+
     public static IList<string> ExtractSelectionToDragTemp(
         string archivePath, IList<VirtualFile> allFiles, IList<VirtualFile> selection, string dragTempRoot)
     {
@@ -29,13 +34,27 @@ internal static class DragHelper
                     CopyFileFromExtracted(vf, extractTemp, dragTempRoot, selectedItems, topLevelPaths);
             }
 
-            Logger.LogDnd($"ExtractSelectionToDragTemp done: {topLevelPaths.Count} top-level paths");
-            return topLevelPaths.ToList();
+            var result = topLevelPaths.Select(GetSafeDropPath).ToList();
+            Logger.LogDnd($"ExtractSelectionToDragTemp done: {result.Count} top-level paths");
+            return result;
         }
         finally
         {
             TempHelper.SafeDelete(extractTemp);
         }
+    }
+
+    private static string GetSafeDropPath(string path)
+    {
+        try
+        {
+            var buffer = new char[1024];
+            int len = GetShortPathName(path, buffer, buffer.Length);
+            if (len > 0)
+                return new string(buffer, 0, len);
+        }
+        catch { }
+        return path;
     }
 
     private static void CopyFolderFromExtracted(
