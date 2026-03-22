@@ -51,7 +51,7 @@ internal static class ContextMenuRegistration
 
     public static void RegisterSilent()
     {
-        RegisterKeys();
+        try { RegisterKeys(); } catch { }
     }
 
     public static void UnregisterDirect()
@@ -62,12 +62,12 @@ internal static class ContextMenuRegistration
 
     public static void UnregisterSilent()
     {
-        UnregisterKeys();
+        try { UnregisterKeys(); } catch { }
     }
 
     private static void RegisterKeys()
     {
-        var exePath = Application.ExecutablePath;
+        var exePath = Environment.ProcessPath ?? Application.ExecutablePath;
 
         using (var key = Registry.ClassesRoot.CreateSubKey(@"*\shell\Pyxelze"))
         {
