@@ -31,6 +31,7 @@ public partial class MainForm : Form
     private ImageList largeImageList = null!;
     private int zoomLevel = 0;
     private static readonly View[] ViewModes = { View.Details, View.List, View.SmallIcon, View.LargeIcon };
+    private bool isDraggingFromSelf = false;
 
     public MainForm(string? archivePath = null, bool autoExtract = false)
     {
@@ -268,20 +269,8 @@ public partial class MainForm : Form
         AdjustColumnWidths();
 
         this.AllowDrop = true;
-        this.DragEnter += (s, e) =>
-        {
-            if (e.Data?.GetDataPresent(DataFormats.FileDrop) == true)
-                e.Effect = DragDropEffects.Copy;
-        };
-        this.DragDrop += (s, e) =>
-        {
-            if (e.Data?.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-            {
-                var file = files[0];
-                if (File.Exists(file))
-                    LoadArchive(file);
-            }
-        };
+        this.DragEnter += MainForm_DragEnter;
+        this.DragDrop += MainForm_DragDrop;
     }
 
     private void BuildStatusStrip()
@@ -312,6 +301,11 @@ public partial class MainForm : Form
 
     private void LoadArchive(string path)
     {
+        var previousArchive = currentArchive;
+        var previousFiles = allFiles.ToList();
+        var previousPath = currentPath;
+        var previousTitle = this.Text;
+
         currentArchive = path;
         this.Text = $"Pyxelze - {Path.GetFileName(path)}";
         allFiles.Clear();
@@ -330,21 +324,30 @@ public partial class MainForm : Form
             if (exit == 0 && !string.IsNullOrWhiteSpace(stdout))
             {
                 allFiles = ArchiveParser.Parse(stdout);
+                if (allFiles.Count == 0)
+                {
+                    RollbackLoadArchive(previousArchive, previousFiles, previousPath, previousTitle);
+                    MessageBox.Show("Ce fichier n'est pas une archive roxifiée valide.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
                 DetectAndPromptPassphrase(path);
             }
             else if (stderr == "Timeout")
             {
+                RollbackLoadArchive(previousArchive, previousFiles, previousPath, previousTitle);
                 MessageBox.Show("Le chargement de l'archive a expiré (timeout).", "Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             else
             {
+                RollbackLoadArchive(previousArchive, previousFiles, previousPath, previousTitle);
                 MessageBox.Show("Erreur lors de la lecture de l'archive.\n" + stderr, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
         }
         catch (Exception ex)
         {
+            RollbackLoadArchive(previousArchive, previousFiles, previousPath, previousTitle);
             MessageBox.Show("Impossible de lancer roxify: " + ex.Message, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return;
         }
@@ -355,6 +358,17 @@ public partial class MainForm : Form
         }
 
         RefreshView();
+    }
+
+    private void RollbackLoadArchive(string prevArchive, List<VirtualFile> prevFiles, string prevPath, string prevTitle)
+    {
+        currentArchive = prevArchive;
+        allFiles = prevFiles;
+        currentPath = prevPath;
+        this.Text = prevTitle;
+        UpdateAddressBar();
+        if (!string.IsNullOrEmpty(prevArchive))
+            RefreshView();
     }
 
     private void DetectAndPromptPassphrase(string archivePath)
@@ -532,12 +546,98 @@ public partial class MainForm : Form
 
         try
         {
+            isDraggingFromSelf = true;
             dragDataObject.SetData("Preferred DropEffect", new MemoryStream(BitConverter.GetBytes((uint)DragDropEffects.Copy)));
             DoDragDrop(dragDataObject, DragDropEffects.Copy);
         }
         finally
         {
+            isDraggingFromSelf = false;
             Task.Run(() => { Thread.Sleep(15000); TempHelper.SafeDelete(dragTempRoot); });
+        }
+    }
+
+    private void MainForm_DragEnter(object? sender, DragEventArgs e)
+    {
+        if (isDraggingFromSelf)
+        {
+            e.Effect = DragDropEffects.None;
+            return;
+        }
+        if (e.Data?.GetDataPresent(DataFormats.FileDrop) == true)
+            e.Effect = DragDropEffects.Copy;
+    }
+
+    private void MainForm_DragDrop(object? sender, DragEventArgs e)
+    {
+        if (isDraggingFromSelf) return;
+        if (e.Data?.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return;
+
+        if (string.IsNullOrEmpty(currentArchive) || !File.Exists(currentArchive))
+        {
+            var file = files[0];
+            if (File.Exists(file))
+                LoadArchive(file);
+            return;
+        }
+
+        AddFilesToArchive(files);
+    }
+
+    private void AddFilesToArchive(string[] filePaths)
+    {
+        var validFiles = filePaths.Where(f => File.Exists(f) || Directory.Exists(f)).ToArray();
+        if (validFiles.Length == 0) return;
+
+        var archiveName = Path.GetFileName(currentArchive);
+        var msg = validFiles.Length == 1
+            ? $"Voulez-vous vraiment ajouter \"{Path.GetFileName(validFiles[0])}\" à l'archive {archiveName} ?"
+            : $"Voulez-vous vraiment ajouter {validFiles.Length} fichier(s) à l'archive {archiveName} ?";
+
+        if (MessageBox.Show(msg, "Ajouter à l'archive", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            return;
+
+        var extractTemp = TempHelper.CreateTempDir("pyxelze_add_extract");
+        try
+        {
+            if (!ExtractionService.DecompressArchiveToDir(currentArchive, extractTemp))
+            {
+                MessageBox.Show("Impossible de décompresser l'archive actuelle.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            foreach (var src in validFiles)
+            {
+                var destName = Path.GetFileName(src);
+                var dest = Path.Combine(extractTemp, destName);
+
+                if (Directory.Exists(src))
+                    TempHelper.CopyDirectory(src, dest);
+                else
+                    File.Copy(src, dest, true);
+            }
+
+            var cachedPass = PassphraseManager.CachedPassphrase;
+            var passArg = string.IsNullOrEmpty(cachedPass) ? "" : $" {PassphraseManager.BuildPassphraseArg(cachedPass)}";
+            var psi = RoxRunner.CreateRoxProcess($"encode \"{extractTemp}\" \"{currentArchive}\"{passArg}");
+
+            int exit = ProcessHelper.RunWithProgress(
+                "Ré-encodage de l'archive",
+                "Ajout des fichiers et ré-encodage...",
+                psi, out _, out var stderr);
+
+            if (exit != 0)
+            {
+                MessageBox.Show("Échec du ré-encodage de l'archive.\n" + stderr, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            LoadArchive(currentArchive);
+            MessageBox.Show($"{validFiles.Length} fichier(s) ajouté(s) avec succès.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        finally
+        {
+            TempHelper.SafeDelete(extractTemp);
         }
     }
 

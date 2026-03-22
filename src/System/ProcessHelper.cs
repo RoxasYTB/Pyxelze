@@ -16,6 +16,8 @@ internal static class ProcessHelper
         psi.CreateNoWindow = true;
         psi.RedirectStandardOutput = true;
         psi.RedirectStandardError = true;
+        psi.StandardOutputEncoding = System.Text.Encoding.UTF8;
+        psi.StandardErrorEncoding = System.Text.Encoding.UTF8;
 
         using var p = Process.Start(psi);
         if (p == null) return (-1, "", "Impossible de démarrer le processus");
