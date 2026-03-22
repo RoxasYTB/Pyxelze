@@ -1,4 +1,4 @@
-# Pyxelze
+﻿# Pyxelze
 
 > ⚠️ Note : l'historique du dépôt a été réécrit le 2026-01-23 pour retirer des artefacts binaires et réduire la taille du dépôt. Si vous possédez un clone local, **supprimez-le et re-clonez** le dépôt pour éviter des conflits d'historique.
 
@@ -23,7 +23,7 @@ Pyxelze/
 ├── tools/
 │   ├── installer/           # Template installer Inno Setup
 │   └── archive/             # Code archivé (legacy tools)
-│       └── roxify/          # CLI legacy (Node.js) archivé — non requis pour build/publish
+│       └── roxify/          # CLI legacy (Node.js) archivé - non requis pour build/publish
 │           ├── package.json
 │           ├── index.js
 │           └── build scripts / tests (voir dossier)
@@ -279,7 +279,7 @@ Le CLI `roxify` est archivé dans `tools/archive/roxify` et n'est **pas** recons
 
 ### Erreur : "tools\roxify\dist not found"
 
-**Cause** : Le CLI `roxify` n'est pas construit (il est archivé dans `tools/archive/roxify`). Si vous avez besoin du CLI, restaurez l'archive et suivez la procédure manuelle documentée dans `docs/CONTRIBUTING.md`. Sinon, ignorez cette erreur — la GUI ne nécessite pas le CLI pour fonctionner.
+**Cause** : Le CLI `roxify` n'est pas construit (il est archivé dans `tools/archive/roxify`). Si vous avez besoin du CLI, restaurez l'archive et suivez la procédure manuelle documentée dans `docs/CONTRIBUTING.md`. Sinon, ignorez cette erreur - la GUI ne nécessite pas le CLI pour fonctionner.
 
 ### Erreur : "dotnet: command not found"
 
@@ -363,7 +363,7 @@ git commit -m "Remove build artifacts from git"
 R : `publish_final` contient uniquement le GUI publié par .NET. `production` contient GUI + CLI fusionnés (utilisé par l'installateur).
 
 **Q : Pourquoi roxify est dans tools/ et release/ ?**
-R : Le code CLI historique est archivé sous `tools/archive/roxify` (legacy). `release/roxify` était une copie de `dist/` pour fallback — aujourd'hui l'inclusion du CLI dans la distribution est **optionnelle** et doit être faite manuellement si vous décidez de le reconstruire.
+R : Le code CLI historique est archivé sous `tools/archive/roxify` (legacy). `release/roxify` était une copie de `dist/` pour fallback - aujourd'hui l'inclusion du CLI dans la distribution est **optionnelle** et doit être faite manuellement si vous décidez de le reconstruire.
 
 **Q : Comment mettre à jour la version de l'installateur ?**
 R : Modifier `AppVersion=1.0.0` dans `release/installer.iss`.
@@ -389,8 +389,8 @@ Ce projet est distribué sous **Creative Commons Attribution‑NonCommercial 4.0
 
 Les documents de contribution et de sécurité ont été centralisés dans le dossier `docs/` :
 
-- `docs/CONTRIBUTING.md` — guide de contribution
-- `docs/SECURITY.md` — signalement des vulnérabilités
+- `docs/CONTRIBUTING.md` - guide de contribution
+- `docs/SECURITY.md` - signalement des vulnérabilités
 
 Voir aussi : `docs/CLEANUP.md` (historique du dépôt et notes de nettoyage)
 

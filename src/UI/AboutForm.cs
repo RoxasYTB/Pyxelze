@@ -53,7 +53,7 @@ internal class AboutForm : Form
         y = 84;
         var lblDesc = new Label
         {
-            Text = "Explorateur et archiveur de fichiers ROX — stéganographie PNG\navec compression transparente via le moteur roxify.",
+            Text = "Explorateur et archiveur de fichiers ROX - stéganographie PNG\navec compression transparente via le moteur roxify.",
             Font = new Font("Segoe UI", 9.5f),
             Size = new Size(410, 40),
             Location = new Point(left, y),
