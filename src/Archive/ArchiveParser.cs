@@ -30,10 +30,6 @@ internal static class ArchiveParser
                 .Select(m => m.Groups[1].Value.Trim())
                 .ToList();
 
-        var prefix = FindCommonPrefix(names);
-        if (prefix.Length > 0)
-            names = names.Select(n => n[prefix.Length..]).Where(n => !string.IsNullOrEmpty(n)).ToList();
-
         return names;
     }
 
@@ -68,24 +64,21 @@ internal static class ArchiveParser
         }
         catch { return new(); }
 
-        var prefix = FindCommonPrefix(rawPaths.Select(r => r.name));
-
         var result = new List<VirtualFile>();
         foreach (var (name, size) in rawPaths)
         {
-            var stripped = prefix.Length > 0 ? name[prefix.Length..] : name;
-            if (string.IsNullOrEmpty(stripped)) continue;
+            if (string.IsNullOrEmpty(name)) continue;
 
             result.Add(new VirtualFile
             {
-                FullPath = stripped,
+                FullPath = name,
                 OriginalPath = name,
-                Name = Path.GetFileName(stripped),
+                Name = Path.GetFileName(name),
                 Size = size,
                 IsFolder = false
             });
 
-            AddParentDirectories(result, stripped);
+            AddParentDirectories(result, name);
         }
         return result;
     }
@@ -104,42 +97,23 @@ internal static class ArchiveParser
             rawPaths.Add((match.Groups[1].Value.Trim().Replace("\\", "/"), long.Parse(match.Groups[2].Value)));
         }
 
-        var prefix = FindCommonPrefix(rawPaths.Select(r => r.path));
-
         var result = new List<VirtualFile>();
         foreach (var (path, size) in rawPaths)
         {
-            var stripped = prefix.Length > 0 ? path[prefix.Length..] : path;
-            if (string.IsNullOrEmpty(stripped)) continue;
+            if (string.IsNullOrEmpty(path)) continue;
 
             result.Add(new VirtualFile
             {
-                FullPath = stripped,
+                FullPath = path,
                 OriginalPath = path,
-                Name = Path.GetFileName(stripped),
+                Name = Path.GetFileName(path),
                 Size = size,
                 IsFolder = false
             });
 
-            AddParentDirectories(result, stripped);
+            AddParentDirectories(result, path);
         }
         return result;
-    }
-
-    private static string FindCommonPrefix(IEnumerable<string> paths)
-    {
-        var list = paths.ToList();
-        if (list.Count == 0) return "";
-
-        var first = list[0];
-        int slashIdx = first.IndexOf('/');
-        if (slashIdx < 0) return "";
-
-        var candidate = first[..(slashIdx + 1)];
-        if (list.All(p => p.StartsWith(candidate)))
-            return candidate;
-
-        return "";
     }
 
     private static void AddParentDirectories(List<VirtualFile> files, string filePath)
