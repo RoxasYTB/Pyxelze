@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCompany("Pyxelze")]
 [assembly: AssemblyDescription("Pyxelze - file archiver and tools")]
 [assembly: AssemblyCopyright("Copyright © Pyxelze 2026")]
-[assembly: AssemblyVersion("1.2.4.0")]
+[assembly: AssemblyVersion("1.2.5.0")]
 [assembly: AssemblyFileVersion("1.2.4.0")]
 [assembly: AssemblyInformationalVersion("1.2.4")]
 [assembly: ComVisible(false)]
