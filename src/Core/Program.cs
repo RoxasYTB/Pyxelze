@@ -10,6 +10,21 @@ static class Program
     [STAThread]
     static void Main(string[] args)
     {
+        if (args.Length >= 1)
+        {
+            var cmd = args[0].ToLower();
+            if (cmd == "register-contextmenu")
+            {
+                ContextMenuRegistration.RegisterSilent();
+                return;
+            }
+            if (cmd == "unregister-contextmenu")
+            {
+                ContextMenuRegistration.UnregisterSilent();
+                return;
+            }
+        }
+
         Application.SetHighDpiMode(HighDpiMode.SystemAware);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
@@ -18,12 +33,6 @@ static class Program
         {
             switch (args[0].ToLower())
             {
-                case "register-contextmenu":
-                    ContextMenuRegistration.RegisterSilent();
-                    return;
-                case "unregister-contextmenu":
-                    ContextMenuRegistration.UnregisterSilent();
-                    return;
                 case "register-contextmenu-ui":
                     ContextMenuRegistration.RegisterDirect();
                     return;
