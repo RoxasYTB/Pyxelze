@@ -1,402 +1,132 @@
 ﻿# Pyxelze
 
-> ⚠️ Note : l'historique du dépôt a été réécrit le 2026-01-23 pour retirer des artefacts binaires et réduire la taille du dépôt. Si vous possédez un clone local, **supprimez-le et re-clonez** le dépôt pour éviter des conflits d'historique.
+Explorateur et gestionnaire d'archives steganographiques pour Windows. Pyxelze permet de créer, ouvrir, naviguer et extraire des archives roxify - des fichiers PNG contenant des données cachees dans les pixels via steganographie.
 
-Pyxelze est une application Windows (.NET 7) avec interface graphique (WinForms) permettant de gérer et manipuler des fichiers ROX (archives Zero Install).
-
-Remarque : le CLI historique (`rox`) basé sur Node.js est **archivé** et conservé pour référence sous `tools/archive/roxify`. Il n'est pas requis pour construire, tester ou publier la GUI. Si nécessaire, restaurez `tools/archive/roxify` et reconstruisez manuellement le CLI (Node.js 18+ requis).
+[![GitHub release](https://img.shields.io/github/v/release/RoxasYTB/Pyxelze)](https://github.com/RoxasYTB/Pyxelze/releases)
 
 ---
 
-## Architecture du projet
+## Fonctionnalites
 
-```
-Pyxelze/
-├── bin/                     # Sortie de build .NET (ignoré par git)
-├── obj/                     # Fichiers objets .NET (ignoré par git)
-├── production/              # Dossier de production unifié GUI+CLI (ignoré par git)
-├── publish_final/           # Publication .NET Release (ignoré par git)
-├── logs/                    # Logs de build (ignoré par git)
-├── release/                 # Scripts et fichiers pour la release finale
-│   ├── installer.iss        # Script Inno Setup pour l'installateur Windows
-│   ├── build_installer.cmd  # Compile l'installateur avec Inno Setup
-├── tools/
-│   ├── installer/           # Template installer Inno Setup
-│   └── archive/             # Code archivé (legacy tools)
-│       └── roxify/          # CLI legacy (Node.js) archivé - non requis pour build/publish
-│           ├── package.json
-│           ├── index.js
-│           └── build scripts / tests (voir dossier)
+### Gestion d'archives
 
-├── Properties/              # AssemblyInfo .NET
-├── *.cs                     # Code source C# (Form1, DragHelper, etc.)
-├── docs/                    # Documentation regroupée
-├── scripts/                 # Scripts shell et batch (build, publish, helpers)
-├── Pyxelze.csproj           # Projet .NET 7 WinForms
-├── Pyxelze.sln              # Solution Visual Studio
-├── appIcon.ico              # Icône de l'application
-├── build_production.cmd     # Créé le dossier production unifié
-├── make_release.cmd         # Copie distribution CLI historique (no-op si CLI archivé)
-└── .gitignore               # Ignore bin/, obj/, production/, logs/, *.exe, etc.
-```
+- Creation d'archives PNG steganographiques a partir de fichiers ou dossiers
+- Ouverture et navigation dans les archives existantes
+- Extraction complete ou selective de fichiers
+- Ajout de fichiers a une archive existante (decompression + re-encodage)
+- Chiffrement AES-256-GCM par passphrase avec detection automatique a l'ouverture
+- Boucle de retry en cas de mot de passe incorrect
+- Informations detaillees : taille archive, taille contenu, ratio de compression, nombre de fichiers, chiffrement, dates
+
+### Interface graphique
+
+- Barre d'outils avec 7 boutons colores (Nouveau, Ouvrir, Ajouter, Tout extraire, Extraire, Infos, Remonter) et icones Segoe Fluent Icons
+- Barre d'adresse affichant le chemin complet (archive + chemin interne)
+- ListView avec 3 colonnes (Nom, Taille, Type) et 4 modes de vue (Details, List, SmallIcon, LargeIcon)
+- Tri par colonne cliquable avec dossiers toujours en premier
+- Owner-draw complet avec en-tetes personnalises et accents colores
+- Double-buffering pour eliminer le scintillement
+- Zoom Ctrl+molette pour changer le mode de vue
+- Menu contextuel (clic droit) : Ouvrir, Extraire vers..., Extraire ici
+- Barre de statut avec compteurs fichiers/dossiers et barre de progression
+
+### Theme sombre / clair
+
+- Basculement mode sombre / clair via le menu Affichage
+- Persistance du theme via le registre Windows
+- Application dynamique a toutes les fenetres (hot-switch)
+- Palette complete : fond, texte, controles, accents, hover, selection, bordures, headers
+
+### Drag & Drop
+
+- **Drag OUT** : extraction a la demande (lazy) vers l'explorateur Windows avec support dossiers et chemins courts 8.3
+- **Drag IN** : ajout de fichiers/dossiers a l'archive par glisser-deposer depuis l'explorateur
+- Nettoyage automatique des fichiers temporaires
+
+### Navigation
+
+- Navigation dans les dossiers virtuels par double-clic
+- Double-clic sur un fichier : extraction temporaire et ouverture avec l'application associee
+- Bouton Remonter et element ".." pour remonter dans l'arborescence
+- Conservation de l'arborescence complete (pas de suppression du prefixe commun)
+- Raccourcis : Ctrl+O (ouvrir), Backspace/Alt+Haut (remonter), Ctrl+Molette (zoom)
+
+### Integration Windows
+
+- Menu contextuel Windows sur fichiers et dossiers (Ouvrir l'archive, Decoder, Encoder)
+- Association de fichiers .png (Rox)
+- Icones de fichiers natives via SHGetFileInfo avec cache par extension
+- Surveillance des changements d'associations de fichiers avec rafraichissement automatique
+- Installateur Inno Setup avec langues francais/anglais
+
+### Ligne de commande
+
+- `Pyxelze.exe <fichier>` : ouvre l'archive dans l'UI
+- `Pyxelze.exe extract <fichier>` / `decode <fichier>` : extraction headless
+- `Pyxelze.exe compress <dossier>` : compression headless
+- `Pyxelze.exe register-contextmenu` / `unregister-contextmenu` : enregistrement silencieux
+- `Pyxelze.exe version` : affiche la version
+
+### Contournement antivirus
+
+- Detection automatique des erreurs d'acces refuse (Windows Defender)
+- Retry automatique avec delais croissants
+- Option d'ajout d'exclusion Defender ou extraction via repertoire temporaire
+
+### Mise a jour automatique
+
+- Verification via l'API GitHub Releases au lancement
+- Telechargement et lancement automatique de l'installeur
+- Verification manuelle via le menu Outils
+
+### Moteur roxify
+
+- Communication avec `roxify_native.exe` en sous-processus
+- Compression multi-threadee Zstd avec acceleration Rust native
+- Chiffrement AES-256-GCM avec derivation PBKDF2
+- Liste de fichiers encodee dans les pixels (resiliente aux re-saves PNG)
+- Mode resilient aux captures d'ecran (reconstitution)
 
 ---
 
-## Prérequis développeur
-
-### Obligatoire
+## Prerequis
 
 - **Windows 10/11**
-- **.NET 7 SDK** : [Télécharger ici](https://dotnet.microsoft.com/download/dotnet/7.0)
-- **Inno Setup 6** : [Télécharger ici](https://jrsoftware.org/isdl.php) (pour compiler l'installateur)
-
-### Optionnel
-
-- **Visual Studio 2022** (pour édition C# avec IntelliSense)
-- **Git** (pour versionner le code)
+- **.NET 8 SDK** : [Telecharger](https://dotnet.microsoft.com/download/dotnet/8.0)
+- **Inno Setup 6** (optionnel, pour l'installateur) : [Telecharger](https://jrsoftware.org/isdl.php)
 
 ---
 
-## Installation développeur
-
-### 1. Cloner le repository
+## Build
 
 ```cmd
 git clone https://github.com/RoxasYTB/Pyxelze.git
 cd Pyxelze
-```
-
-### 2. Installer les dépendances .NET
-
-```cmd
 dotnet restore
-```
-
----
-
-## Commandes développeur
-
-### Build GUI (Pyxelze.exe)
-
-#### Build Debug
-
-```cmd
-dotnet build -c Debug
-```
-
-Sortie : `bin\Debug\net7.0-windows\Pyxelze.exe`
-
-#### Build Release
-
-```cmd
 dotnet build -c Release
 ```
 
-Sortie : `bin\Release\net7.0-windows\Pyxelze.exe`
-
-#### Publish Release (autonome avec runtime)
+### Publish
 
 ```cmd
 dotnet publish -c Release -o publish_final
 ```
 
-Sortie : `publish_final\Pyxelze.exe` (avec toutes les DLL nécessaires)
-
----
-
-### CLI (legacy)
-
-Le CLI `roxify` était historiquement inclus dans `tools/roxify` (Node.js). Pour cette version, le CLI a été **archivé** sous `tools/archive/roxify` et n'est pas reconstruit automatiquement. Si vous avez un besoin exceptionnel de le reconstruire, suivez la procédure documentée dans `docs/CONTRIBUTING.md` (reconstruction manuelle hors du workflow normal).
-
----
-
-### Créer le dossier de production unifié (GUI)
+### Installateur Windows
 
 ```cmd
-build_production.cmd
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" scripts\scripts-windows\tools\installer\installer.iss
 ```
-
-**Ce script fait :**
-
-1. `dotnet publish -c Release -o publish_final` (GUI)
-2. Crée `production/` vide
-3. Copie `publish_final\*` → `production\`
-4. (Optionnel) Copier une distribution CLI reconstruite (depuis `tools/archive/roxify` ou `release\roxify`) vers `production\` si vous souhaitez inclure le CLI.
-
-Résultat : `production/` contient Pyxelze.exe + rox.exe + node.exe + tous les fichiers nécessaires.
-
----
-
-### Créer la release CLI (copie dist → release/roxify)
-
-```cmd
-make_release.cmd
-```
-
-**Ce script fait :**
-
-- Copie `tools\roxify\dist\*` → `release\roxify\`
-- Nécessaire avant `build_production.cmd` si `tools\roxify\dist` n'existe pas encore.
-
----
-
-### Compiler l'installateur Windows (Inno Setup)
-
-#### Prérequis
-
-1. Build production unifié : `build_production.cmd`
-2. Inno Setup 6 installé dans `C:\Program Files (x86)\Inno Setup 6\`
-
-#### Compiler
-
-```cmd
-cd release
-build_installer.cmd
-```
-
-**Ce script fait :**
-
-1. Vérifie que `production\Pyxelze.exe` existe
-2. Compile `installer.iss` avec Inno Setup (ISCC.exe)
-3. Génère `release\Pyxelze-Setup.exe`
-
-#### Configuration installer (release/installer.iss)
-
-- **Nom** : Pyxelze
-- **Version** : 1.0.0
-- **Destination** : `%LOCALAPPDATA%\Programs\Pyxelze`
-- **Icône** : `appIcon.ico`
-- **Raccourcis** :
-  - Menu Démarrer : Pyxelze.exe
-  - Bureau (optionnel) : Pyxelze.exe
-- **Privilèges** : Utilisateur (pas besoin d'admin)
-- **Source** : `production\*` (récursif)
-
----
-
-## Workflow complet : De zéro à l'installateur (GUI)
-
-```cmd
-# 1. Build GUI
-dotnet publish -c Release -o publish_final
-
-# 2. Créer production unifié (GUI uniquement)
-build_production.cmd
-
-# 3. Compiler l'installateur
-cd release
-build_installer.cmd
-cd ..
-```
-
-Résultat final : `release\Pyxelze-Setup.exe` (temps dépendant du système).
-
-Note : si vous devez inclure le CLI legacy, restaurez `tools/archive/roxify`, reconstruisez le CLI (`npm ci && npm run build:exe`) et copiez manuellement la distribution dans `production\` ou `release\roxify` avant de lancer `build_installer.cmd`. (Le CLI est archivé et non reconstruit automatiquement par les scripts par défaut.)
-
----
-
-## Scripts de build détaillés
-
-### build_production.cmd
-
-**Objectif** : Fusionner GUI (publish_final) et CLI (roxify/dist) dans un seul dossier `production/`.
-
-**Étapes** :
-
-1. `dotnet publish -c Release -o publish_final` → crée l'application GUI autonome
-2. `rmdir /s /q production` + `mkdir production` → reset dossier production
-3. `xcopy /e /y publish_final\* production\` → copie GUI
-4. Optionnel : copier une distribution CLI reconstruite (depuis `tools/archive/roxify` ou `release\roxify`) vers `production\` si vous souhaitez inclure le CLI.
-
-**Variables importantes** :
-
-- `%ROOT_DIR%` : Racine du projet (Pyxelze\)
-- `%PROD_DIR%` : `%ROOT_DIR%production`
-
-**Sorties** :
-
-- `production\Pyxelze.exe` (GUI)
-
-> Note : Le cas d'inclusion du CLI dans `production/` est optionnel et doit être fait manuellement si vous choisissez d'ajouter le CLI reconstruit depuis `tools/archive/roxify`.
-
----
-
-### make_release.cmd
-
-**Objectif** : Copier la distribution CLI (`tools\roxify\dist`) vers `release\roxify` pour utilisation par `build_production.cmd` si `dist` est manquant.
-
-**Étapes** :
-
-1. Vérifie que `tools\roxify\dist` existe
-2. Supprime `release\roxify` si existant
-3. `xcopy /e /y tools\roxify\dist\* release\roxify\`
-
-**Utilité** :
-
-- Permet de rebuilder `production` sans reconstruire le CLI si déjà distribué.
-- `build_production.cmd` utilise `release\roxify` en fallback si `tools\roxify\dist` absent.
-
----
-
-### release/build_installer.cmd
-
-**Objectif** : Compiler le script Inno Setup (`installer.iss`) en exécutable d'installation.
-
-**Prérequis** :
-
-- `production\Pyxelze.exe` doit exister
-- Inno Setup 6 installé
-
-**Étapes** :
-
-1. Vérifie que `production\` existe et contient `Pyxelze.exe`
-2. Cherche Inno Setup dans `C:\Program Files (x86)\Inno Setup 6\ISCC.exe`
-3. Compile `installer.iss` avec `/DProjectPath=<chemin parent>`
-4. Génère `release\Pyxelze-Setup.exe`
-
-**Variables importantes** :
-
-- `%ISCC%` : Chemin vers ISCC.exe (compilateur Inno Setup)
-- `%~dp0` : Dossier du script (release\)
-- `/DProjectPath` : Passé à Inno Setup pour localiser `production\` et `appIcon.ico`
-
----
-
-### CLI (legacy)
-
-Le CLI `roxify` est archivé dans `tools/archive/roxify` et n'est **pas** reconstruit par défaut dans les scripts du dépôt. Si vous avez un besoin exceptionnel de reconstruire le CLI, consultez `docs/CONTRIBUTING.md` pour la procédure manuelle et considérez cette opération hors du workflow standard du projet.
-
-## Dépannage
-
-### Erreur : "IPersistFile::Save failed: code 0x80070005. Accès refusé."
-
-**Solution** : Erreur corrigée dans `installer.iss` en utilisant `{autoprograms}` et `{autodesktop}` au lieu de `{group}` et `{commondesktop}`. Rebuild avec `release\build_installer.cmd`.
-
-### Erreur : "production\Pyxelze.exe not found"
-
-**Cause** : `production\` vide ou non créé.
-**Solution** : Exécuter `build_production.cmd` avant `release\build_installer.cmd`.
-
-### Erreur : "tools\roxify\dist not found"
-
-**Cause** : Le CLI `roxify` n'est pas construit (il est archivé dans `tools/archive/roxify`). Si vous avez besoin du CLI, restaurez l'archive et suivez la procédure manuelle documentée dans `docs/CONTRIBUTING.md`. Sinon, ignorez cette erreur - la GUI ne nécessite pas le CLI pour fonctionner.
-
-### Erreur : "dotnet: command not found"
-
-**Cause** : .NET 7 SDK non installé.
-**Solution** : Installer [.NET 7 SDK](https://dotnet.microsoft.com/download/dotnet/7.0).
-
-### Erreur : "ISCC.exe not found"
-
-**Cause** : Inno Setup non installé ou mauvais chemin.
-**Solution** : Installer [Inno Setup 6](https://jrsoftware.org/isdl.php) dans le chemin par défaut.
-
----
-
-## Structure du code source C#
-
-### Fichiers principaux
-
-- **Program.cs** : Point d'entrée application (Main)
-- **Form1.cs** : Formulaire principal WinForms (interface graphique)
-- **DragHelper.cs** : Gestion drag & drop personnalisé
-- **ExtendedListView.cs** : ListView avec support drag & drop
-- **ExtractionProgressForm.cs** : Formulaire de progression extraction
-- **IconHelper.cs** : Extraction icônes de fichiers
-- **LazyDataObject.cs** : Optimisation performances drag & drop
-- **ListViewFileSorter.cs** : Tri colonnes ListView
-- **NativeMethods.cs** : P/Invoke APIs Windows
-- **RoxRunner.cs** : Exécution CLI rox depuis GUI
-- **ThemeManager.cs** : Gestion thème visuel application
-- **VirtualFile.cs** : Représentation fichiers virtuels dans ROX
-
-### Fichiers configuration
-
-- **Pyxelze.csproj** : Projet .NET 7, inclut target MSBuild pour build CLI automatique
-- **Properties/AssemblyInfo.cs** : Métadonnées assembly (version, titre, copyright)
-- **appIcon.ico** : Icône application (utilisée par GUI et installateur)
-
----
-
-## Gestion Git
-
-### Fichiers ignorés (.gitignore)
-
-```
-bin/
-obj/
-production/
-publish_final/
-logs/
-*.exe
-release/*.exe
-release/Pyxelze-Setup.exe
-tools/roxify/dist/
-tools/roxify/node_modules/
-node_modules/
-```
-
-### Fichiers versionnés
-
-- Code source C# (\*.cs)
-- Projet .NET (_.csproj, _.sln)
-- Scripts de build (_.cmd, _.bat)
-- Configuration installer (release/installer.iss)
-- Code source CLI (tools/roxify/index.js, package.json, scripts/)
-- Documentation (README.md)
-- Icônes (appIcon.ico)
-
-### Nettoyage repository
-
-Si des fichiers build ont été ajoutés par erreur :
-
-```cmd
-git rm -r --cached bin obj production logs
-git commit -m "Remove build artifacts from git"
-```
-
----
-
-## FAQ
-
-**Q : Quelle est la différence entre publish_final et production ?**
-R : `publish_final` contient uniquement le GUI publié par .NET. `production` contient GUI + CLI fusionnés (utilisé par l'installateur).
-
-**Q : Pourquoi roxify est dans tools/ et release/ ?**
-R : Le code CLI historique est archivé sous `tools/archive/roxify` (legacy). `release/roxify` était une copie de `dist/` pour fallback - aujourd'hui l'inclusion du CLI dans la distribution est **optionnelle** et doit être faite manuellement si vous décidez de le reconstruire.
-
-**Q : Comment mettre à jour la version de l'installateur ?**
-R : Modifier `AppVersion=1.0.0` dans `release/installer.iss`.
-
-**Q : L'installateur nécessite-t-il les droits admin ?**
-R : Non. `PrivilegesRequired=lowest` dans `installer.iss` → installation utilisateur seul (`%LOCALAPPDATA%`).
-
-**Q : Comment déboguer le GUI ?**
-R : Ouvrir `Pyxelze.sln` dans Visual Studio 2022, F5 pour lancer en mode Debug.
-
-**Q : Comment tester le CLI sans installer ?**
-R : Le CLI est archivé. Si nécessaire, restaurez `tools/archive/roxify`, reconstruisez le CLI manuellement (voir `docs/CONTRIBUTING.md`) et exécutez la distribution reconstruite.
 
 ---
 
 ## Licence
 
-Ce projet est distribué sous **Creative Commons Attribution‑NonCommercial 4.0 International (CC BY‑NC 4.0)**. Voir le fichier `LICENSE` à la racine du dépôt pour le texte légal complet.
+Ce projet est distribue sous **MIT License**. Voir le fichier `LICENSE`.
 
 ---
 
-## Contributing & Security
+## Contact
 
-Les documents de contribution et de sécurité ont été centralisés dans le dossier `docs/` :
-
-- `docs/CONTRIBUTING.md` - guide de contribution
-- `docs/SECURITY.md` - signalement des vulnérabilités
-
-Voir aussi : `docs/CLEANUP.md` (historique du dépôt et notes de nettoyage)
-
----
-
-## Contact / Support
-
-- **Repository GitHub** : https://github.com/RoxasYTB/Pyxelze
+- **Repository** : https://github.com/RoxasYTB/Pyxelze
 - **Issues** : https://github.com/RoxasYTB/Pyxelze/issues
