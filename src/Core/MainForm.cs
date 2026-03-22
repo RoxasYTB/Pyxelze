@@ -111,6 +111,7 @@ public partial class MainForm : Form
         };
 
         var fileMenu = new ToolStripMenuItem("Fichier");
+        fileMenu.DropDownItems.Add("Nouveau", null, (s, e) => NewArchive());
         fileMenu.DropDownItems.Add("Ouvrir...", null, (s, e) => OpenArchiveDialog());
         fileMenu.DropDownItems.Add(new ToolStripSeparator());
         fileMenu.DropDownItems.Add("Quitter", null, (s, e) => Close());
@@ -178,9 +179,12 @@ public partial class MainForm : Form
         {
             MakeBtn("Nouveau", ToolbarIcons.GlyphNew, NewArchive),
             MakeBtn("Ouvrir", ToolbarIcons.GlyphOpen, OpenArchiveDialog),
+            new ToolStripSeparator(),
             MakeBtn("Ajouter", ToolbarIcons.GlyphAdd, AddFilesDialog),
+            new ToolStripSeparator(),
             MakeBtn("Tout extraire", ToolbarIcons.GlyphExtractAll, ExtractAll),
             MakeBtn("Extraire", ToolbarIcons.GlyphExtract, ExtractSelected),
+            new ToolStripSeparator(),
             MakeBtn("Infos", ToolbarIcons.GlyphInfo, ShowArchiveInfo),
             MakeBtn("Remonter", ToolbarIcons.GlyphUp, NavigateUp)
         });
@@ -468,7 +472,7 @@ public partial class MainForm : Form
         if (addressBar == null) return;
         if (isEmptyArchive)
         {
-            addressBar.Text = "Nouvelle archive";
+            addressBar.Text = "Nouvelle archive - Glissez des fichiers pour cr\u00e9er une archive";
             return;
         }
         var archivePart = string.IsNullOrEmpty(currentArchive) ? "" : currentArchive.Replace("\\", "/");
