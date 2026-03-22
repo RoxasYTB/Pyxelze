@@ -113,9 +113,9 @@ public partial class MainForm : Form
         toolsMenu.DropDownItems.Add(new ToolStripSeparator());
         toolsMenu.DropDownItems.Add("Vérifier les mises à jour...", null, async (s, e) =>
         {
-            var (available, _) = await UpdateChecker.CheckForUpdateAsync();
+            var (available, version, downloadUrl) = await UpdateChecker.CheckForUpdateAsync();
             if (available)
-                UpdateChecker.ShowUpdateNotification(this);
+                UpdateChecker.ShowUpdateNotification(this, version, downloadUrl);
             else
                 MessageBox.Show("Pyxelze est à jour.", "Mise à jour", MessageBoxButtons.OK, MessageBoxIcon.Information);
         });
