@@ -244,6 +244,7 @@ public partial class MainForm : Form
         listView.Columns.Add("Taille", 120, HorizontalAlignment.Right);
         listView.Columns.Add("Type", 200);
 
+        listView.ColumnWidthChanged += ListView_ColumnWidthChanged;
         listView.ColumnWidthChanging += (s, e) => { if (adjustingColumns) e.Cancel = true; };
         listView.ColumnReordered += (s, e) => { if (e.OldDisplayIndex == 0 || e.NewDisplayIndex == 0) e.Cancel = true; };
         listView.DoubleClick += ListView_DoubleClick;
@@ -496,12 +497,47 @@ public partial class MainForm : Form
         try
         {
             int total = Math.Max(0, listView.ClientSize.Width);
-            int sizeCol = Math.Max(80, (int)(total * 0.14));
-            int typeCol = Math.Max(100, (int)(total * 0.22));
+            int sizeCol = listView.Columns[1].Width;
+            int typeCol = listView.Columns[2].Width;
             int nameCol = total - sizeCol - typeCol;
+            if (nameCol < 100)
+            {
+                nameCol = 100;
+                int remaining = total - nameCol;
+                sizeCol = Math.Max(60, remaining * sizeCol / Math.Max(1, sizeCol + typeCol));
+                typeCol = remaining - sizeCol;
+            }
             listView.Columns[0].Width = nameCol;
             listView.Columns[1].Width = sizeCol;
             listView.Columns[2].Width = typeCol;
+        }
+        finally { adjustingColumns = false; }
+    }
+
+    private void ListView_ColumnWidthChanged(object? sender, ColumnWidthChangedEventArgs e)
+    {
+        if (adjustingColumns || listView.Columns.Count < 3) return;
+        adjustingColumns = true;
+        try
+        {
+            int total = Math.Max(0, listView.ClientSize.Width);
+            int nameCol = listView.Columns[0].Width;
+            int sizeCol = listView.Columns[1].Width;
+            int typeCol = listView.Columns[2].Width;
+
+            if (e.ColumnIndex == 0)
+            {
+                typeCol = total - nameCol - sizeCol;
+                if (typeCol < 60) typeCol = 60;
+                listView.Columns[2].Width = typeCol;
+                listView.Columns[0].Width = total - sizeCol - typeCol;
+            }
+            else
+            {
+                nameCol = total - sizeCol - typeCol;
+                if (nameCol < 100) nameCol = 100;
+                listView.Columns[0].Width = nameCol;
+            }
         }
         finally { adjustingColumns = false; }
     }
