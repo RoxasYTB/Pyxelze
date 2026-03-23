@@ -2,5 +2,5 @@ namespace Pyxelze;
 
 internal static class AppConstants
 {
-    public const string Version = "1.3.2";
+    public const string Version = "1.2.1";
 }
