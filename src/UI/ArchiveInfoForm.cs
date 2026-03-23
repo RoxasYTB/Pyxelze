@@ -13,7 +13,7 @@ internal class ArchiveInfoForm : Form
         var hasPass = DetectPassphrase(archivePath);
         var (imgWidth, imgHeight, bitDepth, colorType) = ReadPngInfo(archivePath);
 
-        Text = $"Infos - {fi.Name}";
+        Text = L.Get("info.title", fi.Name);
         Size = new Size(520, 560);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
@@ -62,24 +62,24 @@ internal class ArchiveInfoForm : Form
 
         var rows = new List<(string label, string value)>
         {
-            ("Taille de l'archive", SizeFormatter.Format(fi.Length)),
-            ("Taille du contenu", SizeFormatter.Format(totalSize)),
+            (L.Get("info.archiveSize"), SizeFormatter.Format(fi.Length)),
+            (L.Get("info.contentSize"), SizeFormatter.Format(totalSize)),
         };
 
         if (fi.Length > 0 && totalSize > 0)
         {
             var saved = (1.0 - (double)fi.Length / totalSize) * 100;
-            rows.Add(("Compression", saved > 0 ? $"{saved:0.#}% économisé" : $"{-saved:0.#}% plus lourd"));
+            rows.Add(("Compression", saved > 0 ? L.Get("info.saved", $"{saved:0.#}") : L.Get("info.heavier", $"{-saved:0.#}")));
         }
 
         rows.Add(("", ""));
-        rows.Add(("Fichiers", totalFiles.ToString()));
-        rows.Add(("Dossiers", totalFolders.ToString()));
-        rows.Add(("Chiffrement", hasPass ? "Oui (passphrase)" : "Non"));
+        rows.Add((L.Get("info.files"), totalFiles.ToString()));
+        rows.Add((L.Get("info.folders"), totalFolders.ToString()));
+        rows.Add((L.Get("info.encryption"), hasPass ? L.Get("info.encryptionYes") : L.Get("info.encryptionNo")));
         rows.Add(("", ""));
-        rows.Add(("Résolution image", $"{imgWidth} × {imgHeight} px"));
-        rows.Add(("Profondeur", $"{bitDepth} bits"));
-        rows.Add(("Type couleur", colorType));
+        rows.Add((L.Get("info.imageResolution"), $"{imgWidth} × {imgHeight} px"));
+        rows.Add((L.Get("info.bitDepth"), $"{bitDepth} bits"));
+        rows.Add((L.Get("info.colorType"), colorType));
 
         var infoPanel = CreateInfoPanel(left, y, dimmed, rows);
         y += infoPanel.Height + 10;
@@ -88,8 +88,8 @@ internal class ArchiveInfoForm : Form
 
         var dateRows = new List<(string label, string value)>
         {
-            ("Créé le", fi.CreationTime.ToString("dd/MM/yyyy HH:mm:ss")),
-            ("Modifié le", fi.LastWriteTime.ToString("dd/MM/yyyy HH:mm:ss")),
+            (L.Get("info.createdAt"), fi.CreationTime.ToString("dd/MM/yyyy HH:mm:ss")),
+            (L.Get("info.modifiedAt"), fi.LastWriteTime.ToString("dd/MM/yyyy HH:mm:ss")),
         };
 
         var datePanel = CreateInfoPanel(left, y, dimmed, dateRows);
@@ -97,7 +97,7 @@ internal class ArchiveInfoForm : Form
 
         var btnClose = new Button
         {
-            Text = "Fermer",
+            Text = L.Get("info.close"),
             DialogResult = DialogResult.OK,
             Location = new Point(Size.Width - 120, Size.Height - 80),
             Width = 88,
@@ -206,8 +206,8 @@ internal class ArchiveInfoForm : Form
 
             string ct = pf switch
             {
-                PixelFormat.Format1bppIndexed or PixelFormat.Format4bppIndexed or PixelFormat.Format8bppIndexed => "Palette indexée",
-                PixelFormat.Format16bppGrayScale => "Niveaux de gris",
+                PixelFormat.Format1bppIndexed or PixelFormat.Format4bppIndexed or PixelFormat.Format8bppIndexed => L.Get("info.palette"),
+                PixelFormat.Format16bppGrayScale => L.Get("info.grayscale"),
                 PixelFormat.Format32bppArgb or PixelFormat.Format32bppPArgb or PixelFormat.Format64bppArgb or PixelFormat.Format64bppPArgb or PixelFormat.Format16bppArgb1555 => "RGBA",
                 _ => "RGB"
             };
@@ -216,7 +216,7 @@ internal class ArchiveInfoForm : Form
         }
         catch
         {
-            return (0, 0, 0, "Inconnu");
+            return (0, 0, 0, L.Get("info.unknown"));
         }
     }
 }

@@ -114,8 +114,8 @@ internal static class UpdateChecker
     private static void PromptAndUpdate(Form parent, string version, string downloadUrl)
     {
         var result = MessageBox.Show(
-            $"Une mise à jour de Pyxelze est disponible (v{version}).\n\nVoulez-vous la télécharger maintenant ?",
-            "Mise à jour disponible",
+            L.Get("update.available", version),
+            L.Get("update.availableTitle"),
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Information);
 
@@ -132,7 +132,7 @@ internal static class UpdateChecker
     {
         var tempPath = Path.Combine(Path.GetTempPath(), $"Pyxelze-Setup-update.exe");
 
-        using var progressForm = new ProcessProgressForm("Mise à jour", "Téléchargement de la mise à jour...");
+        using var progressForm = new ProcessProgressForm(L.Get("update.title"), L.Get("update.downloading"));
         progressForm.Show(parent);
 
         bool success = await DownloadUpdateAsync(downloadUrl, tempPath);
@@ -140,7 +140,7 @@ internal static class UpdateChecker
 
         if (!success)
         {
-            MessageBox.Show("Échec du téléchargement de la mise à jour.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(L.Get("update.downloadFailed"), L.Get("error.title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             return;
         }
 
@@ -152,7 +152,7 @@ internal static class UpdateChecker
         catch (Exception ex)
         {
             Logger.Log($"Update launch failed: {ex}");
-            MessageBox.Show($"Échec du lancement de l'installateur : {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(L.Get("update.launchFailed", ex.Message), L.Get("error.title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

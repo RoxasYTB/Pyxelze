@@ -14,7 +14,7 @@ internal class ExtractionProgressForm : Form
         StartPosition = FormStartPosition.CenterParent;
         Width = 440;
         Height = 160;
-        Text = "Extraction en cours";
+        Text = L.Get("extraction.title");
         BackColor = ThemeManager.WindowBack;
         ForeColor = ThemeManager.WindowFore;
         MaximizeBox = false;
@@ -23,7 +23,7 @@ internal class ExtractionProgressForm : Form
         lbl = new Label
         {
             AutoSize = false, Width = 400, Height = 20, Top = 15, Left = 15,
-            Text = "Extraction des fichiers...",
+            Text = L.Get("extraction.progress"),
             ForeColor = ThemeManager.ControlFore
         };
         Controls.Add(lbl);
@@ -37,7 +37,7 @@ internal class ExtractionProgressForm : Form
 
         var btnCancel = new Button
         {
-            Text = "Annuler", Top = 80, Left = 330, Width = 85, Height = 28,
+            Text = L.Get("extraction.cancel"), Top = 80, Left = 330, Width = 85, Height = 28,
             BackColor = ThemeManager.ControlBack,
             ForeColor = ThemeManager.ControlFore,
             FlatStyle = FlatStyle.Flat
@@ -56,6 +56,6 @@ internal class ExtractionProgressForm : Form
             return;
         }
         bar.Value = Math.Min(current, bar.Maximum);
-        lbl.Text = $"Extraction: {current}/{bar.Maximum} fichier(s)";
+        lbl.Text = L.Get("extraction.status", current, bar.Maximum);
     }
 }

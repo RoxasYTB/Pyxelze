@@ -14,8 +14,8 @@ internal static class ContextMenuRegistration
         catch (UnauthorizedAccessException)
         {
             if (MessageBox.Show(
-                "Droits administrateur requis. Relancer avec élévation ?",
-                "Élévation requise",
+                L.Get("contextmenu.elevationRequired"),
+                L.Get("contextmenu.elevationTitle"),
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question) == DialogResult.Yes)
             {
@@ -33,8 +33,8 @@ internal static class ContextMenuRegistration
         catch (UnauthorizedAccessException)
         {
             if (MessageBox.Show(
-                "Droits administrateur requis. Relancer avec élévation ?",
-                "Élévation requise",
+                L.Get("contextmenu.elevationRequired"),
+                L.Get("contextmenu.elevationTitle"),
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question) == DialogResult.Yes)
             {
@@ -46,7 +46,7 @@ internal static class ContextMenuRegistration
     public static void RegisterDirect()
     {
         RegisterKeys();
-        MessageBox.Show("Intégration au menu contextuel installée.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        MessageBox.Show(L.Get("contextmenu.registerSuccess"), L.Get("dialog.success"), MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     public static void RegisterSilent()
@@ -57,7 +57,7 @@ internal static class ContextMenuRegistration
     public static void UnregisterDirect()
     {
         UnregisterKeys();
-        MessageBox.Show("Intégration supprimée.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        MessageBox.Show(L.Get("contextmenu.unregisterSuccess"), L.Get("dialog.success"), MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     public static void UnregisterSilent()
@@ -78,14 +78,14 @@ internal static class ContextMenuRegistration
             using var shellKey = key.CreateSubKey("shell");
             using (var openKey = shellKey.CreateSubKey("open"))
             {
-                openKey.SetValue("MUIVerb", "Ouvrir l'archive");
+                openKey.SetValue("MUIVerb", L.Get("contextmenu.openArchive"));
                 openKey.SetValue("Icon", exePath);
                 using var cmdKey = openKey.CreateSubKey("command");
                 cmdKey.SetValue("", $"\"{exePath}\" \"%1\"");
             }
             using (var decodeKey = shellKey.CreateSubKey("decode"))
             {
-                decodeKey.SetValue("MUIVerb", "Décoder");
+                decodeKey.SetValue("MUIVerb", L.Get("contextmenu.decode"));
                 decodeKey.SetValue("Icon", exePath);
                 using var cmdKey = decodeKey.CreateSubKey("command");
                 cmdKey.SetValue("", $"\"{exePath}\" decode \"%1\"");
@@ -101,7 +101,7 @@ internal static class ContextMenuRegistration
             using var shellKey = dirKey.CreateSubKey("shell");
             using (var encodeKey = shellKey.CreateSubKey("encode"))
             {
-                encodeKey.SetValue("MUIVerb", "Encoder");
+                encodeKey.SetValue("MUIVerb", L.Get("contextmenu.encode"));
                 encodeKey.SetValue("Icon", exePath);
                 using var cmdKey = encodeKey.CreateSubKey("command");
                 cmdKey.SetValue("", $"\"{exePath}\" compress \"%1\"");
@@ -138,7 +138,7 @@ internal static class ContextMenuRegistration
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Impossible de relancer en mode administrateur: {ex.Message}", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(L.Get("contextmenu.relaunchError", ex.Message), L.Get("error.title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

@@ -8,16 +8,16 @@ internal static class CompressionService
         Logger.Log($"CompressDirectory: {dirPath} -> {outputFile}");
 
         var pass = PassphrasePrompt.Prompt(
-            "Passphrase (optionnel)",
-            "Saisir une passphrase pour chiffrer (laisser vide pour ne pas chiffrer) :");
+            L.Get("compression.passphraseTitle"),
+            L.Get("compression.passphrasePrompt"));
         if (pass == null) return false;
 
         var passArg = string.IsNullOrEmpty(pass) ? "" : $" {PassphraseManager.BuildPassphraseArg(pass)}";
         var psi = RoxRunner.CreateRoxProcess($"encode \"{dirPath}\" \"{outputFile}\"{passArg}");
 
         int exit = ProcessHelper.RunWithProgress(
-            "Encodage en cours",
-            $"Encodage de {Path.GetFileName(dirPath)}...",
+            L.Get("compression.encoding"),
+            L.Get("compression.encodingFile", Path.GetFileName(dirPath)),
             psi, out var stdout, out var stderr);
 
         if (exit == 0 && File.Exists(outputFile))
@@ -37,8 +37,8 @@ internal static class CompressionService
         var psi = RoxRunner.CreateRoxProcess($"encode \"{dirPath}\" \"{tempFile}\"{passArg}");
 
         int exit = ProcessHelper.RunWithProgress(
-            "Encodage (contournement)",
-            "Encodage via fichier temporaire...",
+            L.Get("compression.fallback"),
+            L.Get("compression.fallbackProgress"),
             psi, out _, out _);
 
         if (exit == 0 && File.Exists(tempFile))

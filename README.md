@@ -122,7 +122,7 @@ dotnet publish -c Release -o publish_final
 
 ## Licence
 
-Ce projet est distribue sous **MIT License**. Voir le fichier `LICENSE`.
+Ce projet est distribué sous la **Pyxelze Proprietary Open Source License (RPOSL)**. Le code source est librement consultable pour un usage personnel, éducatif et de recherche. Tous les droits commerciaux sont exclusivement réservés à l'auteur. Voir le fichier `LICENSE`.
 
 ---
 

@@ -9,7 +9,7 @@ internal static class AntivirusHelper
     public static bool IsAccessDenied(string? error)
     {
         if (string.IsNullOrEmpty(error)) return false;
-        return error.Contains("Accès refusé") || error.Contains("access denied") || error.Contains("os error 5");
+        return error.Contains(L.Get("antivirus.accessDenied")) || error.Contains("access denied") || error.Contains("os error 5");
     }
 
     public static bool RetryWithDelays(string archivePath, string outputDir, string command = "decode")
@@ -37,11 +37,8 @@ internal static class AntivirusHelper
     public static DialogResult ShowDefenderPrompt()
     {
         return MessageBox.Show(
-            "L'antivirus semble bloquer l'extraction (Accès refusé).\n\n" +
-            "Oui : tenter d'ajouter une exclusion Windows Defender (UAC demandé)\n" +
-            "Non : ouvrir les paramètres Sécurité Windows\n" +
-            "Annuler : poursuivre via répertoire temporaire",
-            "Antivirus détecté",
+            L.Get("antivirus.message"),
+            L.Get("antivirus.detected"),
             MessageBoxButtons.YesNoCancel,
             MessageBoxIcon.Question);
     }
@@ -49,10 +46,10 @@ internal static class AntivirusHelper
     public static bool TryAddDefenderExclusion(string path, out string message)
     {
         message = string.Empty;
-        if (string.IsNullOrEmpty(path)) { message = "Chemin introuvable"; return false; }
+        if (string.IsNullOrEmpty(path)) { message = L.Get("antivirus.pathNotFound"); return false; }
 
         var ps = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell\\v1.0\\powershell.exe");
-        if (!File.Exists(ps)) { message = "PowerShell introuvable"; return false; }
+        if (!File.Exists(ps)) { message = L.Get("antivirus.powershellNotFound"); return false; }
 
         try
         {
@@ -66,7 +63,7 @@ internal static class AntivirusHelper
             };
 
             var p = Process.Start(psi);
-            if (p == null) { message = "Échec du lancement"; return false; }
+            if (p == null) { message = L.Get("antivirus.launchFailed"); return false; }
             p.WaitForExit();
             message = $"ExitCode={p.ExitCode}";
             return p.ExitCode == 0;
