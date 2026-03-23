@@ -58,7 +58,7 @@ internal static class PassphrasePrompt
 
         var btnOk = new Button
         {
-            Text = "OK", DialogResult = DialogResult.OK,
+            Text = L.Get("passphrase.ok"), DialogResult = DialogResult.OK,
             Width = 85, Height = 28,
             Left = formW - margin - 20 - 85 - 10 - 85, Top = y,
             BackColor = ThemeManager.ControlBack,
@@ -67,7 +67,7 @@ internal static class PassphrasePrompt
         };
         var btnCancel = new Button
         {
-            Text = "Annuler", DialogResult = DialogResult.Cancel,
+            Text = L.Get("passphrase.cancel"), DialogResult = DialogResult.Cancel,
             Width = 85, Height = 28,
             Left = formW - margin - 20 - 85, Top = y,
             BackColor = ThemeManager.ControlBack,

@@ -111,44 +111,54 @@ public partial class MainForm : Form
             ForeColor = ThemeManager.ControlFore
         };
 
-        var fileMenu = new ToolStripMenuItem("Fichier");
-        fileMenu.DropDownItems.Add("Nouveau", null, (s, e) => NewArchive());
-        fileMenu.DropDownItems.Add("Ouvrir...", null, (s, e) => OpenArchiveDialog());
+        var fileMenu = new ToolStripMenuItem(L.Get("menu.file"));
+        fileMenu.DropDownItems.Add(L.Get("menu.new"), null, (s, e) => NewArchive());
+        fileMenu.DropDownItems.Add(L.Get("menu.open"), null, (s, e) => OpenArchiveDialog());
         fileMenu.DropDownItems.Add(new ToolStripSeparator());
-        fileMenu.DropDownItems.Add("Quitter", null, (s, e) => Close());
+        fileMenu.DropDownItems.Add(L.Get("menu.quit"), null, (s, e) => Close());
 
-        var toolsMenu = new ToolStripMenuItem("Outils");
-        toolsMenu.DropDownItems.Add("Intégrer au menu contextuel", null, (s, e) => ContextMenuRegistration.Register());
-        toolsMenu.DropDownItems.Add("Supprimer du menu contextuel", null, (s, e) => ContextMenuRegistration.Unregister());
+        var toolsMenu = new ToolStripMenuItem(L.Get("menu.tools"));
+        toolsMenu.DropDownItems.Add(L.Get("menu.tools.contextMenuRegister"), null, (s, e) => ContextMenuRegistration.Register());
+        toolsMenu.DropDownItems.Add(L.Get("menu.tools.contextMenuUnregister"), null, (s, e) => ContextMenuRegistration.Unregister());
         toolsMenu.DropDownItems.Add(new ToolStripSeparator());
-        toolsMenu.DropDownItems.Add("Afficher les logs", null, (s, e) =>
+        toolsMenu.DropDownItems.Add(L.Get("menu.tools.showLogs"), null, (s, e) =>
         {
             try
             {
                 if (File.Exists(Logger.LogPath))
                     Process.Start(new ProcessStartInfo(Logger.LogPath) { UseShellExecute = true });
                 else
-                    MessageBox.Show("Aucun fichier journal trouvé.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(L.Get("dialog.noLogFile"), L.Get("dialog.information"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch { }
         });
         toolsMenu.DropDownItems.Add(new ToolStripSeparator());
-        toolsMenu.DropDownItems.Add("Vérifier les mises à jour...", null, async (s, e) =>
+        toolsMenu.DropDownItems.Add(L.Get("menu.tools.checkUpdates"), null, async (s, e) =>
         {
             var (available, version, downloadUrl) = await UpdateChecker.CheckForUpdateAsync();
             if (available)
                 UpdateChecker.ShowUpdateNotification(this, version, downloadUrl);
             else
-                MessageBox.Show("Pyxelze est à jour.", "Mise à jour", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(L.Get("dialog.upToDate"), L.Get("dialog.update"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         });
 
-        var viewMenu = new ToolStripMenuItem("Affichage");
-        var darkModeItem = new ToolStripMenuItem("Mode sombre") { CheckOnClick = true, Checked = ThemeManager.DarkMode };
+        var viewMenu = new ToolStripMenuItem(L.Get("menu.view"));
+        var darkModeItem = new ToolStripMenuItem(L.Get("menu.view.darkMode")) { CheckOnClick = true, Checked = ThemeManager.DarkMode };
         darkModeItem.Click += (s, e) => ThemeManager.SetDarkMode(darkModeItem.Checked);
         viewMenu.DropDownItems.Add(darkModeItem);
 
-        var helpMenu = new ToolStripMenuItem("Aide");
-        helpMenu.DropDownItems.Add("À propos de Pyxelze", null, (s, e) => ShowAboutDialog());
+        var langMenu = new ToolStripMenuItem(L.Get("menu.view.language"));
+        foreach (var lang in L.AvailableLanguages)
+        {
+            var code = lang;
+            var item = new ToolStripMenuItem(L.LanguageDisplayName(code)) { Checked = code == L.CurrentLang };
+            item.Click += (s, e) => { L.SetLanguage(code); RebuildUI(); };
+            langMenu.DropDownItems.Add(item);
+        }
+        viewMenu.DropDownItems.Add(langMenu);
+
+        var helpMenu = new ToolStripMenuItem(L.Get("menu.help"));
+        helpMenu.DropDownItems.Add(L.Get("menu.help.about"), null, (s, e) => ShowAboutDialog());
 
         menuStrip.Items.AddRange(new ToolStripItem[] { fileMenu, viewMenu, toolsMenu, helpMenu });
         this.MainMenuStrip = menuStrip;
@@ -190,16 +200,16 @@ public partial class MainForm : Form
 
         toolbar.Items.AddRange(new ToolStripItem[]
         {
-            MakeBtn("Nouveau", ToolbarIcons.GlyphNew, NewArchive),
-            MakeBtn("Ouvrir", ToolbarIcons.GlyphOpen, OpenArchiveDialog),
+            MakeBtn(L.Get("toolbar.new"), ToolbarIcons.GlyphNew, NewArchive),
+            MakeBtn(L.Get("toolbar.open"), ToolbarIcons.GlyphOpen, OpenArchiveDialog),
             new ToolStripSeparator(),
-            MakeBtn("Ajouter", ToolbarIcons.GlyphAdd, AddFilesDialog),
+            MakeBtn(L.Get("toolbar.add"), ToolbarIcons.GlyphAdd, AddFilesDialog),
             new ToolStripSeparator(),
-            MakeBtn("Tout extraire", ToolbarIcons.GlyphExtractAll, ExtractAll),
-            MakeBtn("Extraire", ToolbarIcons.GlyphExtract, ExtractSelected),
+            MakeBtn(L.Get("toolbar.extractAll"), ToolbarIcons.GlyphExtractAll, ExtractAll),
+            MakeBtn(L.Get("toolbar.extract"), ToolbarIcons.GlyphExtract, ExtractSelected),
             new ToolStripSeparator(),
-            MakeBtn("Infos", ToolbarIcons.GlyphInfo, ShowArchiveInfo),
-            MakeBtn("Remonter", ToolbarIcons.GlyphUp, NavigateUp)
+            MakeBtn(L.Get("toolbar.info"), ToolbarIcons.GlyphInfo, ShowArchiveInfo),
+            MakeBtn(L.Get("toolbar.up"), ToolbarIcons.GlyphUp, NavigateUp)
         });
 
         btnUp = (ToolStripButton)toolbar.Items[^1];
@@ -253,9 +263,9 @@ public partial class MainForm : Form
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             ?.SetValue(listView, true, null);
 
-        listView.Columns.Add("Nom", 500);
-        listView.Columns.Add("Taille", 120, HorizontalAlignment.Right);
-        listView.Columns.Add("Type", 200);
+        listView.Columns.Add(L.Get("col.name"), 500);
+        listView.Columns.Add(L.Get("col.size"), 120, HorizontalAlignment.Right);
+        listView.Columns.Add(L.Get("col.type"), 200);
 
         listView.ColumnWidthChanged += ListView_ColumnWidthChanged;
         listView.ColumnWidthChanging += (s, e) => { if (adjustingColumns) e.Cancel = true; };
@@ -270,10 +280,10 @@ public partial class MainForm : Form
 
         var ctxIconSize = 16;
         contextMenu = new ContextMenuStrip();
-        contextMenu.Items.Add("Ouvrir", ToolbarIcons.Render(ToolbarIcons.GlyphOpen, ctxIconSize, ToolbarIcons.GetGlyphColor(ToolbarIcons.GlyphOpen)), (s, e) => ListView_DoubleClick(s, e));
+        contextMenu.Items.Add(L.Get("ctx.open"), ToolbarIcons.Render(ToolbarIcons.GlyphOpen, ctxIconSize, ToolbarIcons.GetGlyphColor(ToolbarIcons.GlyphOpen)), (s, e) => ListView_DoubleClick(s, e));
         contextMenu.Items.Add(new ToolStripSeparator());
-        contextMenu.Items.Add("Extraire vers...", ToolbarIcons.Render(ToolbarIcons.GlyphExtract, ctxIconSize, ToolbarIcons.GetGlyphColor(ToolbarIcons.GlyphExtract)), (s, e) => ExtractSelected());
-        contextMenu.Items.Add("Extraire ici", ToolbarIcons.Render(ToolbarIcons.GlyphExtractAll, ctxIconSize, ToolbarIcons.GetGlyphColor(ToolbarIcons.GlyphExtractAll)), (s, e) => ExtractToCurrentLocation());
+        contextMenu.Items.Add(L.Get("ctx.extractTo"), ToolbarIcons.Render(ToolbarIcons.GlyphExtract, ctxIconSize, ToolbarIcons.GetGlyphColor(ToolbarIcons.GlyphExtract)), (s, e) => ExtractSelected());
+        contextMenu.Items.Add(L.Get("ctx.extractHere"), ToolbarIcons.Render(ToolbarIcons.GlyphExtractAll, ctxIconSize, ToolbarIcons.GetGlyphColor(ToolbarIcons.GlyphExtractAll)), (s, e) => ExtractToCurrentLocation());
         contextMenu.Opening += (s, e) => { foreach (ToolStripItem item in contextMenu.Items) if (item is ToolStripMenuItem m) m.Enabled = listView.SelectedItems.Count > 0; };
         listView.ContextMenuStrip = contextMenu;
 
@@ -311,9 +321,9 @@ public partial class MainForm : Form
             Font = new Font("Segoe UI", 8.5f)
         };
 
-        statusLabelFileCount = new ToolStripStatusLabel("0 fichiers, 0 dossiers") { AutoSize = true, ForeColor = ThemeManager.ControlFore };
+        statusLabelFileCount = new ToolStripStatusLabel(L.Get("status.noFiles")) { AutoSize = true, ForeColor = ThemeManager.ControlFore };
         var spring = new ToolStripStatusLabel { Spring = true };
-        statusLabelSelection = new ToolStripStatusLabel("0 sélectionné(s)") { AutoSize = true, ForeColor = ThemeManager.ControlFore };
+        statusLabelSelection = new ToolStripStatusLabel(L.Get("status.noSelection")) { AutoSize = true, ForeColor = ThemeManager.ControlFore };
         statusProgressBar = new ToolStripProgressBar { Size = new Size(150, 16), Visible = false };
         statusLabelProgress = new ToolStripStatusLabel("") { AutoSize = true, Visible = false, ForeColor = ThemeManager.ControlFore };
 
@@ -323,7 +333,7 @@ public partial class MainForm : Form
 
     private void OpenArchiveDialog()
     {
-        using var ofd = new OpenFileDialog { Filter = "Fichiers PNG Rox (*.png)|*.png|Tous les fichiers (*.*)|*.*" };
+        using var ofd = new OpenFileDialog { Filter = L.Get("dialog.filterPng") };
         if (!ofd.ShowDialog().Equals(DialogResult.OK)) return;
         LoadArchive(ofd.FileName);
     }
@@ -347,7 +357,7 @@ public partial class MainForm : Form
 
         statusProgressBar.Visible = true;
         statusLabelProgress.Visible = true;
-        statusLabelProgress.Text = "Chargement...";
+        statusLabelProgress.Text = L.Get("status.loading");
         Application.DoEvents();
 
         try
@@ -360,7 +370,7 @@ public partial class MainForm : Form
                 if (allFiles.Count == 0)
                 {
                     RollbackLoadArchive(previousArchive, previousFiles, previousPath, previousTitle);
-                    ErrorDialog.Show(this, "Ce fichier n'est pas une archive roxifiée valide.");
+                    ErrorDialog.Show(this, L.Get("dialog.invalidArchive"));
                     return;
                 }
                 DetectAndPromptPassphrase(path);
@@ -368,20 +378,20 @@ public partial class MainForm : Form
             else if (stderr == "Timeout")
             {
                 RollbackLoadArchive(previousArchive, previousFiles, previousPath, previousTitle);
-                ErrorDialog.Show(this, "Le chargement de l'archive a expiré (timeout).", title: "Timeout");
+                ErrorDialog.Show(this, L.Get("dialog.timeout"), title: L.Get("dialog.timeoutTitle"));
                 return;
             }
             else
             {
                 RollbackLoadArchive(previousArchive, previousFiles, previousPath, previousTitle);
-                ErrorDialog.Show(this, "Erreur lors de la lecture de l'archive.", stderr);
+                ErrorDialog.Show(this, L.Get("dialog.archiveReadError"), stderr);
                 return;
             }
         }
         catch (Exception ex)
         {
             RollbackLoadArchive(previousArchive, previousFiles, previousPath, previousTitle);
-            ErrorDialog.Show(this, "Impossible de lancer roxify.", ex.Message);
+            ErrorDialog.Show(this, L.Get("dialog.cannotLaunchRoxify"), ex.Message);
             return;
         }
         finally
@@ -428,7 +438,7 @@ public partial class MainForm : Form
                 }
                 if (PassphraseManager.IsDecryptionFailure(vStdout, vStderr))
                 {
-                    errorMsg = "Mot de passe incorrect";
+                    errorMsg = L.Get("dialog.wrongPassword");
                     continue;
                 }
                 return;
@@ -476,7 +486,7 @@ public partial class MainForm : Form
         var iconKey = iconManager?.GetIconKey(file.Name, file.IsFolder) ?? "file";
         var item = new ListViewItem(file.Name, iconKey);
         item.SubItems.Add(file.IsFolder ? "" : SizeFormatter.Format(file.Size));
-        item.SubItems.Add(file.IsFolder ? "Dossier de fichiers" : NativeMethods.GetFileTypeName(file.Name));
+        item.SubItems.Add(file.IsFolder ? L.Get("dialog.folderType") : NativeMethods.GetFileTypeName(file.Name));
         item.Tag = file;
         listView.Items.Add(item);
     }
@@ -486,7 +496,7 @@ public partial class MainForm : Form
         if (addressBar == null) return;
         if (isEmptyArchive)
         {
-            addressBar.Text = "Nouvelle archive - Glissez des fichiers pour cr\u00e9er une archive";
+            addressBar.Text = L.Get("dialog.emptyArchive");
             return;
         }
         var archivePart = string.IsNullOrEmpty(currentArchive) ? "" : currentArchive.Replace("\\", "/");
@@ -497,11 +507,11 @@ public partial class MainForm : Form
     private void UpdateFileCountStatus()
     {
         var currentFiles = allFiles.Where(f => Path.GetDirectoryName(f.FullPath)?.Replace("\\", "/") == currentPath).ToList();
-        statusLabelFileCount.Text = $"{currentFiles.Count(f => !f.IsFolder)} fichier(s), {currentFiles.Count(f => f.IsFolder)} dossier(s)";
+        statusLabelFileCount.Text = L.Get("status.filesAndFolders", currentFiles.Count(f => !f.IsFolder), currentFiles.Count(f => f.IsFolder));
     }
 
     private void UpdateSelectionStatus() =>
-        statusLabelSelection.Text = $"{listView.SelectedItems.Count} sélectionné(s)";
+        statusLabelSelection.Text = L.Get("status.selected", listView.SelectedItems.Count);
 
     private void AdjustColumnWidths()
     {
@@ -587,7 +597,7 @@ public partial class MainForm : Form
         if (!ExtractionService.ExtractFileSingle(currentArchive, vf.FullPath, outputPath))
         {
             TempHelper.SafeDelete(tempDir);
-            ErrorDialog.Show(this, "Impossible d'extraire le fichier.");
+            ErrorDialog.Show(this, L.Get("dialog.extractFailed"));
             return;
         }
 
@@ -597,7 +607,7 @@ public partial class MainForm : Form
         }
         catch (Exception ex)
         {
-            ErrorDialog.Show(this, "Impossible d'ouvrir le fichier.", ex.Message);
+            ErrorDialog.Show(this, L.Get("dialog.openFailed"), ex.Message);
         }
     }
 
@@ -710,21 +720,21 @@ public partial class MainForm : Form
                 }
 
                 var pass = PassphrasePrompt.Prompt(
-                    "Passphrase (optionnel)",
-                    "Saisir une passphrase pour chiffrer (laisser vide pour ne pas chiffrer) :");
+                    L.Get("dialog.passphraseTitle"),
+                    L.Get("dialog.passphrasePrompt"));
                 if (pass == null) return;
 
                 var passArg = string.IsNullOrEmpty(pass) ? "" : $" {PassphraseManager.BuildPassphraseArg(pass)}";
                 var psi = RoxRunner.CreateRoxProcess($"encode \"{buildTemp}\" \"{savePath}\"{passArg}");
 
                 int exit = ProcessHelper.RunWithProgress(
-                    "Création de l'archive",
-                    "Encodage de la nouvelle archive...",
+                    L.Get("dialog.creating"),
+                    L.Get("dialog.encoding"),
                     psi, out _, out var stderr);
 
                 if (exit != 0)
                 {
-                    ErrorDialog.Show(this, "Échec de la création de l'archive.", stderr);
+                    ErrorDialog.Show(this, L.Get("dialog.createFailed"), stderr);
                     return;
                 }
 
@@ -733,7 +743,7 @@ public partial class MainForm : Form
 
                 CleanupEmptyArchive();
                 LoadArchive(savePath);
-                MessageBox.Show($"Archive créée avec {validFiles.Length} fichier(s).", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(L.Get("dialog.createSuccess", validFiles.Length), L.Get("dialog.success"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             finally
             {
@@ -743,11 +753,9 @@ public partial class MainForm : Form
         }
 
         var archiveName = Path.GetFileName(currentArchive);
-        var msg = validFiles.Length == 1
-            ? $"Voulez-vous vraiment ajouter \"{Path.GetFileName(validFiles[0])}\" à l'archive {archiveName} ?"
-            : $"Voulez-vous vraiment ajouter {validFiles.Length} fichier(s) à l'archive {archiveName} ?";
+        var msg = L.Get("dialog.confirmAdd", validFiles.Length);
 
-        if (MessageBox.Show(msg, "Ajouter à l'archive", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+        if (MessageBox.Show(msg, L.Get("dialog.addTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
             return;
 
         var extractTemp = TempHelper.CreateTempDir("pyxelze_add_extract");
@@ -755,7 +763,7 @@ public partial class MainForm : Form
         {
             if (!ExtractionService.DecompressArchiveToDir(currentArchive, extractTemp))
             {
-                ErrorDialog.Show(this, "Impossible de décompresser l'archive actuelle.");
+                ErrorDialog.Show(this, L.Get("dialog.decompressFailed"));
                 return;
             }
 
@@ -775,18 +783,18 @@ public partial class MainForm : Form
             var psi2 = RoxRunner.CreateRoxProcess($"encode \"{extractTemp}\" \"{currentArchive}\"{passArg2}");
 
             int exit2 = ProcessHelper.RunWithProgress(
-                "Ré-encodage de l'archive",
-                "Ajout des fichiers et ré-encodage...",
+                L.Get("dialog.reencoding"),
+                L.Get("dialog.reencodingProgress"),
                 psi2, out _, out var stderr2);
 
             if (exit2 != 0)
             {
-                ErrorDialog.Show(this, "Échec du ré-encodage de l'archive.", stderr2);
+                ErrorDialog.Show(this, L.Get("dialog.reencodeFailed"), stderr2);
                 return;
             }
 
             LoadArchive(currentArchive);
-            MessageBox.Show($"{validFiles.Length} fichier(s) ajouté(s) avec succès.", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(L.Get("dialog.addSuccess", validFiles.Length), L.Get("dialog.success"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         finally
         {
@@ -813,7 +821,7 @@ public partial class MainForm : Form
             currentArchive = tempArchive;
             allFiles.Clear();
             currentPath = "";
-            this.Text = "Pyxelze - Nouvelle archive";
+            this.Text = L.Get("dialog.title.newArchive");
             UpdateAddressBar();
             RefreshView();
         }
@@ -833,8 +841,8 @@ public partial class MainForm : Form
     {
         using var sfd = new SaveFileDialog
         {
-            Filter = "Fichiers PNG Rox (*.png)|*.png",
-            Title = "Enregistrer la nouvelle archive",
+            Filter = L.Get("dialog.filterPngSave"),
+            Title = L.Get("dialog.saveNewArchive"),
             DefaultExt = "png"
         };
         return sfd.ShowDialog() == DialogResult.OK ? sfd.FileName : null;
@@ -844,8 +852,8 @@ public partial class MainForm : Form
     {
         if (!isEmptyArchive && !string.IsNullOrEmpty(currentArchive))
         {
-            if (MessageBox.Show("Fermer l'archive actuelle et créer une nouvelle archive vide ?",
-                "Nouvelle archive", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            if (MessageBox.Show(L.Get("dialog.confirmNew"),
+                L.Get("dialog.newArchiveTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
                 return;
         }
         CleanupEmptyArchive();
@@ -860,7 +868,7 @@ public partial class MainForm : Form
     {
         if (string.IsNullOrEmpty(currentArchive) || isEmptyArchive)
         {
-            MessageBox.Show("Aucune archive ouverte.", "Infos", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(L.Get("dialog.noArchiveOpen"), L.Get("toolbar.info"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -872,9 +880,9 @@ public partial class MainForm : Form
     {
         using var ofd = new OpenFileDialog
         {
-            Title = "Ajouter des fichiers à l'archive",
+            Title = L.Get("dialog.addFiles"),
             Multiselect = true,
-            Filter = "Tous les fichiers (*.*)|*.*"
+            Filter = L.Get("dialog.filterAll")
         };
         if (ofd.ShowDialog() != DialogResult.OK) return;
         AddFilesToArchive(ofd.FileNames);
@@ -889,9 +897,9 @@ public partial class MainForm : Form
         var destFolder = Path.Combine(fbd.SelectedPath, Path.GetFileNameWithoutExtension(currentArchive));
         bool success = ExtractionService.ExtractWithProgress(currentArchive, destFolder);
         if (success)
-            MessageBox.Show($"Extraction réussie vers :\n{destFolder}", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(L.Get("dialog.extractSuccess", destFolder), L.Get("dialog.success"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         else
-            ErrorDialog.Show(this, "Échec de l'extraction.");
+            ErrorDialog.Show(this, L.Get("dialog.extractFail"));
     }
 
     private void AutoExtractArchive()
@@ -899,7 +907,7 @@ public partial class MainForm : Form
         if (string.IsNullOrEmpty(currentArchive)) return;
         var outputDir = Path.Combine(Path.GetDirectoryName(currentArchive) ?? "", Path.GetFileNameWithoutExtension(currentArchive));
         bool success = ExtractionService.ExtractWithProgress(currentArchive, outputDir);
-        if (success) { MessageBox.Show($"Extraction réussie vers :\n{outputDir}"); this.Close(); }
+        if (success) { MessageBox.Show(L.Get("dialog.extractSuccess", outputDir)); this.Close(); }
     }
 
     private void ExtractSelected()
@@ -913,16 +921,16 @@ public partial class MainForm : Form
         {
             if (!ExtractionService.DecompressArchiveToDir(currentArchive, extractTemp))
             {
-                ErrorDialog.Show(this, "Échec de l'extraction.");
+                ErrorDialog.Show(this, L.Get("dialog.extractFail"));
                 return;
             }
 
             var (selSuccess, selFail) = ExtractSelectedItems(listView.SelectedItems, extractTemp, fbd.SelectedPath);
 
             if (selFail == 0)
-                MessageBox.Show($"Extraction réussie ({selSuccess} fichier(s)).", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(L.Get("dialog.extractSuccess", selSuccess), L.Get("dialog.success"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             else
-                MessageBox.Show($"Extraction partielle : {selSuccess} réussi(s), {selFail} échoué(s).\nVoir le journal: {Logger.LogPath}", "Avertissement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(L.Get("dialog.extractPartial", selSuccess, selFail), L.Get("dialog.warning"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
         finally
         {
@@ -979,21 +987,55 @@ public partial class MainForm : Form
         {
             if (!ExtractionService.DecompressArchiveToDir(currentArchive, extractTemp))
             {
-                ErrorDialog.Show(this, "Échec de l'extraction.");
+                ErrorDialog.Show(this, L.Get("dialog.extractFail"));
                 return;
             }
 
             var (selSuccess, selFail) = ExtractSelectedItems(listView.SelectedItems, extractTemp, destPath);
 
             if (selFail == 0)
-                MessageBox.Show($"Extraction réussie ({selSuccess} fichier(s)).", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(L.Get("dialog.extractSuccess", selSuccess), L.Get("dialog.success"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             else
-                MessageBox.Show($"Extraction partielle : {selSuccess} réussi(s), {selFail} échoué(s).\nVoir le journal: {Logger.LogPath}", "Avertissement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(L.Get("dialog.extractPartial", selSuccess, selFail), L.Get("dialog.warning"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
         finally
         {
             TempHelper.SafeDelete(extractTemp);
         }
+    }
+
+    private void RebuildUI()
+    {
+        this.SuspendLayout();
+        var menuToRemove = this.MainMenuStrip;
+        if (menuToRemove != null) this.Controls.Remove(menuToRemove);
+        this.Controls.Remove(toolbar);
+        this.Controls.Remove(addressBarPanel);
+        this.Controls.Remove(listView);
+        this.Controls.Remove(statusStrip);
+
+        BuildMenuStrip();
+        BuildToolbar();
+        BuildAddressBar();
+        BuildListView();
+        BuildStatusStrip();
+
+        listView.Dock = DockStyle.Fill;
+        statusStrip.Dock = DockStyle.Bottom;
+        addressBarPanel.Dock = DockStyle.Top;
+        toolbar.Dock = DockStyle.Top;
+
+        this.Controls.SetChildIndex(statusStrip, 0);
+        this.Controls.SetChildIndex(listView, 1);
+        this.Controls.SetChildIndex(addressBarPanel, 2);
+        this.Controls.SetChildIndex(toolbar, 3);
+        this.ResumeLayout(true);
+
+        ThemeManager.ApplyToForm(this);
+        if (!string.IsNullOrEmpty(currentArchive))
+            RefreshView();
+        else if (isEmptyArchive)
+            UpdateAddressBar();
     }
 
     public string CurrentArchive => currentArchive;

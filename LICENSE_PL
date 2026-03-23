@@ -1,0 +1,67 @@
+Zastrzeżona Licencja Open Source Pyxelze (RPOSL) Wersja 1.0
+
+Prawa autorskie (c) 2025-2026 Yohan SANNIER (RoxasYTB). Wszelkie prawa
+zastrzeżone.
+
+Warunki
+
+1. Definicje
+   „Oprogramowanie" oznacza Pyxelze, w tym cały kod źródłowy, dokumentację,
+   pliki binarne, instalatory i powiązane pliki w tym repozytorium.
+   „Autor" oznacza Yohan SANNIER (RoxasYTB), jedynego posiadacza praw
+   autorskich.
+   „Użycie komercyjne" oznacza jakiekolwiek użycie ukierunkowane na korzyść
+   handlową lub wynagrodzenie pieniężne.
+
+2. Uprawnienia
+   Z zastrzeżeniem poniższych warunków, udzielana jest niewyłączna, ogólno-
+   światowa, wolna od opłat licencja na:
+   a) Przeglądanie, czytanie i badanie kodu źródłowego.
+   b) Używanie Oprogramowania do celów osobistych, edukacyjnych lub
+   badawczych.
+   c) Tworzenie forków i modyfikowanie Oprogramowania do osobistego użytku
+   niekomercyjnego.
+   d) Dystrybucję niezmodyfikowanych kopii w celach niekomercyjnych, pod
+   warunkiem dołączenia niniejszej licencji w całości.
+   e) Wnoszenie ulepszeń do oryginalnego repozytorium poprzez pull requesty.
+
+3. Ograniczenia
+   a) Zakaz użycia komercyjnego — Nie wolno używać, sprzedawać, sublicen-
+   cjonować, redystrybuować ani w jakikolwiek sposób wykorzystywać
+   Oprogramowania lub dzieł pochodnych w celach komercyjnych bez
+   uprzedniej pisemnej zgody Autora.
+   b) Zakaz rebrandingu — Nie wolno zmieniać nazwy, rebrandować ani
+   prezentować zmodyfikowanej wersji Oprogramowania jako własnego
+   produktu do dystrybucji.
+   c) Produkty konkurencyjne — Nie wolno używać Oprogramowania, w całości
+   ani w części, do tworzenia konkurencyjnego produktu lub usługi.
+   d) Wyłączne prawa handlowe — Wszelkie prawa handlowe są zastrzeżone
+   wyłącznie dla Autora. Żadna osoba trzecia nie może komercjalizować
+   tego Oprogramowania ani jego pochodnych.
+
+4. Wkład
+   Przesyłając wkład (pull request, łatkę lub inny) do tego projektu,
+   zgadzasz się na przeniesienie wszystkich praw własności intelektualnej
+   dotyczących twojego wkładu na Autora i udzielasz Autorowi nieodwołalnej,
+   wieczystej, ogólnoświatowej licencji na używanie, modyfikowanie i
+   dystrybucję twojego wkładu na dowolnych warunkach.
+
+5. Wyłączenie odpowiedzialności
+   Oprogramowanie jest dostarczane „tak jak jest", bez jakichkolwiek
+   gwarancji, wyraźnych lub dorozumianych, w tym między innymi gwarancji
+   przydatności handlowej, przydatności do określonego celu i nienaruszania
+   praw. W żadnym wypadku Autor nie ponosi odpowiedzialności za jakiekolwiek
+   roszczenia, szkody lub inną odpowiedzialność, czy to w ramach umowy,
+   czynu niedozwolonego, czy w inny sposób, wynikającą z lub w związku z
+   Oprogramowaniem lub jego użyciem.
+
+6. Rozwiązanie
+   Niniejsza licencja zostaje automatycznie rozwiązana w przypadku naruszenia
+   któregokolwiek z jej warunków. Po rozwiązaniu należy zniszczyć wszystkie
+   posiadane kopie Oprogramowania.
+
+7. Prawo właściwe
+   Niniejsza licencja podlega prawu Francji i jest zgodnie z nim
+   interpretowana.
+
+W sprawie licencji komercyjnych: yohan.sannier@aperture-sciences.com

@@ -53,7 +53,7 @@ internal sealed class ErrorDialog : Form
 
         var btnCopy = new Button
         {
-            Text = "Copier",
+            Text = L.Get("error.copy"),
             Size = new Size(90, 30),
             BackColor = ThemeManager.ControlBack,
             ForeColor = ThemeManager.ControlFore,
@@ -62,12 +62,12 @@ internal sealed class ErrorDialog : Form
         btnCopy.Click += (s, e) =>
         {
             Clipboard.SetText(fullText);
-            btnCopy.Text = "Copié ✓";
+            btnCopy.Text = L.Get("error.copied");
         };
 
         var btnLogs = new Button
         {
-            Text = "Ouvrir le journal",
+            Text = L.Get("error.openLog"),
             Size = new Size(120, 30),
             BackColor = ThemeManager.ControlBack,
             ForeColor = ThemeManager.ControlFore,
@@ -96,8 +96,9 @@ internal sealed class ErrorDialog : Form
             Controls.Add(txtDetails);
     }
 
-    public static void Show(IWin32Window? owner, string message, string? details = null, string title = "Erreur")
+    public static void Show(IWin32Window? owner, string message, string? details = null, string? title = null)
     {
+        title ??= L.Get("error.title");
         Logger.Log($"[ERROR] {message}" + (details != null ? $"\n{details}" : ""));
         using var dlg = new ErrorDialog(title, message, details);
         dlg.ShowDialog(owner);

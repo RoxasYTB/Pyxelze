@@ -40,7 +40,7 @@ internal class ProcessProgressForm : Form
 
         var btnCancel = new Button
         {
-            Text = "Annuler", Top = 90, Left = 310, Width = 85, Height = 28,
+            Text = L.Get("process.cancel"), Top = 90, Left = 310, Width = 85, Height = 28,
             BackColor = ThemeManager.ControlBack,
             ForeColor = ThemeManager.ControlFore,
             FlatStyle = FlatStyle.Flat

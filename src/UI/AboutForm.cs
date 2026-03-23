@@ -9,7 +9,7 @@ internal class AboutForm : Form
 
     public AboutForm()
     {
-        Text = "À propos de Pyxelze";
+        Text = L.Get("about.title");
         Size = new Size(480, 490);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterParent;
@@ -53,7 +53,7 @@ internal class AboutForm : Form
         y = 84;
         var lblDesc = new Label
         {
-            Text = "Explorateur et archiveur de fichiers ROX - stéganographie PNG\navec compression transparente via le moteur roxify.",
+            Text = L.Get("about.description"),
             Font = new Font("Segoe UI", 9.5f),
             Size = new Size(410, 40),
             Location = new Point(left, y),
@@ -72,7 +72,7 @@ internal class AboutForm : Form
 
         var lblAuthor = new Label
         {
-            Text = "Développé par",
+            Text = L.Get("about.developedBy"),
             AutoSize = true,
             Location = new Point(left, y),
             ForeColor = dimmed
@@ -105,7 +105,7 @@ internal class AboutForm : Form
         y += 28;
         var lblCopyright = new Label
         {
-            Text = $"© 2025-{DateTime.Now.Year} Yohan SANNIER. Tous droits réservés.",
+            Text = L.Get("about.copyright", DateTime.Now.Year),
             AutoSize = true,
             Location = new Point(left, y),
             ForeColor = dimmed
@@ -117,7 +117,7 @@ internal class AboutForm : Form
 
         var lblLicense = new Label
         {
-            Text = "Distribué sous licence MIT",
+            Text = L.Get("about.license"),
             AutoSize = true,
             Location = new Point(left, y),
             ForeColor = dimmed,
@@ -126,7 +126,7 @@ internal class AboutForm : Form
 
         var btnClose = new Button
         {
-            Text = "Fermer",
+            Text = L.Get("about.close"),
             DialogResult = DialogResult.OK,
             Location = new Point(Size.Width - 120, Size.Height - 90),
             Width = 88,
@@ -157,10 +157,10 @@ internal class AboutForm : Form
         var roxVersion = GetRoxVersion();
         string[][] rows =
         [
-            ["Version de l'application", AppVersion],
-            ["Build", Program.BuildStamp],
-            ["Moteur roxify", roxVersion],
-            [".NET Runtime", $"{Environment.Version}"]
+            [L.Get("about.appVersion"), AppVersion],
+            [L.Get("about.build"), Program.BuildStamp],
+            [L.Get("about.roxifyEngine"), roxVersion],
+            [L.Get("about.dotnetRuntime"), $"{Environment.Version}"]
         ];
 
         int rowY = 0;
@@ -217,8 +217,8 @@ internal class AboutForm : Form
         try
         {
             var (exit, stdout, _) = ProcessHelper.RunRox("--version", 5000);
-            return exit == 0 && !string.IsNullOrWhiteSpace(stdout) ? stdout.Trim() : "non disponible";
+            return exit == 0 && !string.IsNullOrWhiteSpace(stdout) ? stdout.Trim() : L.Get("about.notAvailable");
         }
-        catch { return "non disponible"; }
+        catch { return L.Get("about.notAvailable"); }
     }
 }

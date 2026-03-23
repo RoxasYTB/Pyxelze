@@ -44,7 +44,7 @@ internal static class PassphraseManager
 
     public static string? PromptForPassphrase(string? errorMsg = null)
     {
-        return PassphrasePrompt.Prompt("Passphrase requise", "Ce fichier est chiffré. Entrez la passphrase :", errorMsg);
+        return PassphrasePrompt.Prompt(L.Get("passphrase.required"), L.Get("passphrase.prompt"), errorMsg);
     }
 
     public static string BuildPassphraseArg(string passphrase)

@@ -1,0 +1,68 @@
+Pyxelze Proprietäre Open-Source-Lizenz (RPOSL) v1.0
+
+Copyright (c) 2025-2026 Yohan SANNIER (RoxasYTB). Alle Rechte vorbehalten.
+
+GESCHÄFTSBEDINGUNGEN
+
+1. DEFINITIONEN
+   „Software" bezeichnet Pyxelze, einschließlich des gesamten Quellcodes,
+   der Dokumentation, der Binärdateien, der Installationsprogramme und
+   der zugehörigen Dateien in diesem Repository.
+   „Autor" bezeichnet Yohan SANNIER (RoxasYTB), alleiniger Urheberrechtsinhaber.
+   „Kommerzielle Nutzung" bezeichnet jede Nutzung, die auf einen kommerziellen
+   Vorteil oder eine finanzielle Vergütung abzielt oder darauf ausgerichtet ist.
+
+2. GENEHMIGUNGEN
+   Vorbehaltlich der nachstehenden Bedingungen wird Ihnen eine nicht-exklusive,
+   weltweite, lizenzgebührenfreie Lizenz gewährt:
+   a) Den Quellcode einzusehen, zu lesen und zu studieren.
+   b) Die Software für persönliche, bildungsbezogene oder
+   Forschungszwecke zu nutzen.
+   c) Die Software für den persönlichen, nicht-kommerziellen Gebrauch
+   zu forken und zu modifizieren.
+   d) Unveränderte Kopien der Software für nicht-kommerzielle Zwecke
+   zu verbreiten, sofern diese Lizenz vollständig beiliegt.
+   e) Verbesserungen über Pull Requests zum Original-Repository beizutragen.
+
+3. EINSCHRÄNKUNGEN
+   a) KOMMERZIELLE NUTZUNG UNTERSAGT — Sie dürfen die Software oder
+   abgeleitete Werke NICHT für kommerzielle Nutzung verwenden,
+   verkaufen, unterlizenzieren, weiterverbreiten oder anderweitig
+   verwerten, ohne vorherige schriftliche Genehmigung des Autors.
+   b) UMBENENNUNG UNTERSAGT — Sie dürfen eine modifizierte Version der
+   Software NICHT umbenennen, umbranden oder als Ihr eigenes Produkt
+   zur Verteilung präsentieren.
+   c) KONKURRENZPRODUKTE — Sie dürfen die Software ganz oder teilweise
+   NICHT verwenden, um ein konkurrierendes Produkt oder einen
+   konkurrierenden Dienst zu erstellen.
+   d) EXKLUSIVE KOMMERZIELLE RECHTE — Alle kommerziellen Rechte sind
+   ausschließlich dem Autor vorbehalten. Kein Dritter darf diese
+   Software oder abgeleitete Werke kommerzialisieren.
+
+4. BEITRÄGE
+   Durch das Einreichen eines Beitrags (Pull Request, Patch oder
+   anderweitig) zu diesem Projekt stimmen Sie zu, alle geistigen
+   Eigentumsrechte an Ihrem Beitrag an den Autor abzutreten, und Sie
+   gewähren dem Autor eine unwiderrufliche, unbefristete, weltweite
+   Lizenz zur Nutzung, Modifikation und Verteilung Ihres Beitrags
+   unter beliebigen Bedingungen.
+
+5. HAFTUNGSAUSSCHLUSS
+   DIE SOFTWARE WIRD „WIE BESEHEN" BEREITGESTELLT, OHNE JEDE GARANTIE,
+   WEDER AUSDRÜCKLICH NOCH STILLSCHWEIGEND, EINSCHLIESSLICH, ABER NICHT
+   BESCHRÄNKT AUF DIE GARANTIEN DER MARKTGÄNGIGKEIT, DER EIGNUNG FÜR
+   EINEN BESTIMMTEN ZWECK UND DER NICHTVERLETZUNG. IN KEINEM FALL IST
+   DER AUTOR HAFTBAR FÜR ANSPRÜCHE, SCHÄDEN ODER ANDERE HAFTUNG, SEI
+   ES AUS VERTRAG, UNERLAUBTER HANDLUNG ODER ANDERWEITIG, DIE SICH AUS
+   ODER IN VERBINDUNG MIT DER SOFTWARE ODER IHRER NUTZUNG ERGEBEN.
+
+6. KÜNDIGUNG
+   Diese Lizenz wird automatisch beendet, wenn Sie eine ihrer
+   Bedingungen verletzen. Bei Beendigung müssen Sie alle Kopien der
+   Software in Ihrem Besitz vernichten.
+
+7. ANWENDBARES RECHT
+   Diese Lizenz unterliegt dem französischen Recht und ist nach diesem
+   auszulegen.
+
+Für kommerzielle Lizenzanfragen: yohan.sannier@aperture-sciences.com
