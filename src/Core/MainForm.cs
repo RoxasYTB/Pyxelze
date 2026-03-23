@@ -864,43 +864,8 @@ public partial class MainForm : Form
             return;
         }
 
-        var fi = new FileInfo(currentArchive);
-        var totalFiles = allFiles.Count(f => !f.IsFolder);
-        var totalFolders = allFiles.Count(f => f.IsFolder);
-        var totalSize = allFiles.Where(f => !f.IsFolder).Sum(f => f.Size);
-
-        var hasPass = false;
-        try
-        {
-            var (exit, stdout, _) = ProcessHelper.RunRox($"havepassphrase \"{currentArchive}\"", 5000);
-            hasPass = exit == 0 && stdout.Contains("Passphrase detected");
-        }
-        catch { }
-
-        var lines = new List<string>
-        {
-            $"Nom : {fi.Name}",
-            $"Emplacement : {fi.DirectoryName}",
-            $"Taille de l'archive : {SizeFormatter.Format(fi.Length)}",
-            $"Taille du contenu : {SizeFormatter.Format(totalSize)}",
-            "",
-            $"Fichiers : {totalFiles}",
-            $"Dossiers : {totalFolders}",
-            "",
-            $"Chiffrement : {(hasPass ? "Oui (passphrase)" : "Non")}",
-            "",
-            $"Créé le : {fi.CreationTime:dd/MM/yyyy HH:mm:ss}",
-            $"Modifié le : {fi.LastWriteTime:dd/MM/yyyy HH:mm:ss}",
-            $"Dernier accès : {fi.LastAccessTime:dd/MM/yyyy HH:mm:ss}",
-        };
-
-        if (fi.Length > 0 && totalSize > 0)
-        {
-            var ratio = (double)fi.Length / totalSize * 100;
-            lines.Add($"Ratio de compression : {ratio:0.#}%");
-        }
-
-        MessageBox.Show(string.Join("\n", lines), $"Infos - {fi.Name}", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        using var infoForm = new ArchiveInfoForm(currentArchive, allFiles);
+        infoForm.ShowDialog(this);
     }
 
     private void AddFilesDialog()
@@ -1018,45 +983,12 @@ public partial class MainForm : Form
                 return;
             }
 
-            int successCount = 0, failCount = 0;
-            foreach (ListViewItem item in listView.SelectedItems)
-            {
-                if (item.Tag is not VirtualFile vf) continue;
-                if (!vf.IsFolder)
-                {
-                    var origPath = string.IsNullOrEmpty(vf.OriginalPath) ? vf.FullPath : vf.OriginalPath;
-                    var src = ExtractionService.FindExtractedFile(extractTemp, origPath);
-                    if (src != null)
-                    {
-                        var dest = Path.Combine(destPath, vf.Name);
-                        try { File.Copy(src, dest, true); successCount++; } catch { failCount++; }
-                    }
-                    else failCount++;
-                }
-                else
-                {
-                    var destFolder = Path.Combine(destPath, vf.Name);
-                    Directory.CreateDirectory(destFolder);
-                    foreach (var f in ExtractionService.GetFilesUnder(allFiles, vf.FullPath))
-                    {
-                        var rel = f.FullPath[(vf.FullPath.Length + 1)..];
-                        var dest = Path.Combine(destFolder, rel);
-                        Directory.CreateDirectory(Path.GetDirectoryName(dest) ?? destFolder);
-                        var origPath = string.IsNullOrEmpty(f.OriginalPath) ? f.FullPath : f.OriginalPath;
-                        var src = ExtractionService.FindExtractedFile(extractTemp, origPath);
-                        if (src != null)
-                        {
-                            try { File.Copy(src, dest, true); successCount++; } catch { failCount++; }
-                        }
-                        else failCount++;
-                    }
-                }
-            }
+            var (selSuccess, selFail) = ExtractSelectedItems(listView.SelectedItems, extractTemp, destPath);
 
-            if (failCount == 0)
-                MessageBox.Show($"Extraction réussie ({successCount} fichier(s)).", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (selFail == 0)
+                MessageBox.Show($"Extraction réussie ({selSuccess} fichier(s)).", "Succès", MessageBoxButtons.OK, MessageBoxIcon.Information);
             else
-                MessageBox.Show($"Extraction partielle : {successCount} réussi(s), {failCount} échoué(s).\nVoir le journal: {Logger.LogPath}", "Avertissement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"Extraction partielle : {selSuccess} réussi(s), {selFail} échoué(s).\nVoir le journal: {Logger.LogPath}", "Avertissement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
         finally
         {
