@@ -4,7 +4,7 @@ namespace Pyxelze;
 
 static class Program
 {
-    public const string BuildStamp = "20260322-000000";
+    public const string BuildStamp = "20260323-140000";
 
     [SupportedOSPlatform("windows")]
     [STAThread]
