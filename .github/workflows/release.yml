@@ -93,9 +93,6 @@ jobs:
             Copy-Item -Recurse build\Release\roxify build\deploy\roxify
           }
 
-      - name: Install Inno Setup
-        run: choco install innosetup --version=6.4.2 -y
-
       - name: Build installer
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\windows\installer.iss
