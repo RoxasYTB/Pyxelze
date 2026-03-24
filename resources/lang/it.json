@@ -133,6 +133,8 @@
   "contextmenu.openArchive": "Apri archivio",
   "contextmenu.decode": "Decodifica",
   "contextmenu.encode": "Codifica",
+  "contextmenu.extractHere": "Estrai qui",
+  "contextmenu.extractTo": "Estrai in cartella...",
   "contextmenu.relaunchError": "Impossibile riavviare come amministratore: {0}",
   "update.available": "Un aggiornamento di Pyxelze è disponibile (v{0}).\n\nVuoi scaricarlo ora?",
   "update.availableTitle": "Aggiornamento disponibile",

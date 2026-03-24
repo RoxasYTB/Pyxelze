@@ -40,6 +40,8 @@ if exist "%NPM_ROOT%\roxify\dist\roxify_native.exe" (
     copy /y "%NPM_ROOT%\roxify\dist\roxify_native.exe" "%BUILD_DIR%\roxify\roxify_native.exe" >nul
 )
 
+if exist "appIcon.ico" copy /y "appIcon.ico" "%BUILD_DIR%\appIcon.ico" >nul
+
 echo [4/4] Lancement en debug...
 start "" "%BUILD_DIR%\pyxelze.exe"
 

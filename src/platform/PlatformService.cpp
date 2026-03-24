@@ -83,6 +83,7 @@ bool PlatformService::canRegisterContextMenu() {
 #endif
 }
 
+#ifdef Q_OS_WIN
 static bool writeRegKey(HKEY root, const wchar_t* subKey, const wchar_t* valueName, const std::wstring& data) {
     HKEY hKey = nullptr;
     LONG res = RegCreateKeyExW(root, subKey, 0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr);
@@ -94,45 +95,63 @@ static bool writeRegKey(HKEY root, const wchar_t* subKey, const wchar_t* valueNa
     return res == ERROR_SUCCESS;
 }
 
-static bool deleteRegTree(HKEY root, const wchar_t* subKey) {
-    LONG res = RegDeleteTreeW(root, subKey);
-    if (res == ERROR_SUCCESS || res == ERROR_FILE_NOT_FOUND)
-        return RegDeleteKeyW(root, subKey) == ERROR_SUCCESS || res == ERROR_FILE_NOT_FOUND;
-    return false;
+static void deleteRegTree(HKEY root, const wchar_t* subKey) {
+    RegDeleteTreeW(root, subKey);
+    RegDeleteKeyW(root, subKey);
 }
+
+static void registerCascadingMenuAt(const wchar_t* rootKey, const std::wstring& wExe, const std::wstring& wIco) {
+    std::wstring base = std::wstring(rootKey) + L"\\Pyxelze";
+    std::wstring shellBase = base + L"\\shell";
+
+    writeRegKey(HKEY_CURRENT_USER, base.c_str(), L"MUIVerb", L"Pyxelze");
+    writeRegKey(HKEY_CURRENT_USER, base.c_str(), L"SubCommands", L"");
+    writeRegKey(HKEY_CURRENT_USER, base.c_str(), L"Icon", wIco);
+
+    struct SubCmd { const wchar_t* id; const char* labelKey; const wchar_t* arg; };
+    SubCmd cmds[] = {
+        { L"open",        "contextmenu.openArchive", L""               },
+        { L"extractHere", "contextmenu.extractHere", L"--extract-here" },
+        { L"extractTo",   "contextmenu.extractTo",   L"--extract-to"   },
+        { L"encode",      "contextmenu.encode",      L"--encode"       },
+    };
+
+    for (const auto& cmd : cmds) {
+        std::wstring subKey = shellBase + L"\\" + cmd.id;
+        std::wstring cmdKey = subKey + L"\\command";
+        auto label = L::get(cmd.labelKey).toStdWString();
+        std::wstring cmdLine = L"\"" + wExe + L"\"";
+        if (cmd.arg[0] != L'\0')
+            cmdLine += L" " + std::wstring(cmd.arg);
+        cmdLine += L" \"%1\"";
+
+        writeRegKey(HKEY_CURRENT_USER, subKey.c_str(), nullptr, label);
+        writeRegKey(HKEY_CURRENT_USER, cmdKey.c_str(), nullptr, cmdLine);
+    }
+}
+#endif
 
 void PlatformService::registerContextMenu() {
 #ifdef Q_OS_WIN
     auto exe = QCoreApplication::applicationFilePath().replace('/', '\\');
-    auto label = L::get("contextmenu.openWith");
-    auto wLabel = label.toStdWString();
     auto wExe = exe.toStdWString();
-    std::wstring wCmd = L"\"" + wExe + L"\" \"%1\"";
+    auto appDir = QCoreApplication::applicationDirPath().replace('/', '\\');
+    auto icoPath = appDir + QStringLiteral("\\appIcon.ico");
+    auto wIco = QFileInfo(icoPath).exists() ? icoPath.toStdWString() : wExe + L",0";
 
-    bool ok = true;
-    ok &= writeRegKey(HKEY_CURRENT_USER, L"Software\\Classes\\*\\shell\\Pyxelze", nullptr, wLabel);
-    ok &= writeRegKey(HKEY_CURRENT_USER, L"Software\\Classes\\*\\shell\\Pyxelze", L"Icon", wExe);
-    ok &= writeRegKey(HKEY_CURRENT_USER, L"Software\\Classes\\*\\shell\\Pyxelze\\command", nullptr, wCmd);
-    ok &= writeRegKey(HKEY_CURRENT_USER, L"Software\\Classes\\.png\\shell\\Pyxelze", nullptr, wLabel);
-    ok &= writeRegKey(HKEY_CURRENT_USER, L"Software\\Classes\\.png\\shell\\Pyxelze", L"Icon", wExe);
-    ok &= writeRegKey(HKEY_CURRENT_USER, L"Software\\Classes\\.png\\shell\\Pyxelze\\command", nullptr, wCmd);
+    registerCascadingMenuAt(L"Software\\Classes\\*\\shell", wExe, wIco);
+    registerCascadingMenuAt(L"Software\\Classes\\Directory\\shell", wExe, wIco);
 
-    if (ok)
-        QMessageBox::information(nullptr, QStringLiteral("Pyxelze"), L::get("contextmenu.registerSuccess"));
-    else
-        QMessageBox::warning(nullptr, QStringLiteral("Pyxelze"), L::get("contextmenu.registerFail"));
+    QMessageBox::information(nullptr, QStringLiteral("Pyxelze"), L::get("contextmenu.registerSuccess"));
 #endif
 }
 
 void PlatformService::unregisterContextMenu() {
 #ifdef Q_OS_WIN
-    bool ok = true;
-    ok &= deleteRegTree(HKEY_CURRENT_USER, L"Software\\Classes\\*\\shell\\Pyxelze");
-    ok &= deleteRegTree(HKEY_CURRENT_USER, L"Software\\Classes\\.png\\shell\\Pyxelze");
+    deleteRegTree(HKEY_CURRENT_USER, L"Software\\Classes\\*\\shell\\Pyxelze");
+    deleteRegTree(HKEY_CURRENT_USER, L"Software\\Classes\\Directory\\shell\\Pyxelze");
+    deleteRegTree(HKEY_CURRENT_USER, L"Software\\Classes\\.png\\shell\\Pyxelze");
 
-    if (ok)
-        QMessageBox::information(nullptr, QStringLiteral("Pyxelze"), L::get("contextmenu.unregisterSuccess"));
-    else
-        QMessageBox::warning(nullptr, QStringLiteral("Pyxelze"), L::get("contextmenu.unregisterFail"));
+    QMessageBox::information(nullptr, QStringLiteral("Pyxelze"), L::get("contextmenu.unregisterSuccess"));
 #endif
 }

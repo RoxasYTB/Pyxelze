@@ -133,6 +133,8 @@
   "contextmenu.openArchive": "아카이브 열기",
   "contextmenu.decode": "디코드",
   "contextmenu.encode": "인코드",
+  "contextmenu.extractHere": "여기에 풀기",
+  "contextmenu.extractTo": "폴더에 풀기...",
   "contextmenu.relaunchError": "관리자로 재시작할 수 없습니다: {0}",
   "update.available": "Pyxelze 업데이트가 있습니다 (v{0}).\n\n지금 다운로드하시겠습니까?",
   "update.availableTitle": "업데이트 사용 가능",

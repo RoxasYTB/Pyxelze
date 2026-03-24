@@ -133,6 +133,8 @@
   "contextmenu.openArchive": "アーカイブを開く",
   "contextmenu.decode": "デコード",
   "contextmenu.encode": "エンコード",
+  "contextmenu.extractHere": "ここに展開",
+  "contextmenu.extractTo": "フォルダに展開...",
   "contextmenu.relaunchError": "管理者として再起動できません: {0}",
   "update.available": "Pyxelzeのアップデートが利用可能です (v{0})。\n\n今すぐダウンロードしますか？",
   "update.availableTitle": "アップデート利用可能",

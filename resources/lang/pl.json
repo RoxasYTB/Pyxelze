@@ -133,6 +133,8 @@
   "contextmenu.openArchive": "Otwórz archiwum",
   "contextmenu.decode": "Dekoduj",
   "contextmenu.encode": "Koduj",
+  "contextmenu.extractHere": "Wypakuj tutaj",
+  "contextmenu.extractTo": "Wypakuj do folderu...",
   "contextmenu.relaunchError": "Nie można ponownie uruchomić jako administrator: {0}",
   "update.available": "Dostępna jest aktualizacja Pyxelze (v{0}).\n\nCzy chcesz ją teraz pobrać?",
   "update.availableTitle": "Dostępna aktualizacja",
