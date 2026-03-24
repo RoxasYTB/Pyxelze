@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake \
+            qt6-base-dev libqt6svg6-dev libqt6network6 \
+            libfuse2 file desktop-file-utils
+
+      - name: Install roxify
+        run: |
+          sudo npm install -g roxify
+          ROXIFY_PATH="$(npm root -g)/roxify/dist/roxify_native"
+          echo "ROXIFY_PATH=${ROXIFY_PATH}" >> $GITHUB_ENV
+
+      - name: Extract version
+        run: |
+          VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oP '\d+\.\d+\.\d+')
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Build release
+        run: |
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+          make -j$(nproc)
+
+      - name: Build .deb
+        run: bash scripts/build_deb.sh
+
+      - name: Build AppImage
+        run: bash scripts/build_appimage.sh
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            build/pyxelze_${{ env.VERSION }}_amd64.deb
+            build/Pyxelze-${{ env.VERSION }}-x86_64.AppImage
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.*'
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64
+          modules: qtsvg
+
+      - name: Install roxify
+        run: |
+          npm install -g roxify
+          $npmRoot = npm root -g
+          $roxPath = Join-Path $npmRoot "roxify\dist\roxify_native.exe"
+          echo "ROXIFY_PATH=$roxPath" >> $env:GITHUB_ENV
+
+      - name: Extract version
+        run: |
+          $content = Get-Content CMakeLists.txt -Raw
+          $content -match 'VERSION\s+(\d+\.\d+\.\d+)'
+          echo "VERSION=$($matches[1])" >> $env:GITHUB_ENV
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DROXIFY_NATIVE="$env:ROXIFY_PATH"
+          cmake --build build --config Release
+
+      - name: Deploy Qt
+        run: |
+          mkdir build\deploy
+          windeployqt --dir build\deploy build\Release\pyxelze.exe
+          Copy-Item build\Release\pyxelze.exe build\deploy\pyxelze.exe
+          if (Test-Path build\Release\roxify) {
+            Copy-Item -Recurse build\Release\roxify build\deploy\roxify
+          }
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\windows\installer.iss
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: build/Pyxelze-${{ env.VERSION }}-Setup.exe
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        run: |
+          VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oP '\d+\.\d+\.\d+')
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Pyxelze v${{ env.VERSION }}
+          generate_release_notes: true
+          files: |
+            artifacts/linux-packages/pyxelze_${{ env.VERSION }}_amd64.deb
+            artifacts/linux-packages/Pyxelze-${{ env.VERSION }}-x86_64.AppImage
+            artifacts/windows-installer/Pyxelze-${{ env.VERSION }}-Setup.exe
