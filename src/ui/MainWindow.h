@@ -3,6 +3,7 @@
 #include <QMainWindow>
 #include <QList>
 #include <QString>
+#include <QPoint>
 
 class QTreeView;
 class QStandardItemModel;
@@ -19,9 +20,11 @@ public:
     explicit MainWindow(const QString& archivePath = {}, QWidget* parent = nullptr);
 
 protected:
+    void closeEvent(QCloseEvent* e) override;
     void dragEnterEvent(QDragEnterEvent* e) override;
     void dropEvent(QDropEvent* e) override;
     void keyPressEvent(QKeyEvent* e) override;
+    bool eventFilter(QObject* obj, QEvent* e) override;
 
 private:
     void buildMenuBar();
@@ -39,6 +42,7 @@ private:
     void itemDoubleClicked(const QModelIndex& index);
     void openFileFromArchive(const VirtualFile& vf);
     void sortByColumn(int col, Qt::SortOrder order);
+    void startFileDrag();
 
     void newArchive();
     void addFilesDialog();
@@ -72,4 +76,5 @@ private:
     int m_sortColumn = 0;
     Qt::SortOrder m_sortOrder = Qt::AscendingOrder;
     bool m_isDraggingFromSelf = false;
+    QPoint m_dragStartPos;
 };

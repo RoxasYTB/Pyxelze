@@ -69,6 +69,7 @@
   "dialog.noArchiveOpen": "没有打开的归档。",
   "dialog.addFiles": "向归档添加文件",
   "dialog.extractSuccess": "提取成功到:\n{0}",
+  "dialog.extractSelectedSuccess": "已提取 {0} 个文件到:\n{1}",
   "dialog.extractFail": "提取失败。",
   "dialog.extractPartial": "部分提取: {0} 成功, {1} 失败。",
   "dialog.warning": "警告",

@@ -69,6 +69,7 @@
   "dialog.noArchiveOpen": "Нет открытого архива.",
   "dialog.addFiles": "Добавить файлы в архив",
   "dialog.extractSuccess": "Успешно извлечено в:\n{0}",
+  "dialog.extractSelectedSuccess": "{0} файл(ов) извлечено в:\n{1}",
   "dialog.extractFail": "Ошибка извлечения.",
   "dialog.extractPartial": "Частичное извлечение: {0} успешно, {1} ошибок.",
   "dialog.warning": "Предупреждение",
