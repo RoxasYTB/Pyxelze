@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg Concurrent)
 
 set(SOURCES
     src/main.cpp
@@ -58,7 +58,7 @@ set(SOURCES
 qt_add_executable(pyxelze ${SOURCES})
 
 target_include_directories(pyxelze PRIVATE src)
-target_link_libraries(pyxelze PRIVATE Qt6::Widgets Qt6::Network Qt6::Svg)
+target_link_libraries(pyxelze PRIVATE Qt6::Widgets Qt6::Network Qt6::Svg Qt6::Concurrent)
 
 if(WIN32)
     set_target_properties(pyxelze PROPERTIES WIN32_EXECUTABLE TRUE)

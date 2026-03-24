@@ -3,6 +3,7 @@
 #include "core/Logger.h"
 #include "localization/Localization.h"
 #include "platform/PlatformService.h"
+#include "ui/ThemeManager.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QJsonDocument>
@@ -39,8 +40,11 @@ void UpdateChecker::checkAsync(QWidget* parent, bool silent) {
         Logger::log(QStringLiteral("UpdateCheck: local=%1 remote=%2").arg(local.toString(), remote.toString()));
 
         if (remote <= local) {
-            if (!silent)
-                QMessageBox::information(parent, L::get("dialog.update"), L::get("dialog.upToDate"));
+            if (!silent) {
+                QMessageBox box(QMessageBox::Information, L::get("dialog.update"), L::get("dialog.upToDate"), QMessageBox::Ok, parent);
+                ThemeManager::applyToWidget(&box);
+                box.exec();
+            }
             return;
         }
 
@@ -61,7 +65,9 @@ void UpdateChecker::checkAsync(QWidget* parent, bool silent) {
             downloadUrl = root[QStringLiteral("html_url")].toString();
 
         auto msg = L::get("update.available").replace(QStringLiteral("{0}"), tagName);
-        auto ans = QMessageBox::question(parent, L::get("update.availableTitle"), msg, QMessageBox::Yes | QMessageBox::No);
+        QMessageBox box(QMessageBox::Question, L::get("update.availableTitle"), msg, QMessageBox::Yes | QMessageBox::No, parent);
+        ThemeManager::applyToWidget(&box);
+        auto ans = box.exec();
         if (ans == QMessageBox::Yes)
             PlatformService::openUrl(downloadUrl);
     });

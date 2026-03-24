@@ -1,5 +1,6 @@
 #pragma once
 #include <QColor>
+#include <QString>
 #include <QWidget>
 
 namespace ThemeManager {
@@ -7,6 +8,7 @@ namespace ThemeManager {
     bool darkMode();
     void setDarkMode(bool on);
     void applyToWidget(QWidget* w);
+    QString buildStyleSheet();
 
     QColor windowBack();
     QColor windowFore();
@@ -14,7 +16,9 @@ namespace ThemeManager {
     QColor controlFore();
     QColor accentColor();
     QColor headerBack();
+    QColor dimText();
     QColor rowHover();
     QColor selectionBack();
     QColor borderColor();
+    QColor separatorColor();
 }

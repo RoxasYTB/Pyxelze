@@ -15,21 +15,14 @@
 
 static QLabel* dimLabel(const QString& text) {
     auto* l = new QLabel(text);
-    l->setStyleSheet(QStringLiteral("color: gray; font-size: 9pt;"));
+    l->setStyleSheet(QStringLiteral("color: %1; font-size: 9pt;").arg(ThemeManager::dimText().name()));
     return l;
 }
 
 static QLabel* boldLabel(const QString& text) {
     auto* l = new QLabel(text);
-    l->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 9pt;"));
+    l->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 9pt; color: %1;").arg(ThemeManager::windowFore().name()));
     return l;
-}
-
-static QFrame* separator() {
-    auto* line = new QFrame;
-    line->setFrameShape(QFrame::HLine);
-    line->setFrameShadow(QFrame::Sunken);
-    return line;
 }
 
 ArchiveInfoDialog::ArchiveInfoDialog(QWidget* parent, const QString& archivePath, const QList<VirtualFile>& allFiles)
@@ -64,13 +57,15 @@ ArchiveInfoDialog::ArchiveInfoDialog(QWidget* parent, const QString& archivePath
     lblTitle->setStyleSheet(QStringLiteral("font-size: 16pt; font-weight: bold; color: %1;").arg(ThemeManager::accentColor().name()));
     titleLayout->addWidget(lblTitle);
     auto* lblPath = new QLabel(fi.absolutePath());
-    lblPath->setStyleSheet(QStringLiteral("color: gray; font-size: 8pt;"));
+    lblPath->setStyleSheet(QStringLiteral("color: %1; font-size: 8pt;").arg(ThemeManager::dimText().name()));
     titleLayout->addWidget(lblPath);
     headerLayout->addLayout(titleLayout);
     headerLayout->addStretch();
     layout->addLayout(headerLayout);
 
-    layout->addWidget(separator());
+    auto* sep1 = new QFrame;
+    sep1->setFrameShape(QFrame::HLine);
+    layout->addWidget(sep1);
 
     auto* grid = new QGridLayout;
     int row = 0;
@@ -96,7 +91,10 @@ ArchiveInfoDialog::ArchiveInfoDialog(QWidget* parent, const QString& archivePath
     addRow(L::get("info.encryption"), hasPass ? L::get("info.encryptionYes") : L::get("info.encryptionNo"));
 
     layout->addLayout(grid);
-    layout->addWidget(separator());
+
+    auto* sep2 = new QFrame;
+    sep2->setFrameShape(QFrame::HLine);
+    layout->addWidget(sep2);
 
     auto* dateGrid = new QGridLayout;
     int dRow = 0;

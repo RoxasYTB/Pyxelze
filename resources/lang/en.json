@@ -129,7 +129,9 @@
   "contextmenu.elevationRequired": "Administrator rights required. Relaunch with elevation?",
   "contextmenu.elevationTitle": "Elevation required",
   "contextmenu.registerSuccess": "Context menu integration installed.",
+  "contextmenu.registerFail": "Failed to register context menu.",
   "contextmenu.unregisterSuccess": "Integration removed.",
+  "contextmenu.unregisterFail": "Failed to remove context menu integration.",
   "contextmenu.openArchive": "Open archive",
   "contextmenu.decode": "Decode",
   "contextmenu.encode": "Encode",
@@ -150,5 +152,14 @@
   "compression.encoding": "Encoding",
   "compression.encodingFile": "Encoding {0}...",
   "compression.fallback": "Encoding (fallback)",
-  "compression.fallbackProgress": "Encoding via temp file..."
+  "compression.fallbackProgress": "Encoding via temp file...",
+  "view.details": "Details",
+  "view.list": "List",
+  "view.smallIcons": "Small icons",
+  "view.mediumIcons": "Medium icons",
+  "view.largeIcons": "Large icons",
+  "view.tiles": "Tiles",
+  "menu.view.viewMode": "View mode",
+  "col.modified": "Date modified",
+  "contextmenu.openWith": "Open with Pyxelze"
 }
