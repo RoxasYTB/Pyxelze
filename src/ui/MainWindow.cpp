@@ -142,16 +142,9 @@ void MainWindow::buildAddressBar() {
     m_addressBar->setFixedHeight(28);
 
     auto* container = new QWidget;
-    auto* layout = new QHBoxLayout(container);
-    layout->setContentsMargins(8, 2, 8, 2);
-    layout->addWidget(m_addressBar);
-
-    auto* dockWidget = new QWidget;
-    auto* dockLayout = new QVBoxLayout(dockWidget);
-    dockLayout->setContentsMargins(0, 0, 0, 0);
-    dockLayout->addWidget(container);
-
-    setMenuWidget(nullptr);
+    auto* containerLayout = new QHBoxLayout(container);
+    containerLayout->setContentsMargins(8, 2, 8, 2);
+    containerLayout->addWidget(m_addressBar);
 
     auto* centralWrapper = new QWidget;
     auto* mainLayout = new QVBoxLayout(centralWrapper);
@@ -301,8 +294,11 @@ void MainWindow::loadArchive(const QString& path) {
                 auto pass = PassphraseDialog::prompt(this, L::get("passphrase.required"), L::get("passphrase.prompt"), errorMsg);
                 if (!pass.has_value()) break;
                 auto tempDir = TempHelper::createTempDir(QStringLiteral("pyxelze_verify"));
-                auto passArg = PassphraseManager::buildPassphraseArg(*pass);
-                auto vr = ProcessHelper::runRox(QStringList{QStringLiteral("decompress"), path, passArg, tempDir}, 15000);
+                auto passArgs = PassphraseManager::buildPassphraseArgs(*pass);
+                QStringList vrArgs{QStringLiteral("decompress"), path};
+                vrArgs.append(passArgs);
+                vrArgs.append(tempDir);
+                auto vr = ProcessHelper::runRox(vrArgs, 15000);
                 TempHelper::safeDelete(tempDir);
                 if (vr.exitCode == 0) { PassphraseManager::save(*pass); break; }
                 if (PassphraseManager::isDecryptionFailure(vr.stdOut, vr.stdErr)) { errorMsg = L::get("dialog.wrongPassword"); continue; }
@@ -537,12 +533,13 @@ void MainWindow::addFilesToArchive(const QStringList& filePaths) {
         auto pass = PassphraseDialog::prompt(this, L::get("dialog.passphraseTitle"), L::get("dialog.passphrasePrompt"));
         if (!pass.has_value()) { TempHelper::safeDelete(buildTemp); return; }
 
-        QString passArg;
+        QStringList passArgs;
         if (!pass->isEmpty())
-            passArg = QStringLiteral(" ") + PassphraseManager::buildPassphraseArg(*pass);
+            passArgs = PassphraseManager::buildPassphraseArgs(*pass);
 
-        auto args = QStringLiteral("encode \"%1\" \"%2\"%3").arg(buildTemp, savePath, passArg);
-        auto r = ProgressDialog::runRoxWithProgress(this, L::get("dialog.creating"), L::get("dialog.encoding"), args);
+        QStringList encArgs{QStringLiteral("encode"), buildTemp, savePath};
+        encArgs.append(passArgs);
+        auto r = ProgressDialog::runRoxWithProgress(this, L::get("dialog.creating"), L::get("dialog.encoding"), encArgs);
         TempHelper::safeDelete(buildTemp);
 
         if (r.exitCode != 0) {
@@ -579,11 +576,12 @@ void MainWindow::addFilesToArchive(const QStringList& filePaths) {
     }
 
     auto cached = PassphraseManager::cachedPassphrase();
-    QString passArg;
-    if (!cached.isEmpty()) passArg = QStringLiteral(" ") + PassphraseManager::buildPassphraseArg(cached);
+    QStringList passArgs;
+    if (!cached.isEmpty()) passArgs = PassphraseManager::buildPassphraseArgs(cached);
 
-    auto args = QStringLiteral("encode \"%1\" \"%2\"%3").arg(extractTemp, m_currentArchive, passArg);
-    auto r = ProgressDialog::runRoxWithProgress(this, L::get("dialog.reencoding"), L::get("dialog.reencodingProgress"), args);
+    QStringList encArgs{QStringLiteral("encode"), extractTemp, m_currentArchive};
+    encArgs.append(passArgs);
+    auto r = ProgressDialog::runRoxWithProgress(this, L::get("dialog.reencoding"), L::get("dialog.reencodingProgress"), encArgs);
     TempHelper::safeDelete(extractTemp);
 
     if (r.exitCode != 0) {
@@ -602,8 +600,7 @@ void MainWindow::createEmptyArchive() {
     if (f.open(QIODevice::WriteOnly)) { f.write(""); f.close(); }
 
     auto tempArchive = QDir::tempPath() + QStringLiteral("/pyxelze_empty_%1.png").arg(QUuid::createUuid().toString(QUuid::Id128));
-    auto args = QStringLiteral("encode \"%1\" \"%2\"").arg(tempDir, tempArchive);
-    auto r = ProcessHelper::runRox(QStringList{args}, 15000);
+    auto r = ProcessHelper::runRox({QStringLiteral("encode"), tempDir, tempArchive}, 15000);
     TempHelper::safeDelete(tempDir);
 
     if (r.exitCode == 0 && QFile::exists(tempArchive)) {

@@ -39,8 +39,6 @@ bool PassphraseManager::isDecryptionFailure(const QString& stdOut, const QString
         || contains(stdErr, QStringLiteral("Encrypted payload"));
 }
 
-QString PassphraseManager::buildPassphraseArg(const QString& passphrase) {
-    auto escaped = passphrase;
-    escaped.replace('"', QStringLiteral("\\\""));
-    return QStringLiteral("--passphrase \"%1\"").arg(escaped);
+QStringList PassphraseManager::buildPassphraseArgs(const QString& passphrase) {
+    return {QStringLiteral("--passphrase"), passphrase};
 }

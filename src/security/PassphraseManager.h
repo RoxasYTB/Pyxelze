@@ -1,5 +1,6 @@
 #pragma once
 #include <QString>
+#include <QStringList>
 
 namespace PassphraseManager {
     QString cachedPassphrase();
@@ -7,5 +8,5 @@ namespace PassphraseManager {
     void clear();
     bool needsPassphrase(const QString& stdOut, const QString& stdErr);
     bool isDecryptionFailure(const QString& stdOut, const QString& stdErr);
-    QString buildPassphraseArg(const QString& passphrase);
+    QStringList buildPassphraseArgs(const QString& passphrase);
 }

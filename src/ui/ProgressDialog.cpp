@@ -32,7 +32,7 @@ ProgressDialog::ProgressDialog(QWidget* parent, const QString& title, const QStr
     connect(btnCancel, &QPushButton::clicked, this, [this]{ m_cancelled = true; });
 }
 
-ProcessResult ProgressDialog::runRoxWithProgress(QWidget* parent, const QString& title, const QString& message, const QString& args) {
+ProcessResult ProgressDialog::runRoxWithProgress(QWidget* parent, const QString& title, const QString& message, const QStringList& args) {
     ProgressDialog dlg(parent, title, message);
     dlg.show();
     QApplication::processEvents();
@@ -43,7 +43,7 @@ ProcessResult ProgressDialog::runRoxWithProgress(QWidget* parent, const QString&
 
     QProcess proc;
     proc.setProcessChannelMode(QProcess::SeparateChannels);
-    proc.start(roxPath, QProcess::splitCommand(args));
+    proc.start(roxPath, args);
 
     if (!proc.waitForStarted(5000)) {
         dlg.close();
