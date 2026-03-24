@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Pyxelze VERSION 1.2.3 LANGUAGES CXX)
+project(Pyxelze VERSION 1.2.4 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -64,6 +64,20 @@ if(WIN32)
     set_target_properties(pyxelze PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
+if(APPLE)
+    set(MACOSX_ICON "${CMAKE_SOURCE_DIR}/resources/icons/pyxelze.icns")
+    set_source_files_properties(${MACOSX_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+    target_sources(pyxelze PRIVATE ${MACOSX_ICON})
+    set_target_properties(pyxelze PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_BUNDLE_NAME "Pyxelze"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.roxasytb.pyxelze"
+        MACOSX_BUNDLE_ICON_FILE "pyxelze.icns"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+    )
+endif()
+
 if(WIN32)
     set(_rox_bin "roxify_native.exe")
 else()
@@ -71,6 +85,16 @@ else()
 endif()
 
 set(ROXIFY_NATIVE "" CACHE FILEPATH "Path to roxify_native binary")
+if(NOT ROXIFY_NATIVE)
+    # Search sibling build directories (e.g. build-debug/roxify/)
+    file(GLOB _build_dirs LIST_DIRECTORIES true "${CMAKE_SOURCE_DIR}/build-*/roxify/${_rox_bin}")
+    foreach(_c IN LISTS _build_dirs)
+        if(EXISTS "${_c}")
+            set(ROXIFY_NATIVE "${_c}")
+            break()
+        endif()
+    endforeach()
+endif()
 if(NOT ROXIFY_NATIVE)
     execute_process(
         COMMAND npm root -g
@@ -106,4 +130,7 @@ else()
     message(WARNING "roxify_native not found — set ROXIFY_NATIVE to the binary path")
 endif()
 
-install(TARGETS pyxelze RUNTIME DESTINATION bin)
+install(TARGETS pyxelze
+    RUNTIME DESTINATION bin
+    BUNDLE DESTINATION .
+)
