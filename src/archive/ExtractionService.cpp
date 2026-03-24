@@ -31,15 +31,29 @@ static bool canWriteTo(const QString& dir) {
     return false;
 }
 
+static QStringList buildDecompressArgs(const QString& archivePath, const QString& outputDir, const QStringList& extraArgs = {}) {
+    QStringList args{QStringLiteral("decompress"), archivePath, outputDir};
+    args.append(extraArgs);
+    return args;
+}
+
+static QStringList buildDecompressArgsWithPass(const QString& archivePath, const QString& outputDir, const QString& passphrase, const QStringList& extraArgs = {}) {
+    QStringList args{QStringLiteral("decompress"), archivePath};
+    if (!passphrase.isEmpty())
+        args.append(PassphraseManager::buildPassphraseArgs(passphrase));
+    args.append(outputDir);
+    args.append(extraArgs);
+    return args;
+}
+
 static bool runPassphraseRetryLoop(QWidget* parent, const QString& archivePath, const QString& outputDir) {
     QString errorMsg;
     while (true) {
         auto pass = PassphraseDialog::prompt(parent, L::get("passphrase.required"), L::get("passphrase.prompt"), errorMsg);
         if (!pass.has_value()) return false;
 
-        auto passArg = PassphraseManager::buildPassphraseArg(*pass);
-        auto args = QStringLiteral("decompress \"%1\" %2 \"%3\"").arg(archivePath, passArg, outputDir);
-        auto r = ProcessHelper::runRox(args.split(' '));
+        auto args = buildDecompressArgsWithPass(archivePath, outputDir, *pass);
+        auto r = ProcessHelper::runRox(args);
         if (r.exitCode == 0) {
             PassphraseManager::save(*pass);
             return true;
@@ -63,8 +77,7 @@ static bool extractWithPassphraseLoop(QWidget* parent, const QString& archivePat
             pass = *result;
         }
 
-        auto passArg = PassphraseManager::buildPassphraseArg(pass);
-        auto args = QStringLiteral("decompress \"%1\" %2 \"%3\"").arg(archivePath, passArg, outputDir);
+        auto args = buildDecompressArgsWithPass(archivePath, outputDir, pass);
         auto r = ProgressDialog::runRoxWithProgress(parent, L::get("extraction.decrypting"), L::get("extraction.decryptingProgress"), args);
 
         if (r.exitCode == 0 && ProcessHelper::directoryHasEntries(outputDir)) {
@@ -87,10 +100,10 @@ static bool extractViaTempDir(QWidget* parent, const QString& archivePath, const
     auto tempDir = TempHelper::createTempDir(QStringLiteral("pyxelze-extract"));
     Logger::log(QStringLiteral("ExtractViaTempDir: %1 -> temp=%2 -> final=%3").arg(archivePath, tempDir, outputDir));
 
-    auto args = QStringLiteral("decompress \"%1\" \"%2\"").arg(archivePath, tempDir);
     auto cached = PassphraseManager::cachedPassphrase();
-    if (!cached.isEmpty())
-        args = QStringLiteral("decompress \"%1\" %2 \"%3\"").arg(archivePath, PassphraseManager::buildPassphraseArg(cached), tempDir);
+    auto args = cached.isEmpty()
+        ? buildDecompressArgs(archivePath, tempDir)
+        : buildDecompressArgsWithPass(archivePath, tempDir, cached);
 
     auto r = ProgressDialog::runRoxWithProgress(parent, L::get("extraction.fallback"), L::get("extraction.fallbackProgress"), args);
 
@@ -118,7 +131,7 @@ bool ExtractionService::extractArchive(QWidget* parent, const QString& archivePa
     if (!canWriteTo(outputDir))
         return extractViaTempDir(parent, archivePath, outputDir);
 
-    auto r = ProcessHelper::runRox(QStringList{QStringLiteral("decompress"), archivePath, outputDir});
+    auto r = ProcessHelper::runRox(buildDecompressArgs(archivePath, outputDir));
 
     if (PassphraseManager::needsPassphrase(r.stdOut, r.stdErr))
         return extractWithPassphraseLoop(parent, archivePath, outputDir);
@@ -136,10 +149,10 @@ bool ExtractionService::extractWithProgress(QWidget* parent, const QString& arch
     QDir().mkpath(outputDir);
     Logger::log(QStringLiteral("ExtractWithProgress: %1 -> %2").arg(archivePath, outputDir));
 
-    auto args = QStringLiteral("decompress \"%1\" \"%2\"").arg(archivePath, outputDir);
     auto cached = PassphraseManager::cachedPassphrase();
-    if (!cached.isEmpty())
-        args = QStringLiteral("decompress \"%1\" %2 \"%3\"").arg(archivePath, PassphraseManager::buildPassphraseArg(cached), outputDir);
+    auto args = cached.isEmpty()
+        ? buildDecompressArgs(archivePath, outputDir)
+        : buildDecompressArgsWithPass(archivePath, outputDir, cached);
 
     auto r = ProgressDialog::runRoxWithProgress(parent, L::get("extraction.title"), L::get("extraction.progress"), args);
 
@@ -162,22 +175,18 @@ bool ExtractionService::extractFileSingle(const QString& archivePath, const QStr
     auto tempOut = TempHelper::createTempDir(QStringLiteral("pyxelze_extract"));
     auto cleanup = qScopeGuard([&]{ TempHelper::safeDelete(tempOut); });
 
-    auto escaped = internalPath;
-    escaped.replace('"', QStringLiteral("\\\""));
-    QString args;
     auto cached = PassphraseManager::cachedPassphrase();
-    if (!cached.isEmpty())
-        args = QStringLiteral("decompress \"%1\" %2 \"%3\" --files \"%4\"").arg(archivePath, PassphraseManager::buildPassphraseArg(cached), tempOut, escaped);
-    else
-        args = QStringLiteral("decompress \"%1\" \"%2\" --files \"%3\"").arg(archivePath, tempOut, escaped);
+    QStringList filesArg{QStringLiteral("--files"), internalPath};
+    auto args = cached.isEmpty()
+        ? buildDecompressArgs(archivePath, tempOut, filesArg)
+        : buildDecompressArgsWithPass(archivePath, tempOut, cached, filesArg);
 
-    auto r = ProcessHelper::runRox(QStringList{args});
+    auto r = ProcessHelper::runRox(args);
     if (r.exitCode != 0 || !ProcessHelper::directoryHasEntries(tempOut)) {
-        if (!cached.isEmpty())
-            args = QStringLiteral("decompress \"%1\" %2 \"%3\"").arg(archivePath, PassphraseManager::buildPassphraseArg(cached), tempOut);
-        else
-            args = QStringLiteral("decompress \"%1\" \"%2\"").arg(archivePath, tempOut);
-        ProcessHelper::runRox(QStringList{args});
+        auto fallbackArgs = cached.isEmpty()
+            ? buildDecompressArgs(archivePath, tempOut)
+            : buildDecompressArgsWithPass(archivePath, tempOut, cached);
+        ProcessHelper::runRox(fallbackArgs);
     }
 
     auto sourceFull = findExtractedFile(tempOut, internalPath);
@@ -205,14 +214,12 @@ int ExtractionService::extractMultipleFiles(const QString& archivePath, const QS
 
 bool ExtractionService::decompressArchiveToDir(const QString& archivePath, const QString& outputDir) {
     QDir().mkpath(outputDir);
-    QString args;
     auto cached = PassphraseManager::cachedPassphrase();
-    if (!cached.isEmpty())
-        args = QStringLiteral("decompress \"%1\" %2 \"%3\"").arg(archivePath, PassphraseManager::buildPassphraseArg(cached), outputDir);
-    else
-        args = QStringLiteral("decompress \"%1\" \"%2\"").arg(archivePath, outputDir);
+    auto args = cached.isEmpty()
+        ? buildDecompressArgs(archivePath, outputDir)
+        : buildDecompressArgsWithPass(archivePath, outputDir, cached);
 
-    auto r = ProcessHelper::runRox(QStringList{args});
+    auto r = ProcessHelper::runRox(args);
     Logger::log(QStringLiteral("DecompressArchiveToDir: exit=%1").arg(r.exitCode));
 
     if (PassphraseManager::needsPassphrase(r.stdOut, r.stdErr) && r.exitCode != 0)

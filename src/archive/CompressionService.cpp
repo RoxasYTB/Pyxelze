@@ -17,11 +17,17 @@ static bool isAccessDenied(const QString& err) {
         || err.contains(QStringLiteral("os error 5"), Qt::CaseInsensitive);
 }
 
-static bool compressViaTempFile(QWidget* parent, const QString& dirPath, const QString& outputFile, const QString& passArg) {
+static QStringList buildEncodeArgs(const QString& dirPath, const QString& outputFile, const QStringList& passArgs = {}) {
+    QStringList args{QStringLiteral("encode"), dirPath, outputFile};
+    args.append(passArgs);
+    return args;
+}
+
+static bool compressViaTempFile(QWidget* parent, const QString& dirPath, const QString& outputFile, const QStringList& passArgs) {
     auto tempFile = QDir::tempPath() + QStringLiteral("/pyxelze-encode-%1.png").arg(QUuid::createUuid().toString(QUuid::Id128));
     Logger::log(QStringLiteral("CompressViaTempFile: %1 -> %2").arg(dirPath, tempFile));
 
-    auto args = QStringLiteral("encode \"%1\" \"%2\"%3").arg(dirPath, tempFile, passArg);
+    auto args = buildEncodeArgs(dirPath, tempFile, passArgs);
     auto r = ProgressDialog::runRoxWithProgress(parent, L::get("compression.fallback"), L::get("compression.fallbackProgress"), args);
 
     if (r.exitCode == 0 && QFile::exists(tempFile)) {
@@ -44,18 +50,18 @@ bool CompressionService::compressDirectory(QWidget* parent, const QString& dirPa
     auto pass = PassphraseDialog::prompt(parent, L::get("compression.passphraseTitle"), L::get("compression.passphrasePrompt"));
     if (!pass.has_value()) return false;
 
-    QString passArg;
+    QStringList passArgs;
     if (!pass->isEmpty())
-        passArg = QStringLiteral(" ") + PassphraseManager::buildPassphraseArg(*pass);
+        passArgs = PassphraseManager::buildPassphraseArgs(*pass);
 
-    auto args = QStringLiteral("encode \"%1\" \"%2\"%3").arg(dirPath, out, passArg);
+    auto args = buildEncodeArgs(dirPath, out, passArgs);
     auto r = ProgressDialog::runRoxWithProgress(parent, L::get("compression.encoding"), L::get("compression.encodingFile").replace(QStringLiteral("{0}"), QFileInfo(dirPath).fileName()), args);
 
     if (r.exitCode == 0 && QFile::exists(out))
         return true;
 
     if (isAccessDenied(r.stdErr))
-        return compressViaTempFile(parent, dirPath, out, passArg);
+        return compressViaTempFile(parent, dirPath, out, passArgs);
 
     return false;
 }
