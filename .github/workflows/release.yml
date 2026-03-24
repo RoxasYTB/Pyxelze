@@ -26,24 +26,18 @@ jobs:
         run: |
           sudo npm install -g roxify
           ROXIFY_PATH="$(sudo npm root -g)/roxify/dist/roxify_native"
-          echo "ROXIFY_PATH=${ROXIFY_PATH}" >> $GITHUB_ENV
+          echo "ROXIFY_NATIVE=${ROXIFY_PATH}" >> $GITHUB_ENV
 
       - name: Extract version
         run: |
           VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oP '\d+\.\d+\.\d+')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Build release
-        run: |
-          mkdir -p build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DROXIFY_NATIVE="${ROXIFY_PATH}"
-          make -j$(nproc)
-
       - name: Build .deb
-        run: bash scripts/build_deb.sh
+        run: ROXIFY_NATIVE="${ROXIFY_NATIVE}" bash scripts/build_deb.sh
 
       - name: Build AppImage
-        run: bash scripts/build_appimage.sh
+        run: ROXIFY_NATIVE="${ROXIFY_NATIVE}" bash scripts/build_appimage.sh
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
@@ -87,10 +81,12 @@ jobs:
       - name: Deploy Qt
         run: |
           mkdir build\deploy
-          windeployqt --dir build\deploy build\Release\pyxelze.exe
-          Copy-Item build\Release\pyxelze.exe build\deploy\pyxelze.exe
+          copy build\Release\pyxelze.exe build\deploy\pyxelze.exe
+          windeployqt build\deploy\pyxelze.exe
           if (Test-Path build\Release\roxify) {
             Copy-Item -Recurse build\Release\roxify build\deploy\roxify
+          } elseif (Test-Path build\roxify) {
+            Copy-Item -Recurse build\roxify build\deploy\roxify
           }
 
       - name: Build installer
@@ -103,8 +99,52 @@ jobs:
           name: windows-installer
           path: build/Pyxelze-${{ env.VERSION }}-Setup.exe
 
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: mac
+          target: desktop
+          arch: clang_64
+
+      - name: Install roxify
+        run: |
+          npm install -g roxify
+          ROXIFY_PATH="$(npm root -g)/roxify/dist/roxify_native"
+          echo "ROXIFY_NATIVE=${ROXIFY_PATH}" >> $GITHUB_ENV
+
+      - name: Extract version
+        run: |
+          VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Build and create DMG
+        run: |
+          ROXIFY_NATIVE="${ROXIFY_NATIVE}" bash scripts/build_macos.sh
+
+      - name: Ensure DMG exists
+        run: |
+          DMG="build-macos/Pyxelze-${VERSION}-macOS.dmg"
+          if [ ! -f "$DMG" ]; then
+            APP_PATH="build-macos/pyxelze.app"
+            [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+            hdiutil create -volname "Pyxelze" -srcfolder "$APP_PATH" \
+              -ov -format UDZO "$DMG"
+          fi
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: build-macos/Pyxelze-${{ env.VERSION }}-macOS.dmg
+
   release:
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -128,3 +168,4 @@ jobs:
             artifacts/linux-packages/pyxelze_${{ env.VERSION }}_amd64.deb
             artifacts/linux-packages/Pyxelze-${{ env.VERSION }}-x86_64.AppImage
             artifacts/windows-installer/Pyxelze-${{ env.VERSION }}-Setup.exe
+            artifacts/macos-dmg/Pyxelze-${{ env.VERSION }}-macOS.dmg

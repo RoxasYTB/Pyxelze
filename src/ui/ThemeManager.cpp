@@ -36,13 +36,17 @@ void ThemeManager::applyToWidget(QWidget* w) {
         p.setColor(QPalette::ToolTipBase, controlBack());
         p.setColor(QPalette::ToolTipText, windowFore());
     } else {
-        p = QApplication::style()->standardPalette();
-        p.setColor(QPalette::Window, QColor(250, 250, 250));
+        p.setColor(QPalette::Window, windowBack());
+        p.setColor(QPalette::WindowText, windowFore());
         p.setColor(QPalette::Base, QColor(255, 255, 255));
         p.setColor(QPalette::AlternateBase, QColor(245, 245, 245));
+        p.setColor(QPalette::Text, windowFore());
         p.setColor(QPalette::Button, QColor(245, 245, 245));
+        p.setColor(QPalette::ButtonText, windowFore());
         p.setColor(QPalette::Highlight, accentColor());
         p.setColor(QPalette::HighlightedText, Qt::white);
+        p.setColor(QPalette::ToolTipBase, QColor(255, 255, 255));
+        p.setColor(QPalette::ToolTipText, windowFore());
     }
     w->setPalette(p);
     w->setStyleSheet(buildStyleSheet());
@@ -119,6 +123,15 @@ QString ThemeManager::buildStyleSheet() {
         "QFrame[frameShape=\"5\"] { color: %10; }"
 
         "QTextEdit { background: %1; color: %2; border: 1px solid %4; border-radius: 2px; }"
+
+        "QLabel { color: %2; }"
+        "QDialogButtonBox QPushButton { background: %3; color: %2; }"
+        "QGroupBox { color: %2; border: 1px solid %4; border-radius: 3px; margin-top: 8px; padding-top: 12px; }"
+        "QGroupBox::title { color: %2; subcontrol-origin: margin; left: 8px; padding: 0 3px; }"
+        "QCheckBox { color: %2; }"
+        "QRadioButton { color: %2; }"
+        "QComboBox { background: %3; color: %2; border: 1px solid %4; border-radius: 2px; padding: 2px 6px; }"
+        "QComboBox QAbstractItemView { background: %3; color: %2; border: 1px solid %4; selection-background-color: %6; }"
     ).arg(bg, fg, ctrl, border, hover, accent, header, sel, dim, sep);
 }
 

@@ -1,6 +1,6 @@
 ﻿# Pyxelze
 
-Explorateur et gestionnaire d'archives stéganographiques multiplateforme (Linux, Windows). Pyxelze permet de créer, ouvrir, naviguer et extraire des archives roxify — des fichiers PNG contenant des données cachées dans les pixels via stéganographie.
+Explorateur et gestionnaire d'archives stéganographiques multiplateforme (Linux, macOS, Windows). Pyxelze permet de créer, ouvrir, naviguer et extraire des archives roxify — des fichiers PNG contenant des données cachées dans les pixels via stéganographie.
 
 [![GitHub release](https://img.shields.io/github/v/release/RoxasYTB/Pyxelze)](https://github.com/RoxasYTB/Pyxelze/releases)
 
@@ -65,7 +65,7 @@ Explorateur et gestionnaire d'archives stéganographiques multiplateforme (Linux
 ### Mise à jour automatique
 
 - Vérification via l'API GitHub Releases au lancement
-- Téléchargement et lancement automatique de l'installeur (Windows) ou notification (Linux)
+- Téléchargement et lancement de l'asset adapté à la plateforme (Windows .exe, Linux .deb/.AppImage, macOS .dmg/.pkg/.zip)
 - Vérification manuelle via le menu Outils
 
 ### Moteur roxify
@@ -86,6 +86,14 @@ Explorateur et gestionnaire d'archives stéganographiques multiplateforme (Linux
 - **g++** ou **clang++** avec support C++20
 - **roxify_native** : `npm install -g roxify`
 
+### macOS
+
+- **Qt 6** (Widgets, Network, Svg)
+- **CMake 3.20+**
+- **clang++** avec support C++20
+- **roxify_native** : `npm install -g roxify`
+- **macdeployqt** (optionnel, pour distribuer l'app bundle)
+
 ### Windows
 
 - **Qt 6** (Widgets, Network, Svg)
@@ -103,7 +111,13 @@ git clone https://github.com/RoxasYTB/Pyxelze.git
 cd Pyxelze
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
+cmake --build . --parallel
+```
+
+### Build macOS (.app)
+
+```bash
+bash scripts/build_macos.sh
 ```
 
 ### Paquets Linux

@@ -31,8 +31,18 @@ static void resolve() {
     if (tryPath(base + QStringLiteral("/") + bin)) return;
 
 #ifndef Q_OS_WIN
+#ifdef Q_OS_MAC
+    // macOS app bundles place helper binaries either next to the executable
+    // or under Resources depending on packaging strategy.
+    if (tryPath(base + QStringLiteral("/../Resources/roxify/roxify_native"))) return;
+    if (tryPath(base + QStringLiteral("/../MacOS/roxify/roxify_native"))) return;
+    if (tryPath(QStringLiteral("/opt/homebrew/lib/pyxelze/roxify_native"))) return;
+    if (tryPath(QStringLiteral("/usr/local/lib/pyxelze/roxify_native"))) return;
+    if (tryPath(QStringLiteral("/opt/local/lib/pyxelze/roxify_native"))) return;
+#else
     if (tryPath(QStringLiteral("/usr/lib/pyxelze/roxify_native"))) return;
     if (tryPath(QStringLiteral("/usr/local/lib/pyxelze/roxify_native"))) return;
+#endif
 
     auto fromPath = QStandardPaths::findExecutable(QStringLiteral("roxify_native"));
     if (!fromPath.isEmpty()) { s_roxPath = fromPath; return; }

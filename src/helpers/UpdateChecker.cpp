@@ -54,6 +54,10 @@ void UpdateChecker::checkAsync(QWidget* parent, bool silent) {
             auto name = a.toObject()[QStringLiteral("name")].toString();
 #ifdef Q_OS_WIN
             if (name.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive)) {
+#elif defined(Q_OS_MAC)
+            if (name.endsWith(QStringLiteral(".dmg"), Qt::CaseInsensitive)
+                || name.endsWith(QStringLiteral(".pkg"), Qt::CaseInsensitive)
+                || name.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive)) {
 #else
             if (name.endsWith(QStringLiteral(".deb"), Qt::CaseInsensitive) || name.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive)) {
 #endif
