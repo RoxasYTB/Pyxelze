@@ -133,6 +133,8 @@
   "contextmenu.openArchive": "Открыть архив",
   "contextmenu.decode": "Декодировать",
   "contextmenu.encode": "Закодировать",
+  "contextmenu.extractHere": "Извлечь сюда",
+  "contextmenu.extractTo": "Извлечь в папку...",
   "contextmenu.relaunchError": "Не удалось перезапустить от имени администратора: {0}",
   "update.available": "Доступно обновление Pyxelze (v{0}).\n\nСкачать сейчас?",
   "update.availableTitle": "Доступно обновление",

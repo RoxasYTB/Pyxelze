@@ -133,6 +133,8 @@
   "contextmenu.openArchive": "Arşivi aç",
   "contextmenu.decode": "Çöz",
   "contextmenu.encode": "Kodla",
+  "contextmenu.extractHere": "Buraya çıkar",
+  "contextmenu.extractTo": "Klasöre çıkar...",
   "contextmenu.relaunchError": "Yönetici olarak yeniden başlatılamıyor: {0}",
   "update.available": "Pyxelze güncellemesi mevcut (v{0}).\n\nŞimdi indirmek ister misiniz?",
   "update.availableTitle": "Güncelleme mevcut",

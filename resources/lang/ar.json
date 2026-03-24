@@ -133,6 +133,8 @@
   "contextmenu.openArchive": "فتح الأرشيف",
   "contextmenu.decode": "فك الترميز",
   "contextmenu.encode": "ترميز",
+  "contextmenu.extractHere": "استخراج هنا",
+  "contextmenu.extractTo": "استخراج إلى مجلد...",
   "contextmenu.relaunchError": "تعذر إعادة التشغيل كمسؤول: {0}",
   "update.available": "يتوفر تحديث لـ Pyxelze (الإصدار {0}).\n\nهل تريد تنزيله الآن؟",
   "update.availableTitle": "تحديث متاح",

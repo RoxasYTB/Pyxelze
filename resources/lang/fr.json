@@ -135,6 +135,8 @@
   "contextmenu.openArchive": "Ouvrir l'archive",
   "contextmenu.decode": "Décoder",
   "contextmenu.encode": "Encoder",
+  "contextmenu.extractHere": "Extraire ici",
+  "contextmenu.extractTo": "Extraire vers un dossier...",
   "contextmenu.relaunchError": "Impossible de relancer en mode administrateur: {0}",
   "update.available": "Une mise à jour de Pyxelze est disponible (v{0}).\n\nVoulez-vous la télécharger maintenant ?",
   "update.availableTitle": "Mise à jour disponible",

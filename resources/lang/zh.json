@@ -133,6 +133,8 @@
   "contextmenu.openArchive": "打开归档",
   "contextmenu.decode": "解码",
   "contextmenu.encode": "编码",
+  "contextmenu.extractHere": "在此处解压",
+  "contextmenu.extractTo": "解压到文件夹...",
   "contextmenu.relaunchError": "无法以管理员身份重新启动: {0}",
   "update.available": "Pyxelze 有新版本可用 (v{0})。\n\n是否立即下载？",
   "update.availableTitle": "有可用更新",

@@ -1,5 +1,5 @@
 #define MyAppName "Pyxelze"
-#define MyAppVersion "1.2.2"
+#define MyAppVersion "1.2.3"
 #define MyAppPublisher "Yohan SANNIER"
 #define MyAppURL "https://github.com/RoxasYTB/Pyxelze"
 #define MyAppExeName "pyxelze.exe"
@@ -64,6 +64,30 @@ Root: HKA; Subkey: "Software\Classes\.pxz"; ValueType: string; ValueName: ""; Va
 Root: HKA; Subkey: "Software\Classes\PyxelzeArchive"; ValueType: string; ValueName: ""; ValueData: "Pyxelze Archive"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\PyxelzeArchive\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"
 Root: HKA; Subkey: "Software\Classes\PyxelzeArchive\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Pyxelze"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze"; ValueType: string; ValueName: "SubCommands"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\appIcon.ico"
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze\shell\open"; ValueType: string; ValueName: ""; ValueData: "Open archive"
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze\shell\extractHere"; ValueType: string; ValueName: ""; ValueData: "Extract here"
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze\shell\extractHere\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" --extract-here ""%1"""
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze\shell\extractTo"; ValueType: string; ValueName: ""; ValueData: "Extract to folder..."
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze\shell\extractTo\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" --extract-to ""%1"""
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze\shell\encode"; ValueType: string; ValueName: ""; ValueData: "Encode"
+Root: HKCU; Subkey: "Software\Classes\*\shell\Pyxelze\shell\encode\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" --encode ""%1"""
+
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze"; ValueType: string; ValueName: "MUIVerb"; ValueData: "Pyxelze"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze"; ValueType: string; ValueName: "SubCommands"; ValueData: ""
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\appIcon.ico"
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze\shell\open"; ValueType: string; ValueName: ""; ValueData: "Open archive"
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze\shell\extractHere"; ValueType: string; ValueName: ""; ValueData: "Extract here"
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze\shell\extractHere\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" --extract-here ""%1"""
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze\shell\extractTo"; ValueType: string; ValueName: ""; ValueData: "Extract to folder..."
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze\shell\extractTo\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" --extract-to ""%1"""
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze\shell\encode"; ValueType: string; ValueName: ""; ValueData: "Encode"
+Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze\shell\encode\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" --encode ""%1"""
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
