@@ -100,17 +100,13 @@ jobs:
           path: build/Pyxelze-${{ env.VERSION }}-Setup.exe
 
   build-macos:
-    runs-on: macos-14
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Qt6
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.8.*'
-          host: mac
-          target: desktop
-          arch: clang_64
+      - name: Install Qt6 (universal)
+        run: |
+          brew install qt@6
 
       - name: Install roxify
         run: |
@@ -123,9 +119,19 @@ jobs:
           VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Build and create DMG
+      - name: Build universal binary and create DMG
         run: |
+          export PATH="$(brew --prefix qt@6)/bin:$PATH"
+          export CMAKE_PREFIX_PATH="$(brew --prefix qt@6)"
           ROXIFY_NATIVE="${ROXIFY_NATIVE}" bash scripts/build_macos.sh
+
+      - name: Verify universal binary
+        run: |
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          echo "Architectures:"
+          lipo -info "$APP_PATH/Contents/MacOS/pyxelze"
+          file "$APP_PATH/Contents/MacOS/pyxelze"
 
       - name: Ensure DMG exists
         run: |

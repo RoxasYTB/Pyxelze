@@ -38,7 +38,11 @@ if [ -n "${ROXIFY_NATIVE:-}" ]; then
     ROXIFY_OPT="-DROXIFY_NATIVE=${ROXIFY_NATIVE}"
 fi
 
-cmake -S . -B "${BUILD_DIR}" -DCMAKE_BUILD_TYPE=Release ${ROXIFY_OPT}
+cmake -S . -B "${BUILD_DIR}" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" \
+    ${ROXIFY_OPT}
 cmake --build "${BUILD_DIR}" --config Release --parallel
 
 APP_PATH="${BUILD_DIR}/${APP_NAME}"
