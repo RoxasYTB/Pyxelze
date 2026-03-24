@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Pyxelze
+Comment=PNG steganography archive manager
+Exec=pyxelze %f
+Icon=pyxelze
+Terminal=false
+Type=Application
+Categories=Utility;Archiving;
+MimeType=image/png;
+Keywords=archive;steganography;png;rox;roxify;

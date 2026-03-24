@@ -1,0 +1,27 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/new.svg</file>
+        <file>icons/open.svg</file>
+        <file>icons/add.svg</file>
+        <file>icons/extract-all.svg</file>
+        <file>icons/extract.svg</file>
+        <file>icons/info.svg</file>
+        <file>icons/up.svg</file>
+        <file>icons/folder.svg</file>
+        <file>icons/file.svg</file>
+        <file>icons/app.svg</file>
+        <file>lang/fr.json</file>
+        <file>lang/en.json</file>
+        <file>lang/de.json</file>
+        <file>lang/es.json</file>
+        <file>lang/it.json</file>
+        <file>lang/ru.json</file>
+        <file>lang/ar.json</file>
+        <file>lang/ja.json</file>
+        <file>lang/zh.json</file>
+        <file>lang/ko.json</file>
+        <file>lang/pt.json</file>
+        <file>lang/tr.json</file>
+        <file>lang/pl.json</file>
+    </qresource>
+</RCC>
