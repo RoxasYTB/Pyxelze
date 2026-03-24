@@ -43,12 +43,17 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "associatepng"; Description: "Associate with .png files (steganography archives)"; GroupDescription: "File associations:"
 
 [Files]
-Source: "..\..\build\pyxelze.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\build\roxify\roxify_native.exe"; DestDir: "{app}\roxify"; Flags: ignoreversion
+Source: "..\..\build\deploy\pyxelze.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\build\deploy\roxify\roxify_native.exe"; DestDir: "{app}\roxify"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\appIcon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
-; Qt6 DLLs - must be deployed with windeployqt before building installer
-Source: "..\..\build\deploy\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\build\deploy\platforms\*"; DestDir: "{app}\platforms"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\styles\*"; DestDir: "{app}\styles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\imageformats\*"; DestDir: "{app}\imageformats"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\iconengines\*"; DestDir: "{app}\iconengines"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\tls\*"; DestDir: "{app}\tls"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\networkinformation\*"; DestDir: "{app}\networkinformation"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

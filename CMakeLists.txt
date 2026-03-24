@@ -64,6 +64,12 @@ if(WIN32)
     set_target_properties(pyxelze PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
+if(WIN32)
+    set(_rox_bin "roxify_native.exe")
+else()
+    set(_rox_bin "roxify_native")
+endif()
+
 set(ROXIFY_NATIVE "" CACHE FILEPATH "Path to roxify_native binary")
 if(NOT ROXIFY_NATIVE)
     execute_process(
@@ -73,8 +79,8 @@ if(NOT ROXIFY_NATIVE)
     )
     if(NPM_ROOT)
         set(_candidates
-            "${NPM_ROOT}/roxify/dist/roxify_native"
-            "${NPM_ROOT}/roxify/target/release/roxify_native"
+            "${NPM_ROOT}/roxify/dist/${_rox_bin}"
+            "${NPM_ROOT}/roxify/target/release/${_rox_bin}"
         )
         foreach(_c IN LISTS _candidates)
             if(EXISTS "${_c}")
@@ -89,9 +95,13 @@ if(ROXIFY_NATIVE AND EXISTS "${ROXIFY_NATIVE}")
     message(STATUS "roxify_native: ${ROXIFY_NATIVE}")
     add_custom_command(TARGET pyxelze POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:pyxelze>/roxify"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ROXIFY_NATIVE}" "$<TARGET_FILE_DIR:pyxelze>/roxify/roxify_native"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ROXIFY_NATIVE}" "$<TARGET_FILE_DIR:pyxelze>/roxify/${_rox_bin}"
     )
-    install(PROGRAMS "${ROXIFY_NATIVE}" DESTINATION lib/pyxelze RENAME roxify_native)
+    if(WIN32)
+        install(PROGRAMS "${ROXIFY_NATIVE}" DESTINATION bin/roxify RENAME ${_rox_bin})
+    else()
+        install(PROGRAMS "${ROXIFY_NATIVE}" DESTINATION lib/pyxelze RENAME roxify_native)
+    endif()
 else()
     message(WARNING "roxify_native not found — set ROXIFY_NATIVE to the binary path")
 endif()
