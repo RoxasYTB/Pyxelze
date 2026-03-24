@@ -1,121 +1,129 @@
 ﻿# Pyxelze
 
-Explorateur et gestionnaire d'archives steganographiques pour Windows. Pyxelze permet de créer, ouvrir, naviguer et extraire des archives roxify - des fichiers PNG contenant des données cachees dans les pixels via steganographie.
+Explorateur et gestionnaire d'archives stéganographiques multiplateforme (Linux, Windows). Pyxelze permet de créer, ouvrir, naviguer et extraire des archives roxify — des fichiers PNG contenant des données cachées dans les pixels via stéganographie.
 
 [![GitHub release](https://img.shields.io/github/v/release/RoxasYTB/Pyxelze)](https://github.com/RoxasYTB/Pyxelze/releases)
 
 ---
 
-## Fonctionnalites
+## Fonctionnalités
 
 ### Gestion d'archives
 
-- Creation d'archives PNG steganographiques a partir de fichiers ou dossiers
+- Création d'archives PNG stéganographiques à partir de fichiers ou dossiers
 - Ouverture et navigation dans les archives existantes
-- Extraction complete ou selective de fichiers
-- Ajout de fichiers a une archive existante (decompression + re-encodage)
-- Chiffrement AES-256-GCM par passphrase avec detection automatique a l'ouverture
+- Extraction complète ou sélective de fichiers
+- Ajout de fichiers à une archive existante (décompression + ré-encodage)
+- Chiffrement AES-256-GCM par passphrase avec détection automatique à l'ouverture
 - Boucle de retry en cas de mot de passe incorrect
-- Informations detaillees : taille archive, taille contenu, ratio de compression, nombre de fichiers, chiffrement, dates
+- Informations détaillées : taille archive, taille contenu, ratio de compression, nombre de fichiers, chiffrement, dates
 
 ### Interface graphique
 
-- Barre d'outils avec 7 boutons colores (Nouveau, Ouvrir, Ajouter, Tout extraire, Extraire, Infos, Remonter) et icones Segoe Fluent Icons
+- Barre d'outils avec boutons colorés (Nouveau, Ouvrir, Ajouter, Tout extraire, Extraire, Infos, Remonter) et icônes SVG
 - Barre d'adresse affichant le chemin complet (archive + chemin interne)
-- ListView avec 3 colonnes (Nom, Taille, Type) et 4 modes de vue (Details, List, SmallIcon, LargeIcon)
+- QTreeView avec colonnes (Nom, Taille, Type)
 - Tri par colonne cliquable avec dossiers toujours en premier
-- Owner-draw complet avec en-tetes personnalises et accents colores
-- Double-buffering pour eliminer le scintillement
-- Zoom Ctrl+molette pour changer le mode de vue
-- Menu contextuel (clic droit) : Ouvrir, Extraire vers..., Extraire ici
+- Zoom Ctrl+molette pour changer la taille des icônes
+- Menu contextuel (clic droit) : Ouvrir, Extraire vers…, Extraire ici
 - Barre de statut avec compteurs fichiers/dossiers et barre de progression
 
-### Theme sombre / clair
+### Thème sombre / clair
 
 - Basculement mode sombre / clair via le menu Affichage
-- Persistance du theme via le registre Windows
-- Application dynamique a toutes les fenetres (hot-switch)
-- Palette complete : fond, texte, controles, accents, hover, selection, bordures, headers
+- Persistance du thème via QSettings
+- Application dynamique à toutes les fenêtres (hot-switch)
+- Palette complète : fond, texte, contrôles, accents, hover, sélection, bordures
 
 ### Drag & Drop
 
-- **Drag OUT** : extraction a la demande (lazy) vers l'explorateur Windows avec support dossiers et chemins courts 8.3
-- **Drag IN** : ajout de fichiers/dossiers a l'archive par glisser-deposer depuis l'explorateur
-- Nettoyage automatique des fichiers temporaires
+- **Drag OUT** : extraction à la demande vers le gestionnaire de fichiers avec QDrag/QMimeData
+- **Drag IN** : ajout de fichiers/dossiers à l'archive par glisser-déposer
+- Nettoyage automatique des fichiers temporaires à la fermeture
 
 ### Navigation
 
 - Navigation dans les dossiers virtuels par double-clic
-- Double-clic sur un fichier : extraction temporaire et ouverture avec l'application associee
-- Bouton Remonter et element ".." pour remonter dans l'arborescence
-- Conservation de l'arborescence complete (pas de suppression du prefixe commun)
-- Raccourcis : Ctrl+O (ouvrir), Backspace/Alt+Haut (remonter), Ctrl+Molette (zoom)
+- Double-clic sur un fichier : extraction temporaire et ouverture avec l'application associée
+- Bouton Remonter et élément ".." pour remonter dans l'arborescence
+- Conservation de l'arborescence complète
+- Raccourcis : Ctrl+O (ouvrir), Backspace (remonter), Ctrl+Molette (zoom)
 
-### Integration Windows
+### Internationalisation
 
-- Menu contextuel Windows sur fichiers et dossiers (Ouvrir l'archive, Decoder, Encoder)
-- Association de fichiers .png (Rox)
-- Icones de fichiers natives via SHGetFileInfo avec cache par extension
-- Surveillance des changements d'associations de fichiers avec rafraichissement automatique
-- Installateur Inno Setup avec langues francais/anglais
+- 13 langues : français, anglais, allemand, espagnol, italien, russe, arabe, japonais, chinois, coréen, portugais, turc, polonais
+- Détection automatique de la langue système
+- Changement de langue à chaud via le menu
 
 ### Ligne de commande
 
-- `Pyxelze.exe <fichier>` : ouvre l'archive dans l'UI
-- `Pyxelze.exe extract <fichier>` / `decode <fichier>` : extraction headless
-- `Pyxelze.exe compress <dossier>` : compression headless
-- `Pyxelze.exe register-contextmenu` / `unregister-contextmenu` : enregistrement silencieux
-- `Pyxelze.exe version` : affiche la version
+- `pyxelze <fichier>` : ouvre l'archive dans l'UI
+- `pyxelze extract <fichier>` : extraction headless
+- `pyxelze compress <dossier>` : compression headless
+- `pyxelze version` : affiche la version
 
-### Contournement antivirus
+### Mise à jour automatique
 
-- Detection automatique des erreurs d'acces refuse (Windows Defender)
-- Retry automatique avec delais croissants
-- Option d'ajout d'exclusion Defender ou extraction via repertoire temporaire
-
-### Mise a jour automatique
-
-- Verification via l'API GitHub Releases au lancement
-- Telechargement et lancement automatique de l'installeur
-- Verification manuelle via le menu Outils
+- Vérification via l'API GitHub Releases au lancement
+- Téléchargement et lancement automatique de l'installeur (Windows) ou notification (Linux)
+- Vérification manuelle via le menu Outils
 
 ### Moteur roxify
 
-- Communication avec `roxify_native.exe` en sous-processus
-- Compression multi-threadee Zstd avec acceleration Rust native
-- Chiffrement AES-256-GCM avec derivation PBKDF2
-- Liste de fichiers encodee dans les pixels (resiliente aux re-saves PNG)
-- Mode resilient aux captures d'ecran (reconstitution)
+- Communication avec `roxify_native` en sous-processus
+- Compression multi-threadée Zstd avec accélération Rust native
+- Chiffrement AES-256-GCM avec dérivation PBKDF2
+- Liste de fichiers encodée dans les pixels (résiliente aux re-saves PNG)
 
 ---
 
-## Prerequis
+## Prérequis
 
-- **Windows 10/11**
-- **.NET 8 SDK** : [Telecharger](https://dotnet.microsoft.com/download/dotnet/8.0)
-- **Inno Setup 6** (optionnel, pour l'installateur) : [Telecharger](https://jrsoftware.org/isdl.php)
+### Linux
+
+- **Qt 6** (Widgets, Network, Svg)
+- **CMake 3.20+**
+- **g++** ou **clang++** avec support C++20
+- **roxify_native** : `npm install -g roxify`
+
+### Windows
+
+- **Qt 6** (Widgets, Network, Svg)
+- **CMake 3.20+**
+- **MSVC** ou **MinGW** avec support C++20
+- **roxify_native** : `npm install -g roxify`
+- **Inno Setup 6** (optionnel, pour l'installateur) : [Télécharger](https://jrsoftware.org/isdl.php)
 
 ---
 
 ## Build
 
-```cmd
+```bash
 git clone https://github.com/RoxasYTB/Pyxelze.git
 cd Pyxelze
-dotnet restore
-dotnet build -c Release
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j$(nproc)
 ```
 
-### Publish
+### Paquets Linux
 
-```cmd
-dotnet publish -c Release -o publish_final
+#### AppImage
+
+```bash
+bash scripts/build_appimage.sh
+```
+
+#### Debian/Ubuntu (.deb)
+
+```bash
+bash scripts/build_deb.sh
 ```
 
 ### Installateur Windows
 
 ```cmd
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" scripts\scripts-windows\tools\installer\installer.iss
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\windows\installer.iss
 ```
 
 ---
