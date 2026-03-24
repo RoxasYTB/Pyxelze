@@ -9,6 +9,7 @@
 #include <QProcess>
 #include <QCoreApplication>
 #include <QMessageBox>
+#include <QMimeDatabase>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
