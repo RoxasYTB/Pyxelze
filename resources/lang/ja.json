@@ -69,6 +69,7 @@
   "dialog.noArchiveOpen": "アーカイブが開かれていません。",
   "dialog.addFiles": "アーカイブにファイルを追加",
   "dialog.extractSuccess": "展開成功:\n{0}",
+  "dialog.extractSelectedSuccess": "{0} ファイルを展開しました:\n{1}",
   "dialog.extractFail": "展開に失敗しました。",
   "dialog.extractPartial": "部分展開: {0}成功、{1}失敗。",
   "dialog.warning": "警告",

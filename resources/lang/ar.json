@@ -69,6 +69,7 @@
   "dialog.noArchiveOpen": "لا يوجد أرشيف مفتوح.",
   "dialog.addFiles": "إضافة ملفات إلى الأرشيف",
   "dialog.extractSuccess": "تم الاستخراج بنجاح إلى:\n{0}",
+  "dialog.extractSelectedSuccess": "تم استخراج {0} ملف(ات) إلى:\n{1}",
   "dialog.extractFail": "فشل الاستخراج.",
   "dialog.extractPartial": "استخراج جزئي: {0} نجح، {1} فشل.",
   "dialog.warning": "تحذير",

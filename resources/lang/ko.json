@@ -69,6 +69,7 @@
   "dialog.noArchiveOpen": "열린 아카이브가 없습니다.",
   "dialog.addFiles": "아카이브에 파일 추가",
   "dialog.extractSuccess": "추출 성공:\n{0}",
+  "dialog.extractSelectedSuccess": "{0}개 파일 추출 완료:\n{1}",
   "dialog.extractFail": "추출 실패.",
   "dialog.extractPartial": "부분 추출: {0} 성공, {1} 실패.",
   "dialog.warning": "경고",

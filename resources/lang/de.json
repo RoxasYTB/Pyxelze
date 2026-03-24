@@ -69,6 +69,7 @@
   "dialog.noArchiveOpen": "Kein Archiv geöffnet.",
   "dialog.addFiles": "Dateien zum Archiv hinzufügen",
   "dialog.extractSuccess": "Extraktion erfolgreich nach:\n{0}",
+  "dialog.extractSelectedSuccess": "{0} Datei(en) extrahiert nach:\n{1}",
   "dialog.extractFail": "Extraktion fehlgeschlagen.",
   "dialog.extractPartial": "Teilweise Extraktion: {0} erfolgreich, {1} fehlgeschlagen.",
   "dialog.warning": "Warnung",

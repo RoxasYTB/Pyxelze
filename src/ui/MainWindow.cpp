@@ -43,6 +43,9 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QMenu>
+#include <QCloseEvent>
+#include <QDrag>
+#include <QMouseEvent>
 
 MainWindow::MainWindow(const QString& archivePath, QWidget* parent)
     : QMainWindow(parent) {
@@ -167,11 +170,13 @@ void MainWindow::buildFileList() {
     m_treeView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_treeView->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_treeView->setSortingEnabled(true);
-    m_treeView->setDragEnabled(true);
+    m_treeView->setDragEnabled(false);
     m_treeView->setAcceptDrops(false);
     m_treeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_treeView->setContextMenuPolicy(Qt::CustomContextMenu);
     m_treeView->setUniformRowHeights(true);
+
+    m_treeView->viewport()->installEventFilter(this);
 
     m_treeView->header()->setStretchLastSection(true);
     m_treeView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
@@ -219,7 +224,7 @@ void MainWindow::buildFileList() {
             }
             TempHelper::safeDelete(extractTemp);
             if (fail == 0)
-                QMessageBox::information(this, L::get("dialog.success"), L::get("dialog.extractSuccess").replace(QStringLiteral("{0}"), QString::number(ok)));
+                QMessageBox::information(this, L::get("dialog.success"), L::get("dialog.extractSelectedSuccess").replace(QStringLiteral("{0}"), QString::number(ok)).replace(QStringLiteral("{1}"), destPath));
             else
                 QMessageBox::warning(this, L::get("dialog.warning"), L::get("dialog.extractPartial").replace(QStringLiteral("{0}"), QString::number(ok)).replace(QStringLiteral("{1}"), QString::number(fail)));
         });
@@ -490,7 +495,7 @@ void MainWindow::extractSelected() {
     }
     TempHelper::safeDelete(extractTemp);
     if (fail == 0)
-        QMessageBox::information(this, L::get("dialog.success"), L::get("dialog.extractSuccess").replace(QStringLiteral("{0}"), QString::number(ok)));
+        QMessageBox::information(this, L::get("dialog.success"), L::get("dialog.extractSelectedSuccess").replace(QStringLiteral("{0}"), QString::number(ok)).replace(QStringLiteral("{1}"), dir));
     else
         QMessageBox::warning(this, L::get("dialog.warning"), L::get("dialog.extractPartial").replace(QStringLiteral("{0}"), QString::number(ok)).replace(QStringLiteral("{1}"), QString::number(fail)));
 }
@@ -665,6 +670,12 @@ void MainWindow::rebuildUI() {
     else if (m_isEmptyArchive) updateAddressBar();
 }
 
+void MainWindow::closeEvent(QCloseEvent* e) {
+    cleanupEmptyArchive();
+    TempHelper::cleanupAll();
+    QMainWindow::closeEvent(e);
+}
+
 void MainWindow::dragEnterEvent(QDragEnterEvent* e) {
     if (m_isDraggingFromSelf) { e->ignore(); return; }
     if (e->mimeData()->hasUrls()) e->acceptProposedAction();
@@ -694,4 +705,70 @@ void MainWindow::keyPressEvent(QKeyEvent* e) {
     if (e->key() == Qt::Key_Backspace) { navigateUp(); e->accept(); return; }
     if (e->modifiers() == Qt::AltModifier && e->key() == Qt::Key_Up) { navigateUp(); e->accept(); return; }
     QMainWindow::keyPressEvent(e);
+}
+
+void MainWindow::startFileDrag() {
+    if (!m_treeView || !m_treeView->selectionModel()->hasSelection()) return;
+    if (m_currentArchive.isEmpty()) return;
+
+    auto tempDir = TempHelper::createTempDir(QStringLiteral("pyxelze_drag"));
+    if (!ExtractionService::decompressArchiveToDir(m_currentArchive, tempDir)) {
+        TempHelper::safeDelete(tempDir);
+        return;
+    }
+
+    QList<QUrl> urls;
+    for (const auto& idx : m_treeView->selectionModel()->selectedRows()) {
+        auto fullPath = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 2).toString();
+        auto isFolder = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 3).toBool();
+        if (fullPath.isEmpty()) continue;
+
+        if (!isFolder) {
+            auto src = ExtractionService::findExtractedFile(tempDir, fullPath);
+            if (!src.isEmpty())
+                urls.append(QUrl::fromLocalFile(src));
+        } else {
+            auto filesUnder = ExtractionService::getFilesUnder(m_allFiles, fullPath);
+            for (const auto& f : filesUnder) {
+                auto src = ExtractionService::findExtractedFile(tempDir, f.fullPath);
+                if (!src.isEmpty())
+                    urls.append(QUrl::fromLocalFile(src));
+            }
+        }
+    }
+
+    if (urls.isEmpty()) {
+        TempHelper::safeDelete(tempDir);
+        return;
+    }
+
+    m_isDraggingFromSelf = true;
+    auto* drag = new QDrag(this);
+    auto* mimeData = new QMimeData;
+    mimeData->setUrls(urls);
+    drag->setMimeData(mimeData);
+    drag->exec(Qt::CopyAction);
+    m_isDraggingFromSelf = false;
+}
+
+bool MainWindow::eventFilter(QObject* obj, QEvent* e) {
+    if (obj == m_treeView->viewport()) {
+        if (e->type() == QEvent::MouseButtonPress) {
+            auto* me = static_cast<QMouseEvent*>(e);
+            if (me->button() == Qt::LeftButton)
+                m_dragStartPos = me->pos();
+        } else if (e->type() == QEvent::MouseMove) {
+            auto* me = static_cast<QMouseEvent*>(e);
+            if ((me->buttons() & Qt::LeftButton) && !m_dragStartPos.isNull()) {
+                if ((me->pos() - m_dragStartPos).manhattanLength() >= QApplication::startDragDistance()) {
+                    m_dragStartPos = {};
+                    startFileDrag();
+                    return true;
+                }
+            }
+        } else if (e->type() == QEvent::MouseButtonRelease) {
+            m_dragStartPos = {};
+        }
+    }
+    return QMainWindow::eventFilter(obj, e);
 }

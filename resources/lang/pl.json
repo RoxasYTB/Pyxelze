@@ -69,6 +69,7 @@
   "dialog.noArchiveOpen": "Brak otwartego archiwum.",
   "dialog.addFiles": "Dodaj pliki do archiwum",
   "dialog.extractSuccess": "Wyodrębnianie zakończone pomyślnie do:\n{0}",
+  "dialog.extractSelectedSuccess": "{0} plik(ów) wyodrębnionych do:\n{1}",
   "dialog.extractFail": "Wyodrębnianie nie powiodło się.",
   "dialog.extractPartial": "Częściowe wyodrębnianie: {0} udane, {1} nieudane.",
   "dialog.warning": "Ostrzeżenie",

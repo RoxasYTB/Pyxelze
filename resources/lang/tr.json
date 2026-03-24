@@ -69,6 +69,7 @@
   "dialog.noArchiveOpen": "Açık arşiv yok.",
   "dialog.addFiles": "Arşive dosya ekle",
   "dialog.extractSuccess": "Çıkartma başarılı:\n{0}",
+  "dialog.extractSelectedSuccess": "{0} dosya çıkartıldı:\n{1}",
   "dialog.extractFail": "Çıkartma başarısız.",
   "dialog.extractPartial": "Kısmi çıkartma: {0} başarılı, {1} başarısız.",
   "dialog.warning": "Uyarı",

@@ -7,4 +7,5 @@ namespace TempHelper {
     void safeDeleteFile(const QString& path);
     void moveContents(const QString& srcDir, const QString& destDir);
     void copyDirectory(const QString& srcDir, const QString& destDir);
+    void cleanupAll();
 }
