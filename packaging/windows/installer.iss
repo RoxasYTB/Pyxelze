@@ -22,7 +22,6 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
-ArchitecturesInstallMode=x64compatible
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ChangesAssociations=yes
 
