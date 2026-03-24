@@ -9,9 +9,14 @@ PKG_DIR="${BUILD_DIR}/${DEB_NAME}"
 
 echo "Building Pyxelze v${VERSION} .deb package..."
 
+ROXIFY_OPT=""
+if [ -n "${ROXIFY_NATIVE:-}" ]; then
+    ROXIFY_OPT="-DROXIFY_NATIVE=${ROXIFY_NATIVE}"
+fi
+
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release ${ROXIFY_OPT}
 make -j"$(nproc)"
 cd ..
 

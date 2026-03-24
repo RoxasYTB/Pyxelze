@@ -25,7 +25,7 @@ jobs:
       - name: Install roxify
         run: |
           sudo npm install -g roxify
-          ROXIFY_PATH="$(npm root -g)/roxify/dist/roxify_native"
+          ROXIFY_PATH="$(sudo npm root -g)/roxify/dist/roxify_native"
           echo "ROXIFY_PATH=${ROXIFY_PATH}" >> $GITHUB_ENV
 
       - name: Extract version
@@ -36,7 +36,7 @@ jobs:
       - name: Build release
         run: |
           mkdir -p build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DROXIFY_NATIVE="${ROXIFY_PATH}"
           make -j$(nproc)
 
       - name: Build .deb
@@ -94,7 +94,7 @@ jobs:
           }
 
       - name: Install Inno Setup
-        run: choco install innosetup -y
+        run: choco install innosetup --version=6.4.2 -y
 
       - name: Build installer
         run: |

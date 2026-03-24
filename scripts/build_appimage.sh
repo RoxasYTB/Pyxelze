@@ -8,9 +8,14 @@ APPDIR="${BUILD_DIR}/Pyxelze.AppDir"
 
 echo "Building Pyxelze v${VERSION} AppImage..."
 
+ROXIFY_OPT=""
+if [ -n "${ROXIFY_NATIVE:-}" ]; then
+    ROXIFY_OPT="-DROXIFY_NATIVE=${ROXIFY_NATIVE}"
+fi
+
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr ${ROXIFY_OPT}
 make -j"$(nproc)"
 cd ..
 
@@ -61,7 +66,15 @@ if [ ! -f "${PLUGIN}" ]; then
     chmod +x "${PLUGIN}"
 fi
 
+export APPIMAGE_EXTRACT_AND_RUN=1
+
 export OUTPUT="${BUILD_DIR}/Pyxelze-${VERSION}-x86_64.AppImage"
+
+QMAKE_PATH=$(which qmake6 2>/dev/null || which qmake 2>/dev/null || true)
+if [ -n "${QMAKE_PATH}" ]; then
+    export QMAKE="${QMAKE_PATH}"
+fi
+
 "${LINUXDEPLOY}" --appdir "${APPDIR}" \
     --desktop-file "${APPDIR}/pyxelze.desktop" \
     --icon-file "${APPDIR}/pyxelze.png" \
