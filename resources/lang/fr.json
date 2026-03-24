@@ -129,7 +129,9 @@
   "contextmenu.elevationRequired": "Droits administrateur requis. Relancer avec élévation ?",
   "contextmenu.elevationTitle": "Élévation requise",
   "contextmenu.registerSuccess": "Intégration au menu contextuel installée.",
+  "contextmenu.registerFail": "Échec de l'intégration au menu contextuel.",
   "contextmenu.unregisterSuccess": "Intégration supprimée.",
+  "contextmenu.unregisterFail": "Échec de la suppression du menu contextuel.",
   "contextmenu.openArchive": "Ouvrir l'archive",
   "contextmenu.decode": "Décoder",
   "contextmenu.encode": "Encoder",
@@ -150,5 +152,14 @@
   "compression.encoding": "Encodage en cours",
   "compression.encodingFile": "Encodage de {0}...",
   "compression.fallback": "Encodage (contournement)",
-  "compression.fallbackProgress": "Encodage via fichier temporaire..."
+  "compression.fallbackProgress": "Encodage via fichier temporaire...",
+  "view.details": "Détails",
+  "view.list": "Liste",
+  "view.smallIcons": "Petites icônes",
+  "view.mediumIcons": "Icônes moyennes",
+  "view.largeIcons": "Grandes icônes",
+  "view.tiles": "Mosaïque",
+  "menu.view.viewMode": "Mode d'affichage",
+  "col.modified": "Date de modification",
+  "contextmenu.openWith": "Ouvrir avec Pyxelze"
 }

@@ -13,19 +13,14 @@
 #include <QFrame>
 #include <QSysInfo>
 
-static QFrame* hLine() {
-    auto* f = new QFrame;
-    f->setFrameShape(QFrame::HLine);
-    f->setFrameShadow(QFrame::Sunken);
-    return f;
-}
-
 AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent) {
     setWindowTitle(L::get("about.title"));
     setFixedSize(480, 460);
     ThemeManager::applyToWidget(this);
 
     auto accent = ThemeManager::accentColor();
+    auto dim = ThemeManager::dimText();
+    auto fg = ThemeManager::windowFore();
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(28, 20, 28, 20);
 
@@ -39,7 +34,7 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent) {
     lblTitle->setStyleSheet(QStringLiteral("font-size: 24pt; font-weight: bold; color: %1;").arg(accent.name()));
     titleCol->addWidget(lblTitle);
     auto* lblVer = new QLabel(QStringLiteral("v%1").arg(QString::fromLatin1(AppConstants::Version)));
-    lblVer->setStyleSheet(QStringLiteral("color: gray; font-size: 11pt;"));
+    lblVer->setStyleSheet(QStringLiteral("color: %1; font-size: 11pt;").arg(dim.name()));
     titleCol->addWidget(lblVer);
     header->addLayout(titleCol);
     header->addStretch();
@@ -47,18 +42,21 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent) {
 
     auto* lblDesc = new QLabel(L::get("about.description"));
     lblDesc->setWordWrap(true);
+    lblDesc->setStyleSheet(QStringLiteral("color: %1;").arg(fg.name()));
     layout->addWidget(lblDesc);
 
-    layout->addWidget(hLine());
+    auto* sep1 = new QFrame;
+    sep1->setFrameShape(QFrame::HLine);
+    layout->addWidget(sep1);
 
     auto* grid = new QGridLayout;
     int row = 0;
     auto addRow = [&](const QString& label, const QString& value) {
         auto* l = new QLabel(label);
-        l->setStyleSheet(QStringLiteral("color: gray; font-size: 9pt;"));
+        l->setStyleSheet(QStringLiteral("color: %1; font-size: 9pt;").arg(dim.name()));
         grid->addWidget(l, row, 0);
         auto* v = new QLabel(value);
-        v->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 9pt;"));
+        v->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 9pt; color: %1;").arg(fg.name()));
         grid->addWidget(v, row, 1);
         ++row;
     };
@@ -72,28 +70,31 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent) {
     addRow(QStringLiteral("Qt"), QString::fromLatin1(qVersion()));
     layout->addLayout(grid);
 
-    layout->addWidget(hLine());
+    auto* sep2 = new QFrame;
+    sep2->setFrameShape(QFrame::HLine);
+    layout->addWidget(sep2);
 
     auto* lblDev = new QLabel(L::get("about.developedBy"));
-    lblDev->setStyleSheet(QStringLiteral("color: gray;"));
+    lblDev->setStyleSheet(QStringLiteral("color: %1;").arg(dim.name()));
     layout->addWidget(lblDev);
     auto* lblName = new QLabel(QStringLiteral("Yohan SANNIER"));
-    lblName->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 10pt;"));
+    lblName->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 10pt; color: %1;").arg(fg.name()));
     layout->addWidget(lblName);
 
-    auto* lnk = new QLabel(QStringLiteral("<a href=\"%1\">%1</a>").arg(QString::fromLatin1(AppConstants::RepoUrl)));
+    auto* lnk = new QLabel(QStringLiteral("<a href=\"%1\" style=\"color: %2;\">%1</a>").arg(QString::fromLatin1(AppConstants::RepoUrl), accent.name()));
     lnk->setOpenExternalLinks(true);
-    lnk->setStyleSheet(QStringLiteral("color: %1;").arg(accent.name()));
     layout->addWidget(lnk);
 
     auto* lblCopy = new QLabel(L::get("about.copyright").replace(QStringLiteral("{0}"), QStringLiteral("2024-2026")));
-    lblCopy->setStyleSheet(QStringLiteral("color: gray;"));
+    lblCopy->setStyleSheet(QStringLiteral("color: %1;").arg(dim.name()));
     layout->addWidget(lblCopy);
 
-    layout->addWidget(hLine());
+    auto* sep3 = new QFrame;
+    sep3->setFrameShape(QFrame::HLine);
+    layout->addWidget(sep3);
 
     auto* lblLic = new QLabel(L::get("about.license"));
-    lblLic->setStyleSheet(QStringLiteral("color: gray; font-size: 9pt;"));
+    lblLic->setStyleSheet(QStringLiteral("color: %1; font-size: 9pt;").arg(dim.name()));
     layout->addWidget(lblLic);
 
     layout->addStretch();

@@ -6,13 +6,19 @@
 #include <QPoint>
 
 class QTreeView;
+class QListView;
+class QAbstractItemView;
 class QStandardItemModel;
 class QLineEdit;
 class QLabel;
 class QProgressBar;
 class QAction;
+class QActionGroup;
 class QMenu;
 class QToolBar;
+class QStackedWidget;
+
+enum class ViewMode { Details, List, SmallIcons, MediumIcons, LargeIcons, Tiles };
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -58,7 +64,13 @@ private:
     void updateAddressBar();
     void updateStatusBar();
 
+    void setViewMode(ViewMode mode);
+    void showContextMenu(const QPoint& pos);
+    QAbstractItemView* currentView() const;
+
     QTreeView* m_treeView = nullptr;
+    QListView* m_listView = nullptr;
+    QStackedWidget* m_viewStack = nullptr;
     QStandardItemModel* m_model = nullptr;
     QLineEdit* m_addressBar = nullptr;
     QLabel* m_statusFileCount = nullptr;
@@ -67,6 +79,7 @@ private:
     QToolBar* m_toolbar = nullptr;
     QAction* m_actUp = nullptr;
     QAction* m_actDarkMode = nullptr;
+    QActionGroup* m_viewModeGroup = nullptr;
 
     QList<VirtualFile> m_allFiles;
     QString m_currentPath;
@@ -77,4 +90,5 @@ private:
     Qt::SortOrder m_sortOrder = Qt::AscendingOrder;
     bool m_isDraggingFromSelf = false;
     QPoint m_dragStartPos;
+    ViewMode m_viewMode = ViewMode::Details;
 };

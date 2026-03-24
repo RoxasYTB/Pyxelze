@@ -20,6 +20,7 @@
 #include "platform/PlatformService.h"
 #include "security/PassphraseManager.h"
 #include <QTreeView>
+#include <QListView>
 #include <QStandardItemModel>
 #include <QHeaderView>
 #include <QMenuBar>
@@ -46,6 +47,9 @@
 #include <QCloseEvent>
 #include <QDrag>
 #include <QMouseEvent>
+#include <QStackedWidget>
+#include <QActionGroup>
+#include <QWheelEvent>
 
 MainWindow::MainWindow(const QString& archivePath, QWidget* parent)
     : QMainWindow(parent) {
@@ -83,6 +87,29 @@ void MainWindow::buildMenuBar() {
     fileMenu->addAction(L::get("menu.quit"), this, &QMainWindow::close);
 
     auto* viewMenu = mb->addMenu(L::get("menu.view"));
+
+    auto* viewModeMenu = viewMenu->addMenu(L::get("menu.view.viewMode"));
+    m_viewModeGroup = new QActionGroup(this);
+    m_viewModeGroup->setExclusive(true);
+    struct VME { ViewMode mode; QString key; };
+    VME modes[] = {
+        {ViewMode::Details, QStringLiteral("view.details")},
+        {ViewMode::List, QStringLiteral("view.list")},
+        {ViewMode::SmallIcons, QStringLiteral("view.smallIcons")},
+        {ViewMode::MediumIcons, QStringLiteral("view.mediumIcons")},
+        {ViewMode::LargeIcons, QStringLiteral("view.largeIcons")},
+        {ViewMode::Tiles, QStringLiteral("view.tiles")},
+    };
+    for (const auto& entry : modes) {
+        auto* act = viewModeMenu->addAction(L::get(entry.key));
+        act->setCheckable(true);
+        act->setChecked(entry.mode == m_viewMode);
+        m_viewModeGroup->addAction(act);
+        auto mode = entry.mode;
+        connect(act, &QAction::triggered, this, [this, mode] { setViewMode(mode); });
+    }
+
+    viewMenu->addSeparator();
     m_actDarkMode = viewMenu->addAction(L::get("menu.view.darkMode"));
     m_actDarkMode->setCheckable(true);
     m_actDarkMode->setChecked(ThemeManager::darkMode());
@@ -142,11 +169,11 @@ void MainWindow::buildToolbar() {
 void MainWindow::buildAddressBar() {
     m_addressBar = new QLineEdit;
     m_addressBar->setReadOnly(true);
-    m_addressBar->setFixedHeight(28);
+    m_addressBar->setFixedHeight(24);
 
     auto* container = new QWidget;
     auto* containerLayout = new QHBoxLayout(container);
-    containerLayout->setContentsMargins(8, 2, 8, 2);
+    containerLayout->setContentsMargins(4, 1, 4, 1);
     containerLayout->addWidget(m_addressBar);
 
     auto* centralWrapper = new QWidget;
@@ -155,13 +182,15 @@ void MainWindow::buildAddressBar() {
     mainLayout->setSpacing(0);
     mainLayout->addWidget(container);
 
+    m_viewStack = nullptr;
     m_treeView = nullptr;
+    m_listView = nullptr;
     setCentralWidget(centralWrapper);
 }
 
 void MainWindow::buildFileList() {
     m_model = new QStandardItemModel(this);
-    m_model->setHorizontalHeaderLabels({L::get("col.name"), L::get("col.size"), L::get("col.type")});
+    m_model->setHorizontalHeaderLabels({L::get("col.name"), L::get("col.size"), L::get("col.type"), L::get("col.modified")});
 
     m_treeView = new QTreeView;
     m_treeView->setModel(m_model);
@@ -175,67 +204,49 @@ void MainWindow::buildFileList() {
     m_treeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_treeView->setContextMenuPolicy(Qt::CustomContextMenu);
     m_treeView->setUniformRowHeights(true);
-
+    m_treeView->setIndentation(0);
     m_treeView->viewport()->installEventFilter(this);
 
     m_treeView->header()->setStretchLastSection(true);
-    m_treeView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
-    m_treeView->header()->setSectionResizeMode(1, QHeaderView::Interactive);
-    m_treeView->header()->setSectionResizeMode(2, QHeaderView::Interactive);
-    m_treeView->header()->resizeSection(1, 120);
-    m_treeView->header()->resizeSection(2, 200);
+    m_treeView->header()->setSectionResizeMode(QHeaderView::Interactive);
+    m_treeView->header()->resizeSection(0, 350);
+    m_treeView->header()->resizeSection(1, 90);
+    m_treeView->header()->resizeSection(2, 160);
+    m_treeView->header()->setMinimumSectionSize(50);
+    m_treeView->header()->setSectionsMovable(true);
+    m_treeView->header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     connect(m_treeView, &QTreeView::doubleClicked, this, &MainWindow::itemDoubleClicked);
     connect(m_treeView->header(), &QHeaderView::sortIndicatorChanged, this, &MainWindow::sortByColumn);
-    connect(m_treeView, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
-        auto idx = m_treeView->indexAt(pos);
-        if (!idx.isValid()) return;
+    connect(m_treeView, &QWidget::customContextMenuRequested, this, &MainWindow::showContextMenu);
 
-        QMenu ctx(this);
-        ctx.addAction(L::get("ctx.open"), this, [this] {
-            auto idx = m_treeView->currentIndex();
-            if (idx.isValid()) itemDoubleClicked(idx);
-        });
-        ctx.addSeparator();
-        ctx.addAction(L::get("ctx.extractTo"), this, &MainWindow::extractSelected);
-        ctx.addAction(L::get("ctx.extractHere"), this, [this] {
-            if (!m_treeView->selectionModel()->hasSelection()) return;
-            auto destPath = QFileInfo(m_currentArchive).absolutePath();
-            auto extractTemp = TempHelper::createTempDir(QStringLiteral("pyxelze_loc_extract"));
-            if (!ExtractionService::decompressArchiveToDir(m_currentArchive, extractTemp)) {
-                ErrorDialog::show(this, L::get("dialog.extractFail"));
-                TempHelper::safeDelete(extractTemp);
-                return;
-            }
-            int ok = 0, fail = 0;
-            for (const auto& idx : m_treeView->selectionModel()->selectedRows()) {
-                auto vfVar = m_model->data(idx, Qt::UserRole + 1);
-                if (!vfVar.isValid()) continue;
-                auto fullPath = m_model->data(idx, Qt::UserRole + 2).toString();
-                bool isFolder = m_model->data(idx, Qt::UserRole + 3).toBool();
-                if (!isFolder) {
-                    auto src = ExtractionService::findExtractedFile(extractTemp, fullPath);
-                    if (!src.isEmpty()) {
-                        auto dest = destPath + QStringLiteral("/") + QFileInfo(fullPath).fileName();
-                        QFile::remove(dest);
-                        if (QFile::copy(src, dest)) ++ok; else ++fail;
-                    } else ++fail;
-                }
-            }
-            TempHelper::safeDelete(extractTemp);
-            if (fail == 0)
-                QMessageBox::information(this, L::get("dialog.success"), L::get("dialog.extractSelectedSuccess").replace(QStringLiteral("{0}"), QString::number(ok)).replace(QStringLiteral("{1}"), destPath));
-            else
-                QMessageBox::warning(this, L::get("dialog.warning"), L::get("dialog.extractPartial").replace(QStringLiteral("{0}"), QString::number(ok)).replace(QStringLiteral("{1}"), QString::number(fail)));
-        });
-        ctx.exec(m_treeView->viewport()->mapToGlobal(pos));
-    });
+    m_listView = new QListView;
+    m_listView->setModel(m_model);
+    m_listView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    m_listView->setDragEnabled(false);
+    m_listView->setAcceptDrops(false);
+    m_listView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_listView->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_listView->setUniformItemSizes(false);
+    m_listView->setWrapping(true);
+    m_listView->setResizeMode(QListView::Adjust);
+    m_listView->setSpacing(2);
+    m_listView->viewport()->installEventFilter(this);
+
+    connect(m_listView, &QListView::doubleClicked, this, &MainWindow::itemDoubleClicked);
+    connect(m_listView, &QWidget::customContextMenuRequested, this, &MainWindow::showContextMenu);
+
+    m_viewStack = new QStackedWidget;
+    m_viewStack->addWidget(m_treeView);
+    m_viewStack->addWidget(m_listView);
+    m_viewStack->setCurrentWidget(m_treeView);
 
     connect(m_treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] { updateStatusBar(); });
+    connect(m_listView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] { updateStatusBar(); });
 
     auto* central = centralWidget();
     auto* layout = qobject_cast<QVBoxLayout*>(central->layout());
-    if (layout) layout->addWidget(m_treeView);
+    if (layout) layout->addWidget(m_viewStack);
 }
 
 void MainWindow::buildStatusBar() {
@@ -243,8 +254,10 @@ void MainWindow::buildStatusBar() {
     m_statusFileCount = new QLabel(L::get("status.noFiles"));
     m_statusSelection = new QLabel(L::get("status.noSelection"));
     m_statusProgress = new QProgressBar;
-    m_statusProgress->setFixedWidth(150);
+    m_statusProgress->setFixedWidth(120);
+    m_statusProgress->setFixedHeight(14);
     m_statusProgress->setVisible(false);
+    sb->setSizeGripEnabled(true);
 
     sb->addWidget(m_statusFileCount);
     sb->addPermanentWidget(m_statusSelection);
@@ -333,9 +346,9 @@ void MainWindow::refreshView() {
     m_actUp->setEnabled(!m_currentPath.isEmpty());
 
     if (!m_currentPath.isEmpty()) {
-        auto* nameItem = new QStandardItem(IconProvider::iconForFile({}, true), QStringLiteral("..."));
+        auto* nameItem = new QStandardItem(IconProvider::iconForFile({}, true), QStringLiteral(".."));
         nameItem->setData(QStringLiteral("UP"), Qt::UserRole + 1);
-        m_model->appendRow({nameItem, new QStandardItem, new QStandardItem});
+        m_model->appendRow({nameItem, new QStandardItem, new QStandardItem, new QStandardItem});
     }
 
     QList<const VirtualFile*> folders, files;
@@ -363,7 +376,9 @@ void MainWindow::refreshView() {
 
         auto* typeItem = new QStandardItem(vf->isFolder ? L::get("dialog.folderType") : PlatformService::fileTypeName(vf->name));
 
-        m_model->appendRow({nameItem, sizeItem, typeItem});
+        auto* dateItem = new QStandardItem;
+
+        m_model->appendRow({nameItem, sizeItem, typeItem, dateItem});
     };
 
     for (auto* f : folders) addVF(f);
@@ -454,7 +469,8 @@ void MainWindow::extractAll() {
 }
 
 void MainWindow::extractSelected() {
-    if (!m_treeView->selectionModel()->hasSelection()) return;
+    auto* view = currentView();
+    if (!view->selectionModel()->hasSelection()) return;
     auto dir = QFileDialog::getExistingDirectory(this, L::get("ctx.extractTo"));
     if (dir.isEmpty()) return;
 
@@ -466,7 +482,7 @@ void MainWindow::extractSelected() {
     }
 
     int ok = 0, fail = 0;
-    for (const auto& idx : m_treeView->selectionModel()->selectedRows()) {
+    for (const auto& idx : view->selectionModel()->selectedRows()) {
         auto fullPath = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 2).toString();
         auto isFolder = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 3).toBool();
         if (fullPath.isEmpty()) continue;
@@ -649,7 +665,8 @@ void MainWindow::updateStatusBar() {
     }
     m_statusFileCount->setText(L::get("status.filesAndFolders").replace(QStringLiteral("{0}"), QString::number(fileCount)).replace(QStringLiteral("{1}"), QString::number(folderCount)));
 
-    int sel = m_treeView && m_treeView->selectionModel() ? m_treeView->selectionModel()->selectedRows().size() : 0;
+    auto* view = currentView();
+    int sel = view && view->selectionModel() ? view->selectionModel()->selectedRows().size() : 0;
     m_statusSelection->setText(L::get("status.selected").replace(QStringLiteral("{0}"), QString::number(sel)));
 }
 
@@ -663,7 +680,7 @@ void MainWindow::rebuildUI() {
     buildToolbar();
 
     if (m_model)
-        m_model->setHorizontalHeaderLabels({L::get("col.name"), L::get("col.size"), L::get("col.type")});
+        m_model->setHorizontalHeaderLabels({L::get("col.name"), L::get("col.size"), L::get("col.type"), L::get("col.modified")});
 
     ThemeManager::applyToWidget(this);
     if (!m_currentArchive.isEmpty()) refreshView();
@@ -707,32 +724,144 @@ void MainWindow::keyPressEvent(QKeyEvent* e) {
     QMainWindow::keyPressEvent(e);
 }
 
+QAbstractItemView* MainWindow::currentView() const {
+    if (m_viewStack && m_viewStack->currentWidget() == m_listView)
+        return m_listView;
+    return m_treeView;
+}
+
+void MainWindow::setViewMode(ViewMode mode) {
+    m_viewMode = mode;
+    switch (mode) {
+        case ViewMode::Details:
+            m_viewStack->setCurrentWidget(m_treeView);
+            break;
+        case ViewMode::List:
+            m_listView->setViewMode(QListView::ListMode);
+            m_listView->setIconSize(QSize(16, 16));
+            m_listView->setGridSize(QSize());
+            m_listView->setWrapping(false);
+            m_listView->setFlow(QListView::TopToBottom);
+            m_viewStack->setCurrentWidget(m_listView);
+            break;
+        case ViewMode::SmallIcons:
+            m_listView->setViewMode(QListView::ListMode);
+            m_listView->setIconSize(QSize(16, 16));
+            m_listView->setGridSize(QSize(200, 20));
+            m_listView->setWrapping(true);
+            m_listView->setFlow(QListView::LeftToRight);
+            m_viewStack->setCurrentWidget(m_listView);
+            break;
+        case ViewMode::MediumIcons:
+            m_listView->setViewMode(QListView::IconMode);
+            m_listView->setIconSize(QSize(48, 48));
+            m_listView->setGridSize(QSize(90, 80));
+            m_listView->setWrapping(true);
+            m_listView->setFlow(QListView::LeftToRight);
+            m_viewStack->setCurrentWidget(m_listView);
+            break;
+        case ViewMode::LargeIcons:
+            m_listView->setViewMode(QListView::IconMode);
+            m_listView->setIconSize(QSize(96, 96));
+            m_listView->setGridSize(QSize(130, 130));
+            m_listView->setWrapping(true);
+            m_listView->setFlow(QListView::LeftToRight);
+            m_viewStack->setCurrentWidget(m_listView);
+            break;
+        case ViewMode::Tiles:
+            m_listView->setViewMode(QListView::ListMode);
+            m_listView->setIconSize(QSize(32, 32));
+            m_listView->setGridSize(QSize(260, 40));
+            m_listView->setWrapping(true);
+            m_listView->setFlow(QListView::LeftToRight);
+            m_viewStack->setCurrentWidget(m_listView);
+            break;
+    }
+}
+
+void MainWindow::showContextMenu(const QPoint& pos) {
+    auto* view = currentView();
+    auto idx = view->indexAt(pos);
+    if (!idx.isValid()) return;
+
+    QMenu ctx(this);
+    ctx.addAction(L::get("ctx.open"), this, [this] {
+        auto idx = currentView()->currentIndex();
+        if (idx.isValid()) itemDoubleClicked(idx);
+    });
+    ctx.addSeparator();
+    ctx.addAction(L::get("ctx.extractTo"), this, &MainWindow::extractSelected);
+    ctx.addAction(L::get("ctx.extractHere"), this, [this] {
+        auto* v = currentView();
+        if (!v->selectionModel()->hasSelection()) return;
+        auto destPath = QFileInfo(m_currentArchive).absolutePath();
+        auto extractTemp = TempHelper::createTempDir(QStringLiteral("pyxelze_loc_extract"));
+        if (!ExtractionService::decompressArchiveToDir(m_currentArchive, extractTemp)) {
+            ErrorDialog::show(this, L::get("dialog.extractFail"));
+            TempHelper::safeDelete(extractTemp);
+            return;
+        }
+        int ok = 0, fail = 0;
+        for (const auto& idx : v->selectionModel()->selectedRows()) {
+            auto vfVar = m_model->data(idx, Qt::UserRole + 1);
+            if (!vfVar.isValid()) continue;
+            auto fullPath = m_model->data(idx, Qt::UserRole + 2).toString();
+            bool isFolder = m_model->data(idx, Qt::UserRole + 3).toBool();
+            if (!isFolder) {
+                auto src = ExtractionService::findExtractedFile(extractTemp, fullPath);
+                if (!src.isEmpty()) {
+                    auto dest = destPath + QStringLiteral("/") + QFileInfo(fullPath).fileName();
+                    QFile::remove(dest);
+                    if (QFile::copy(src, dest)) ++ok; else ++fail;
+                } else ++fail;
+            }
+        }
+        TempHelper::safeDelete(extractTemp);
+        if (fail == 0)
+            QMessageBox::information(this, L::get("dialog.success"), L::get("dialog.extractSelectedSuccess").replace(QStringLiteral("{0}"), QString::number(ok)).replace(QStringLiteral("{1}"), destPath));
+        else
+            QMessageBox::warning(this, L::get("dialog.warning"), L::get("dialog.extractPartial").replace(QStringLiteral("{0}"), QString::number(ok)).replace(QStringLiteral("{1}"), QString::number(fail)));
+    });
+    ctx.exec(view->viewport()->mapToGlobal(pos));
+}
+
 void MainWindow::startFileDrag() {
-    if (!m_treeView || !m_treeView->selectionModel()->hasSelection()) return;
+    auto* view = currentView();
+    if (!view || !view->selectionModel()->hasSelection()) return;
     if (m_currentArchive.isEmpty()) return;
 
+    QStringList selectedPaths;
+    QList<bool> selectedIsFolder;
+    for (const auto& idx : view->selectionModel()->selectedRows()) {
+        auto fullPath = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 2).toString();
+        auto isFolder = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 3).toBool();
+        if (!fullPath.isEmpty()) {
+            selectedPaths.append(fullPath);
+            selectedIsFolder.append(isFolder);
+        }
+    }
+    if (selectedPaths.isEmpty()) return;
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
     auto tempDir = TempHelper::createTempDir(QStringLiteral("pyxelze_drag"));
-    if (!ExtractionService::decompressArchiveToDir(m_currentArchive, tempDir)) {
+    bool ok = ExtractionService::decompressArchiveToDir(m_currentArchive, tempDir);
+    QApplication::restoreOverrideCursor();
+
+    if (!ok) {
         TempHelper::safeDelete(tempDir);
         return;
     }
 
     QList<QUrl> urls;
-    for (const auto& idx : m_treeView->selectionModel()->selectedRows()) {
-        auto fullPath = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 2).toString();
-        auto isFolder = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 3).toBool();
-        if (fullPath.isEmpty()) continue;
-
-        if (!isFolder) {
-            auto src = ExtractionService::findExtractedFile(tempDir, fullPath);
-            if (!src.isEmpty())
-                urls.append(QUrl::fromLocalFile(src));
+    for (int i = 0; i < selectedPaths.size(); ++i) {
+        if (!selectedIsFolder[i]) {
+            auto src = ExtractionService::findExtractedFile(tempDir, selectedPaths[i]);
+            if (!src.isEmpty()) urls.append(QUrl::fromLocalFile(src));
         } else {
-            auto filesUnder = ExtractionService::getFilesUnder(m_allFiles, fullPath);
+            auto filesUnder = ExtractionService::getFilesUnder(m_allFiles, selectedPaths[i]);
             for (const auto& f : filesUnder) {
                 auto src = ExtractionService::findExtractedFile(tempDir, f.fullPath);
-                if (!src.isEmpty())
-                    urls.append(QUrl::fromLocalFile(src));
+                if (!src.isEmpty()) urls.append(QUrl::fromLocalFile(src));
             }
         }
     }
@@ -752,11 +881,40 @@ void MainWindow::startFileDrag() {
 }
 
 bool MainWindow::eventFilter(QObject* obj, QEvent* e) {
-    if (obj == m_treeView->viewport()) {
-        if (e->type() == QEvent::MouseButtonPress) {
+    auto* tv = m_treeView ? m_treeView->viewport() : nullptr;
+    auto* lv = m_listView ? m_listView->viewport() : nullptr;
+    if (obj == tv || obj == lv) {
+        if (e->type() == QEvent::Wheel) {
+            auto* we = static_cast<QWheelEvent*>(e);
+            if (we->modifiers() & Qt::ControlModifier) {
+                static constexpr ViewMode order[] = {
+                    ViewMode::Details, ViewMode::List, ViewMode::SmallIcons,
+                    ViewMode::MediumIcons, ViewMode::LargeIcons, ViewMode::Tiles
+                };
+                constexpr int count = sizeof(order) / sizeof(order[0]);
+                int cur = 0;
+                for (int i = 0; i < count; ++i) { if (order[i] == m_viewMode) { cur = i; break; } }
+                int next = we->angleDelta().y() > 0 ? cur + 1 : cur - 1;
+                if (next >= 0 && next < count) {
+                    setViewMode(order[next]);
+                    if (m_viewModeGroup) {
+                        auto actions = m_viewModeGroup->actions();
+                        if (next < actions.size()) actions[next]->setChecked(true);
+                    }
+                }
+                return true;
+            }
+        } else if (e->type() == QEvent::MouseButtonPress) {
             auto* me = static_cast<QMouseEvent*>(e);
-            if (me->button() == Qt::LeftButton)
-                m_dragStartPos = me->pos();
+            if (me->button() == Qt::LeftButton) {
+                auto* view = (obj == tv) ? static_cast<QAbstractItemView*>(m_treeView) : static_cast<QAbstractItemView*>(m_listView);
+                auto idx = view->indexAt(me->pos());
+                if (idx.isValid() && view->selectionModel()->isSelected(idx)) {
+                    m_dragStartPos = me->pos();
+                    return true;
+                }
+                m_dragStartPos = {};
+            }
         } else if (e->type() == QEvent::MouseMove) {
             auto* me = static_cast<QMouseEvent*>(e);
             if ((me->buttons() & Qt::LeftButton) && !m_dragStartPos.isNull()) {
@@ -765,8 +923,19 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* e) {
                     startFileDrag();
                     return true;
                 }
+                return true;
             }
         } else if (e->type() == QEvent::MouseButtonRelease) {
+            if (!m_dragStartPos.isNull()) {
+                auto* view = (obj == tv) ? static_cast<QAbstractItemView*>(m_treeView) : static_cast<QAbstractItemView*>(m_listView);
+                auto idx = view->indexAt(m_dragStartPos);
+                m_dragStartPos = {};
+                if (idx.isValid()) {
+                    view->selectionModel()->select(idx, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+                    view->setCurrentIndex(idx);
+                }
+                return true;
+            }
             m_dragStartPos = {};
         }
     }
