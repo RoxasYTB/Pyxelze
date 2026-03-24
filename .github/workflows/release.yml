@@ -18,7 +18,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake \
-            qt6-base-dev libqt6svg6-dev libqt6network6 \
+            qt6-base-dev qt6-svg-dev libqt6svg6-dev libqt6network6-dev \
+            libgl-dev libglx-dev libvulkan-dev \
             libfuse2 file desktop-file-utils
 
       - name: Install roxify
@@ -60,11 +61,11 @@ jobs:
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.7.*'
+          version: '6.8.*'
           host: windows
           target: desktop
-          arch: win64_msvc2019_64
-          modules: qtsvg
+          arch: win64_msvc2022_64
+          modules: qtsvg qtnetworkauth
 
       - name: Install roxify
         run: |
