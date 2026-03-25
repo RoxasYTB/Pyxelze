@@ -103,16 +103,21 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: macos-13
-            arch: x86_64
-          - runner: macos-14
-            arch: arm64
-    runs-on: ${{ matrix.runner }}
+          - arch: x86_64
+            qt_arch: clang_64
+          - arch: arm64
+            qt_arch: macos
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Qt6
-        run: brew install qt@6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: mac
+          target: desktop
+          arch: ${{ matrix.qt_arch }}
 
       - name: Install roxify
         run: |
@@ -127,8 +132,6 @@ jobs:
 
       - name: Build
         run: |
-          export PATH="$(brew --prefix qt@6)/bin:$PATH"
-          export CMAKE_PREFIX_PATH="$(brew --prefix qt@6)"
           ROXIFY_OPT=""
           if [ -n "${ROXIFY_NATIVE:-}" ]; then
             ROXIFY_OPT="-DROXIFY_NATIVE=${ROXIFY_NATIVE}"
@@ -139,6 +142,15 @@ jobs:
             -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" \
             ${ROXIFY_OPT}
           cmake --build build-macos --config Release --parallel
+
+      - name: Verify architecture
+        run: |
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          EXEC=$(find "$APP_PATH/Contents/MacOS" -type f ! -name ".*" | head -1)
+          echo "Binary: $EXEC"
+          file "$EXEC"
+          lipo -info "$EXEC"
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
@@ -155,7 +167,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Qt6
-        run: brew install qt@6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: mac
+          target: desktop
+          arch: macos
 
       - name: Install roxify
         run: |
@@ -212,7 +229,6 @@ jobs:
 
       - name: Deploy Qt frameworks
         run: |
-          export PATH="$(brew --prefix qt@6)/bin:$PATH"
           macdeployqt "build-macos/Pyxelze.app"
 
       - name: Create DMG
