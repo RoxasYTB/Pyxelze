@@ -1,0 +1,111 @@
+name: macOS Builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    strategy:
+      matrix:
+        include:
+          - runner: macos-13
+            arch: x86_64
+            suffix: x86_64
+          - runner: macos-14
+            arch: arm64
+            suffix: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: mac
+          target: desktop
+          arch: clang_64
+
+      - name: Install roxify
+        run: |
+          npm install -g roxify
+          ROXIFY_PATH="$(npm root -g)/roxify/dist/roxify_native"
+          echo "ROXIFY_NATIVE=${ROXIFY_PATH}" >> $GITHUB_ENV
+
+      - name: Extract version
+        run: |
+          VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Build ${{ matrix.arch }} binary
+        run: |
+          ROXIFY_OPT=""
+          if [ -n "${ROXIFY_NATIVE:-}" ]; then
+            ROXIFY_OPT="-DROXIFY_NATIVE=${ROXIFY_NATIVE}"
+          fi
+          cmake -S . -B build-macos \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="${{ matrix.arch }}" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" \
+            ${ROXIFY_OPT}
+          cmake --build build-macos --config Release --parallel
+
+      - name: Bundle roxify
+        run: |
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          ROX_DEST="$APP_PATH/Contents/MacOS/roxify/roxify_native"
+          if [ ! -f "$ROX_DEST" ] && [ -n "${ROXIFY_NATIVE:-}" ] && [ -f "${ROXIFY_NATIVE}" ]; then
+            mkdir -p "$APP_PATH/Contents/MacOS/roxify"
+            cp "${ROXIFY_NATIVE}" "$ROX_DEST"
+            chmod 755 "$ROX_DEST"
+          fi
+
+      - name: Deploy Qt frameworks
+        run: |
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          macdeployqt "$APP_PATH"
+
+      - name: Verify binary architecture
+        run: |
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          echo "Architectures:"
+          lipo -info "$APP_PATH/Contents/MacOS/pyxelze" 2>/dev/null || lipo -info "$APP_PATH/Contents/MacOS/Pyxelze"
+          file "$APP_PATH/Contents/MacOS/pyxelze" 2>/dev/null || file "$APP_PATH/Contents/MacOS/Pyxelze"
+
+      - name: Create DMG
+        run: |
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          DMG_PATH="build-macos/Pyxelze-${VERSION}-macOS-${{ matrix.suffix }}.dmg"
+
+          if [ -f "scripts/create_dmg_background.py" ] && command -v python3 >/dev/null 2>&1; then
+            python3 scripts/create_dmg_background.py 2>/dev/null || true
+          fi
+
+          DMG_STAGING="build-macos/dmg_staging"
+          rm -rf "$DMG_STAGING"
+          mkdir -p "$DMG_STAGING"
+          cp -R "$APP_PATH" "$DMG_STAGING/"
+          ln -s /Applications "$DMG_STAGING/Applications"
+
+          BG_IMG="resources/dmg_background.png"
+          if [ -f "$BG_IMG" ]; then
+            mkdir -p "$DMG_STAGING/.background"
+            cp "$BG_IMG" "$DMG_STAGING/.background/background.png"
+          fi
+
+          hdiutil create -volname "Pyxelze" -srcfolder "$DMG_STAGING" \
+            -ov -format UDZO "$DMG_PATH"
+          echo "DMG created: $DMG_PATH"
+
+      - name: Upload to release v${{ env.VERSION }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          files: build-macos/Pyxelze-${{ env.VERSION }}-macOS-${{ matrix.suffix }}.dmg
