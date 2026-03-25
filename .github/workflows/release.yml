@@ -112,11 +112,13 @@ jobs:
           target: desktop
           arch: clang_64
 
-      - name: Install roxify
+      - name: Install roxify (macOS binary from repo)
         run: |
-          npm install -g roxify
-          ROXIFY_PATH="$(npm root -g)/roxify/dist/roxify_native"
-          echo "ROXIFY_NATIVE=${ROXIFY_PATH}" >> $GITHUB_ENV
+          # Save the macOS-specific roxify_native to a safe location before cmake build
+          mkdir -p /tmp/roxify_bin
+          cp build-macos/roxify_native /tmp/roxify_bin/roxify_native
+          chmod +x /tmp/roxify_bin/roxify_native
+          echo "ROXIFY_NATIVE=/tmp/roxify_bin/roxify_native" >> $GITHUB_ENV
 
       - name: Extract version
         run: |
@@ -161,31 +163,52 @@ jobs:
           lipo -info "$APP_PATH/Contents/MacOS/pyxelze" || lipo -info "$APP_PATH/Contents/MacOS/Pyxelze"
           file "$APP_PATH/Contents/MacOS/pyxelze" || file "$APP_PATH/Contents/MacOS/Pyxelze"
 
-      - name: Create DMG
+      - name: Create styled DMG
         run: |
+          brew install create-dmg
+
           APP_PATH="build-macos/pyxelze.app"
           [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
           DMG_PATH="build-macos/Pyxelze-${VERSION}-macOS.dmg"
 
-          if [ -f "scripts/create_dmg_background.py" ] && command -v python3 >/dev/null 2>&1; then
+          # Generate background image
+          if [ -f "scripts/create_dmg_background.py" ]; then
+            pip3 install Pillow --break-system-packages 2>/dev/null || pip3 install Pillow
             python3 scripts/create_dmg_background.py 2>/dev/null || true
           fi
 
-          DMG_STAGING="build-macos/dmg_staging"
-          rm -rf "$DMG_STAGING"
-          mkdir -p "$DMG_STAGING"
-          cp -R "$APP_PATH" "$DMG_STAGING/"
-          ln -s /Applications "$DMG_STAGING/Applications"
-
-          BG_IMG="resources/dmg_background.png"
-          if [ -f "$BG_IMG" ]; then
-            mkdir -p "$DMG_STAGING/.background"
-            cp "$BG_IMG" "$DMG_STAGING/.background/background.png"
+          BG_ARGS=""
+          if [ -f "resources/dmg_background.png" ]; then
+            BG_ARGS="--background resources/dmg_background.png"
           fi
 
-          hdiutil create -volname "Pyxelze" -srcfolder "$DMG_STAGING" \
-            -ov -format UDZO "$DMG_PATH"
+          create-dmg \
+            --volname "Pyxelze" \
+            --window-pos 200 120 \
+            --window-size 660 400 \
+            --icon-size 80 \
+            --icon "pyxelze.app" 180 200 \
+            $BG_ARGS \
+            --hide-extension "pyxelze.app" \
+            --app-drop-link 480 200 \
+            --no-internet-enable \
+            "$DMG_PATH" \
+            "$APP_PATH" \
+            || true
+
+          # Fallback if create-dmg failed
+          if [ ! -f "$DMG_PATH" ]; then
+            echo "create-dmg failed, falling back to hdiutil"
+            DMG_STAGING="build-macos/dmg_staging"
+            rm -rf "$DMG_STAGING"
+            mkdir -p "$DMG_STAGING"
+            cp -R "$APP_PATH" "$DMG_STAGING/"
+            ln -s /Applications "$DMG_STAGING/Applications"
+            hdiutil create -volname "Pyxelze" -srcfolder "$DMG_STAGING" \
+              -ov -format UDZO "$DMG_PATH"
+          fi
           echo "DMG created: $DMG_PATH"
+          ls -lh "$DMG_PATH"
 
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
