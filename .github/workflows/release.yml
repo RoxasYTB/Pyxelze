@@ -100,24 +100,17 @@ jobs:
           path: build/Pyxelze-${{ env.VERSION }}-Setup.exe
 
   build-macos:
-    strategy:
-      matrix:
-        include:
-          - arch: x86_64
-            qt_arch: clang_64
-          - arch: arm64
-            qt_arch: macos
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Qt6
+      - name: Install Qt6 (universal)
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.*'
           host: mac
           target: desktop
-          arch: ${{ matrix.qt_arch }}
+          arch: clang_64
 
       - name: Install roxify
         run: |
@@ -130,7 +123,7 @@ jobs:
           VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Build
+      - name: Build universal binary
         run: |
           ROXIFY_OPT=""
           if [ -n "${ROXIFY_NATIVE:-}" ]; then
@@ -138,88 +131,15 @@ jobs:
           fi
           cmake -S . -B build-macos \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_OSX_ARCHITECTURES="${{ matrix.arch }}" \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" \
             ${ROXIFY_OPT}
           cmake --build build-macos --config Release --parallel
 
-      - name: Verify architecture
+      - name: Bundle roxify
         run: |
           APP_PATH="build-macos/pyxelze.app"
           [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
-          EXEC=$(find "$APP_PATH/Contents/MacOS" -type f ! -name ".*" | head -1)
-          echo "Binary: $EXEC"
-          file "$EXEC"
-          lipo -info "$EXEC"
-
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-${{ matrix.arch }}
-          path: |
-            build-macos/pyxelze.app/
-            build-macos/Pyxelze.app/
-
-  merge-macos:
-    needs: build-macos
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Qt6
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.8.*'
-          host: mac
-          target: desktop
-          arch: macos
-
-      - name: Install roxify
-        run: |
-          npm install -g roxify
-          ROXIFY_PATH="$(npm root -g)/roxify/dist/roxify_native"
-          echo "ROXIFY_NATIVE=${ROXIFY_PATH}" >> $GITHUB_ENV
-
-      - name: Extract version
-        run: |
-          VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-
-      - name: Download arch builds
-        uses: actions/download-artifact@v4
-        with:
-          path: arch-builds
-
-      - name: Create universal binary
-        run: |
-          # Find the app bundles
-          ARM_APP=$(find arch-builds/macos-arm64 -name "*.app" -maxdepth 2 | head -1)
-          X86_APP=$(find arch-builds/macos-x86_64 -name "*.app" -maxdepth 2 | head -1)
-          echo "ARM app: $ARM_APP"
-          echo "x86 app: $X86_APP"
-
-          # Use the arm64 app as the base
-          UNIVERSAL_APP="build-macos/Pyxelze.app"
-          mkdir -p build-macos
-          cp -R "$ARM_APP" "$UNIVERSAL_APP"
-
-          # Find the main executable name
-          EXEC_NAME=$(ls "$UNIVERSAL_APP/Contents/MacOS/" | grep -iv roxify | head -1)
-          echo "Executable: $EXEC_NAME"
-
-          # Merge with lipo
-          lipo -create \
-            "$ARM_APP/Contents/MacOS/$EXEC_NAME" \
-            "$X86_APP/Contents/MacOS/$EXEC_NAME" \
-            -output "$UNIVERSAL_APP/Contents/MacOS/$EXEC_NAME"
-
-          echo "Universal binary created:"
-          lipo -info "$UNIVERSAL_APP/Contents/MacOS/$EXEC_NAME"
-          file "$UNIVERSAL_APP/Contents/MacOS/$EXEC_NAME"
-
-      - name: Bundle roxify
-        run: |
-          APP_PATH="build-macos/Pyxelze.app"
           ROX_DEST="$APP_PATH/Contents/MacOS/roxify/roxify_native"
           if [ ! -f "$ROX_DEST" ] && [ -n "${ROXIFY_NATIVE:-}" ] && [ -f "${ROXIFY_NATIVE}" ]; then
             mkdir -p "$APP_PATH/Contents/MacOS/roxify"
@@ -229,14 +149,24 @@ jobs:
 
       - name: Deploy Qt frameworks
         run: |
-          macdeployqt "build-macos/Pyxelze.app"
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          macdeployqt "$APP_PATH"
+
+      - name: Verify universal binary
+        run: |
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          echo "Architectures:"
+          lipo -info "$APP_PATH/Contents/MacOS/pyxelze" || lipo -info "$APP_PATH/Contents/MacOS/Pyxelze"
+          file "$APP_PATH/Contents/MacOS/pyxelze" || file "$APP_PATH/Contents/MacOS/Pyxelze"
 
       - name: Create DMG
         run: |
-          APP_PATH="build-macos/Pyxelze.app"
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
           DMG_PATH="build-macos/Pyxelze-${VERSION}-macOS.dmg"
 
-          # Generate DMG background
           if [ -f "scripts/create_dmg_background.py" ] && command -v python3 >/dev/null 2>&1; then
             python3 scripts/create_dmg_background.py 2>/dev/null || true
           fi
@@ -264,7 +194,7 @@ jobs:
           path: build-macos/Pyxelze-${{ env.VERSION }}-macOS.dmg
 
   release:
-    needs: [build-linux, build-windows, merge-macos]
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
