@@ -55,9 +55,9 @@ Source: "..\..\build\deploy\tls\*"; DestDir: "{app}\tls"; Flags: ignoreversion r
 Source: "..\..\build\deploy\networkinformation\*"; DestDir: "{app}\networkinformation"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\appIcon.ico"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\appIcon.ico"; Tasks: desktopicon
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\.pxz"; ValueType: string; ValueName: ""; ValueData: "PyxelzeArchive"; Flags: uninsdeletevalue; Tasks: associatepng
