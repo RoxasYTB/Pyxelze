@@ -110,11 +110,12 @@ jobs:
           target: desktop
           arch: clang_64
 
-      - name: Install roxify (macOS binary from repo)
+      - name: Download roxify_native universal from roxify release
         run: |
-          # Save the macOS-specific roxify_native to a safe location before cmake build
+          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/latest/download/roxify_native-universal-apple-darwin"
+          echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
-          cp build-macos/roxify_native /tmp/roxify_bin/roxify_native
+          curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL"
           chmod +x /tmp/roxify_bin/roxify_native
           echo "ROXIFY_NATIVE=/tmp/roxify_bin/roxify_native" >> $GITHUB_ENV
 

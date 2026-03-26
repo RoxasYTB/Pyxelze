@@ -30,11 +30,15 @@ jobs:
           target: desktop
           arch: clang_64
 
-      - name: Install roxify
+      - name: Download roxify_native from roxify release
         run: |
-          npm install -g roxify
-          ROXIFY_PATH="$(npm root -g)/roxify/dist/roxify_native"
-          echo "ROXIFY_NATIVE=${ROXIFY_PATH}" >> $GITHUB_ENV
+          RUST_TARGET=${{ matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
+          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/latest/download/roxify_native-${RUST_TARGET}"
+          echo "Downloading ${ROXIFY_URL}..."
+          mkdir -p /tmp/roxify_bin
+          curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL"
+          chmod +x /tmp/roxify_bin/roxify_native
+          echo "ROXIFY_NATIVE=/tmp/roxify_bin/roxify_native" >> $GITHUB_ENV
 
       - name: Extract version
         run: |

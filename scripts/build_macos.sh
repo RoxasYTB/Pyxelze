@@ -63,12 +63,11 @@ fi
 # is enabled.  If it ended up outside the bundle (non-bundle build) copy it in.
 ROX_IN_BUNDLE="${APP_PATH}/Contents/MacOS/roxify/roxify_native"
 if [ ! -f "${ROX_IN_BUNDLE}" ]; then
-    # Check common locations where the binary may exist
     for ROX_SRC in \
         "${BUILD_DIR}/roxify/roxify_native" \
         "${BUILD_DIR}/../build-debug/roxify/roxify_native" \
-        "${BUILD_DIR}/../build-*/roxify/roxify_native"; do
-        # expand glob
+        "${BUILD_DIR}/../build-*/roxify/roxify_native" \
+        "${BUILD_DIR}/../build-macos/roxify_native"; do
         for f in $ROX_SRC; do
             if [ -f "$f" ]; then
                 mkdir -p "${APP_PATH}/Contents/MacOS/roxify"
@@ -79,6 +78,23 @@ if [ ! -f "${ROX_IN_BUNDLE}" ]; then
             fi
         done
     done
+fi
+
+if [ ! -f "${ROX_IN_BUNDLE}" ] && command -v cargo >/dev/null 2>&1; then
+    echo "roxify_native not found, building from source..."
+    ROXIFY_REPO="/tmp/roxify_build"
+    if [ -d "${ROXIFY_REPO}" ]; then
+        rm -rf "${ROXIFY_REPO}"
+    fi
+    git clone --depth 1 https://github.com/roxasytb/roxify.git "${ROXIFY_REPO}"
+    cd "${ROXIFY_REPO}"
+    cargo build --release --bin roxify_native 2>/dev/null && {
+        mkdir -p "${APP_PATH}/Contents/MacOS/roxify"
+        cp target/release/roxify_native "${ROX_IN_BUNDLE}"
+        chmod 755 "${ROX_IN_BUNDLE}"
+        echo "Built and bundled roxify_native from source"
+    } || echo "WARNING: cargo build failed"
+    cd - >/dev/null
 fi
 
 if [ ! -f "${ROX_IN_BUNDLE}" ]; then
