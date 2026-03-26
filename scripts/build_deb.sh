@@ -31,12 +31,19 @@ mkdir -p "${PKG_DIR}/usr/share/icons/hicolor/scalable/apps"
 cp "${BUILD_DIR}/pyxelze" "${PKG_DIR}/usr/bin/pyxelze"
 strip "${PKG_DIR}/usr/bin/pyxelze"
 
+ROX_SRC=""
 if [ -f "${BUILD_DIR}/roxify/roxify_native" ]; then
-    cp "${BUILD_DIR}/roxify/roxify_native" "${PKG_DIR}/usr/lib/pyxelze/roxify_native"
+    ROX_SRC="${BUILD_DIR}/roxify/roxify_native"
+elif [ -n "${ROXIFY_NATIVE:-}" ] && [ -f "${ROXIFY_NATIVE}" ]; then
+    ROX_SRC="${ROXIFY_NATIVE}"
+fi
+
+if [ -n "$ROX_SRC" ]; then
+    cp "$ROX_SRC" "${PKG_DIR}/usr/lib/pyxelze/roxify_native"
     chmod 755 "${PKG_DIR}/usr/lib/pyxelze/roxify_native"
     strip "${PKG_DIR}/usr/lib/pyxelze/roxify_native" 2>/dev/null || true
 else
-    echo "WARNING: roxify_native not found in build dir"
+    echo "WARNING: roxify_native not found"
 fi
 
 cp packaging/debian/control "${PKG_DIR}/DEBIAN/control"
