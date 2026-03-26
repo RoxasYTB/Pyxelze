@@ -15,3 +15,5 @@ node_modules/
 *.dmg
 *.AppImage
 test*.png
+build/
+build-debug/
