@@ -63,6 +63,11 @@ set(SOURCES
     resources/resources.qrc
 )
 
+if(WIN32)
+    set(WIN_RC_FILE "${CMAKE_SOURCE_DIR}/resources/pyxelze.rc")
+    list(APPEND SOURCES ${WIN_RC_FILE})
+endif()
+
 qt_add_executable(pyxelze ${SOURCES})
 
 target_include_directories(pyxelze PRIVATE src)
