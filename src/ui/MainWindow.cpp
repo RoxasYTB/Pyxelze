@@ -288,7 +288,7 @@ void MainWindow::loadArchive(const QString& path) {
     m_statusProgress->setRange(0, 0);
     QApplication::processEvents();
 
-    auto r = ProcessHelper::runRox(QStringList{QStringLiteral("list"), path}, 30000);
+    auto r = ProcessHelper::runRox(QStringList{QStringLiteral("list"), path}, 120000);
 
     if (r.exitCode == 0 && !r.stdOut.trimmed().isEmpty()) {
         m_allFiles = ArchiveParser::parse(r.stdOut);
@@ -541,27 +541,36 @@ void MainWindow::addFilesToArchive(const QStringList& filePaths) {
         auto savePath = QFileDialog::getSaveFileName(this, L::get("dialog.saveNewArchive"), {}, QStringLiteral("PNG Rox (*.png)"));
         if (savePath.isEmpty()) return;
 
-        auto buildTemp = TempHelper::createTempDir(QStringLiteral("pyxelze_new_archive"));
-        for (const auto& src : valid) {
-            QFileInfo fi(src);
-            auto dest = buildTemp + QStringLiteral("/") + fi.fileName();
-            if (fi.isDir())
-                TempHelper::copyDirectory(src, dest);
-            else
-                QFile::copy(src, dest);
-        }
-
         auto pass = PassphraseDialog::prompt(this, L::get("dialog.passphraseTitle"), L::get("dialog.passphrasePrompt"));
-        if (!pass.has_value()) { TempHelper::safeDelete(buildTemp); return; }
+        if (!pass.has_value()) return;
 
         QStringList passArgs;
         if (!pass->isEmpty())
             passArgs = PassphraseManager::buildPassphraseArgs(*pass);
 
-        QStringList encArgs{QStringLiteral("encode"), buildTemp, savePath};
+        bool singleDir = (valid.size() == 1 && QFileInfo(valid.first()).isDir());
+        QString encodeSource;
+        QString buildTemp;
+
+        if (singleDir) {
+            encodeSource = valid.first();
+        } else {
+            buildTemp = TempHelper::createTempDir(QStringLiteral("pyxelze_new_archive"));
+            for (const auto& src : valid) {
+                QFileInfo fi(src);
+                auto dest = buildTemp + QStringLiteral("/") + fi.fileName();
+                if (fi.isDir())
+                    TempHelper::copyDirectory(src, dest);
+                else
+                    QFile::copy(src, dest);
+            }
+            encodeSource = buildTemp;
+        }
+
+        QStringList encArgs{QStringLiteral("encode"), encodeSource, savePath};
         encArgs.append(passArgs);
         auto r = ProgressDialog::runRoxWithProgress(this, L::get("dialog.creating"), L::get("dialog.encoding"), encArgs);
-        TempHelper::safeDelete(buildTemp);
+        if (!buildTemp.isEmpty()) TempHelper::safeDelete(buildTemp);
 
         if (r.exitCode != 0) {
             ErrorDialog::show(this, L::get("dialog.createFailed"), r.stdErr);
