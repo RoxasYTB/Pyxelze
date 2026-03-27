@@ -234,8 +234,24 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
           name: Pyxelze v${{ env.VERSION }}
-          generate_release_notes: true
+          body: |
+            ## Pyxelze v${{ env.VERSION }}
+
+            ### Corrections
+            - Fix crash sur le prompt de passphrase (flux réordonné)
+            - Optimisation single-dir : plus de copie temporaire inutile
+            - Timeout loadArchive augmenté à 120s
+
+            ### Améliorations
+            - Roxify 1.12.0 embarqué : chiffrement streaming AES-256-CTR (4x plus rapide)
+            - Licence multilingue dans l'installateur Windows (FR, DE, ES, IT, PT, PL, TR, RU, JA)
+
+            ### Installateurs
+            - Windows : Setup.exe (InnoSetup, licence multilingue)
+            - macOS : DMG universel (arm64 + x86_64)
+            - Linux : .deb (amd64) + AppImage (x86_64)
           files: |
             artifacts/linux-packages/pyxelze_${{ env.VERSION }}_amd64.deb
             artifacts/linux-packages/Pyxelze-${{ env.VERSION }}-x86_64.AppImage
