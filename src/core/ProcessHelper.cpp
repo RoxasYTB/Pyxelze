@@ -2,6 +2,8 @@
 #include "RoxRunner.h"
 #include "Logger.h"
 #include <QDir>
+#include <QApplication>
+#include <QElapsedTimer>
 
 ProcessResult ProcessHelper::runProcess(const QString& program, const QStringList& args, int timeoutMs) {
     QProcess proc;
@@ -11,10 +13,16 @@ ProcessResult ProcessHelper::runProcess(const QString& program, const QStringLis
     if (!proc.waitForStarted(5000))
         return {-1, {}, QStringLiteral("Failed to start process")};
 
-    if (!proc.waitForFinished(timeoutMs)) {
-        proc.kill();
-        proc.waitForFinished(2000);
-        return {-1, {}, QStringLiteral("Timeout")};
+    QElapsedTimer timer;
+    timer.start();
+
+    while (!proc.waitForFinished(50)) {
+        QApplication::processEvents();
+        if (timer.elapsed() > timeoutMs) {
+            proc.kill();
+            proc.waitForFinished(2000);
+            return {-1, {}, QStringLiteral("Timeout")};
+        }
     }
 
     return {
