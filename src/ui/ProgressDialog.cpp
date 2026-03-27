@@ -61,7 +61,7 @@ ProcessResult ProgressDialog::runRoxWithProgress(QWidget* parent, const QString&
             dlg.close();
             return {-1, {}, QStringLiteral("Cancelled")};
         }
-        if (timer.elapsed() > 120000) {
+        if (timer.elapsed() > 1800000) {
             proc.kill();
             proc.waitForFinished(2000);
             dlg.close();
