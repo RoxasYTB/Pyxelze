@@ -14,7 +14,6 @@ AppSupportURL={#MyAppURL}/issues
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-LicenseFile=..\..\LICENSE
 OutputDir=..\..\build
 OutputBaseFilename=Pyxelze-{#MyAppVersion}-Setup
 SetupIconFile=..\..\appIcon.ico
@@ -26,16 +25,16 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 ChangesAssociations=yes
 
 [Languages]
-Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "french"; MessagesFile: "compiler:Languages\French.isl"
-Name: "german"; MessagesFile: "compiler:Languages\German.isl"
-Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
-Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
-Name: "portuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
-Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
-Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
-Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
-Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"; LicenseFile: "..\..\LICENSE"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"; LicenseFile: "..\..\LICENSE_FR"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl"; LicenseFile: "..\..\LICENSE_DE"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"; LicenseFile: "..\..\LICENSE_ES"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"; LicenseFile: "..\..\LICENSE_IT"
+Name: "portuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"; LicenseFile: "..\..\LICENSE_PT"
+Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"; LicenseFile: "..\..\LICENSE_PL"
+Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"; LicenseFile: "..\..\LICENSE_TR"
+Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"; LicenseFile: "..\..\LICENSE_RU"
+Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"; LicenseFile: "..\..\LICENSE_JA"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -46,6 +45,7 @@ Source: "..\..\build\deploy\pyxelze.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\build\deploy\roxify\roxify_native.exe"; DestDir: "{app}\roxify"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\appIcon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\LICENSE_FR"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\build\deploy\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\build\deploy\platforms\*"; DestDir: "{app}\platforms"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "..\..\build\deploy\styles\*"; DestDir: "{app}\styles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
