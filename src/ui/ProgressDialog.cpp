@@ -52,16 +52,25 @@ ProcessResult ProgressDialog::runRoxWithProgress(QWidget* parent, const QString&
 
     QElapsedTimer timer;
     timer.start();
+    qint64 lastUpdate = 0;
 
     while (!proc.waitForFinished(50)) {
         QApplication::processEvents();
+
+        auto elapsed = timer.elapsed();
+        if (elapsed - lastUpdate >= 500) {
+            lastUpdate = elapsed;
+            auto secs = elapsed / 1000;
+            dlg.m_label->setText(QStringLiteral("%1 (%2s)").arg(message).arg(secs));
+        }
+
         if (dlg.m_cancelled) {
             proc.kill();
             proc.waitForFinished(2000);
             dlg.close();
             return {-1, {}, QStringLiteral("Cancelled")};
         }
-        if (timer.elapsed() > 1800000) {
+        if (elapsed > 1800000) {
             proc.kill();
             proc.waitForFinished(2000);
             dlg.close();
