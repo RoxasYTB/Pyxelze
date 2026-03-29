@@ -163,5 +163,6 @@
   "view.tiles": "Tiles",
   "menu.view.viewMode": "View mode",
   "col.modified": "Date modified",
-  "contextmenu.openWith": "Open with Pyxelze"
+  "contextmenu.openWith": "Open with Pyxelze",
+  "progress.elapsed": "Elapsed time:"
 }

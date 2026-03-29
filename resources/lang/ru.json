@@ -152,5 +152,6 @@
   "compression.encoding": "Кодирование",
   "compression.encodingFile": "Кодирование {0}...",
   "compression.fallback": "Кодирование (обходной путь)",
-  "compression.fallbackProgress": "Кодирование через временный файл..."
+  "compression.fallbackProgress": "Кодирование через временный файл...",
+  "progress.elapsed": "Прошло времени:"
 }

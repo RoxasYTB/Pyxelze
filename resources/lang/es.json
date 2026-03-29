@@ -152,5 +152,6 @@
   "compression.encoding": "Codificando",
   "compression.encodingFile": "Codificando {0}...",
   "compression.fallback": "Codificación (alternativa)",
-  "compression.fallbackProgress": "Codificación vía archivo temporal..."
+  "compression.fallbackProgress": "Codificación vía archivo temporal...",
+  "progress.elapsed": "Tiempo transcurrido:"
 }
