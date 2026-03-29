@@ -1,5 +1,5 @@
 #define MyAppName "Pyxelze"
-#define MyAppVersion "1.2.8"
+#define MyAppVersion "1.2.9"
 #define MyAppPublisher "Yohan SANNIER"
 #define MyAppURL "https://github.com/RoxasYTB/Pyxelze"
 #define MyAppExeName "pyxelze.exe"

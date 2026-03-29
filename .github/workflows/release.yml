@@ -239,19 +239,24 @@ jobs:
           body: |
             ## Pyxelze v${{ env.VERSION }}
 
-            ### Corrections
-            - Fix crash sur le prompt de passphrase (flux réordonné)
-            - Optimisation single-dir : plus de copie temporaire inutile
-            - Timeout loadArchive augmenté à 120s
+            ### Nouveautés
+            - Barre de progression réelle avec pourcentage, temps écoulé traduit dans toutes les langues
+            - Animation fluide de la progression (interpolation pourcent par pourcent toutes les 100ms)
+            - Titre de fenêtre simplifié : "Pyxelze" sans mention "Nouvelle archive"
 
             ### Améliorations
-            - Roxify 1.12.0 embarqué : chiffrement streaming AES-256-CTR (4x plus rapide)
-            - Licence multilingue dans l'installateur Windows (FR, DE, ES, IT, PT, PL, TR, RU, JA)
+            - Roxify 1.12.1 embarqué avec support `--progress` pour le suivi en temps réel
+            - Temps écoulé mis à jour en continu (plus de freeze)
+            - Compatibilité descendante : fallback automatique si roxify ne supporte pas `--progress`
+
+            ### Corrections
+            - Fix du gel de l'affichage du temps écoulé pendant les opérations longues
+            - Fix de la progression qui sautait par paliers au lieu d'être fluide
 
             ### Installateurs
-            - Windows : Setup.exe (InnoSetup, licence multilingue)
-            - macOS : DMG universel (arm64 + x86_64)
-            - Linux : .deb (amd64) + AppImage (x86_64)
+            - **Windows** : Setup.exe (InnoSetup, licence multilingue)
+            - **macOS** : DMG universel (arm64 + x86_64)
+            - **Linux** : .deb (amd64) + AppImage (x86_64)
           files: |
             artifacts/linux-packages/pyxelze_${{ env.VERSION }}_amd64.deb
             artifacts/linux-packages/Pyxelze-${{ env.VERSION }}-x86_64.AppImage
