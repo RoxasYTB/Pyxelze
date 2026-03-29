@@ -152,5 +152,6 @@
   "compression.encoding": "ترميز",
   "compression.encodingFile": "ترميز {0}...",
   "compression.fallback": "ترميز (بديل)",
-  "compression.fallbackProgress": "ترميز عبر ملف مؤقت..."
+  "compression.fallbackProgress": "ترميز عبر ملف مؤقت...",
+  "progress.elapsed": "الوقت المنقضي :"
 }

@@ -152,5 +152,6 @@
   "compression.encoding": "Kodlama",
   "compression.encodingFile": "{0} kodlanıyor...",
   "compression.fallback": "Kodlama (yedek)",
-  "compression.fallbackProgress": "Geçici dosya ile kodlama..."
+  "compression.fallbackProgress": "Geçici dosya ile kodlama...",
+  "progress.elapsed": "Geçen süre:"
 }
