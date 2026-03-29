@@ -7,7 +7,7 @@ Depends: libqt6widgets6 (>= 6.2), libqt6network6 (>= 6.2), libqt6gui6 (>= 6.2), 
 Maintainer: Yohan SANNIER <contact@pyxelze.dev>
 Homepage: https://github.com/RoxasYTB/Pyxelze
 Description: PNG steganography archive manager
-Pyxelze is a file explorer and archiver that uses PNG steganography
-to embed files within PNG images using the roxify engine.
-Features include transparent compression, optional AES encryption,
-and a native file browser interface.
+ Pyxelze is a file explorer and archiver that uses PNG steganography
+ to embed files within PNG images using the roxify engine.
+ Features include transparent compression, optional AES encryption,
+ and a native file browser interface.
