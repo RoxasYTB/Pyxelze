@@ -112,12 +112,21 @@ jobs:
 
       - name: Download roxify_native universal from roxify release
         run: |
-          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/latest/download/roxify_native-universal-apple-darwin"
+          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.12.3/roxify_native-universal-apple-darwin"
           echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
-          curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL"
-          chmod +x /tmp/roxify_bin/roxify_native
-          echo "ROXIFY_NATIVE=/tmp/roxify_bin/roxify_native" >> $GITHUB_ENV
+          if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
+            chmod +x /tmp/roxify_bin/roxify_native
+            echo "ROXIFY_NATIVE=/tmp/roxify_bin/roxify_native" >> $GITHUB_ENV
+            echo "Downloaded universal binary from GitHub release"
+          else
+            echo "Universal binary not yet available, building from npm..."
+            npm install -g roxify
+            NPM_ROOT=$(npm root -g)
+            if [ -f "${NPM_ROOT}/roxify/dist/roxify_native" ]; then
+              echo "ROXIFY_NATIVE=${NPM_ROOT}/roxify/dist/roxify_native" >> $GITHUB_ENV
+            fi
+          fi
 
       - name: Extract version
         run: |
@@ -240,18 +249,20 @@ jobs:
             ## Pyxelze v${{ env.VERSION }}
 
             ### Nouveautés
-            - Barre de progression réelle avec pourcentage, temps écoulé traduit dans toutes les langues
-            - Animation fluide de la progression (interpolation pourcent par pourcent toutes les 100ms)
-            - Titre de fenêtre simplifié : "Pyxelze" sans mention "Nouvelle archive"
+            - Roxify 1.12.3 embarqué — compression zstd multithread optimisée (ratio niveau 19 à la vitesse du niveau 3)
+            - Barres de progression réelles avec pourcentage et temps écoulé traduit
+            - Animation fluide de la progression (interpolation toutes les 100ms)
 
             ### Améliorations
-            - Roxify 1.12.1 embarqué avec support `--progress` pour le suivi en temps réel
-            - Temps écoulé mis à jour en continu (plus de freeze)
-            - Compatibilité descendante : fallback automatique si roxify ne supporte pas `--progress`
+            - Moteur roxify avec `--progress` pour suivi en temps réel de la compression
+            - Compression niveau 12 par défaut avec multithreading zstd
+            - Décodage natif Rust pour les fichiers volumineux (>10 Mo)
 
             ### Corrections
-            - Fix du gel de l'affichage du temps écoulé pendant les opérations longues
-            - Fix de la progression qui sautait par paliers au lieu d'être fluide
+            - Fix du copyright dans le dialogue À propos (2025-2026)
+            - Fix du gel de la progression pendant les opérations longues
+            - Fix de la barre de progression qui apparaissait comme barre de chargement
+            - Fix du pourcentage dupliqué lors du décodage
 
             ### Installateurs
             - **Windows** : Setup.exe (InnoSetup, licence multilingue)

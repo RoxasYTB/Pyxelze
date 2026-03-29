@@ -85,7 +85,7 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent) {
     lnk->setOpenExternalLinks(true);
     layout->addWidget(lnk);
 
-    auto* lblCopy = new QLabel(L::get("about.copyright").replace(QStringLiteral("{0}"), QStringLiteral("2024-2026")));
+    auto* lblCopy = new QLabel(L::get("about.copyright").replace(QStringLiteral("{0}"), QStringLiteral("2026")));
     lblCopy->setStyleSheet(QStringLiteral("color: %1;").arg(dim.name()));
     layout->addWidget(lblCopy);
 
