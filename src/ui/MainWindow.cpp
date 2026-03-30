@@ -638,7 +638,7 @@ void MainWindow::createEmptyArchive() {
         m_currentArchive = tempArchive;
         m_allFiles.clear();
         m_currentPath.clear();
-        setWindowTitle(QStringLiteral("Pyxelze"));
+        setWindowTitle(L::get("dialog.title.newArchive"));
         updateAddressBar();
         refreshView();
     }

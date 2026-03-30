@@ -152,6 +152,5 @@
   "compression.encoding": "エンコード中",
   "compression.encodingFile": "{0}をエンコード中...",
   "compression.fallback": "エンコード（フォールバック）",
-  "compression.fallbackProgress": "一時ファイル経由でエンコード中...",
-  "progress.elapsed": "経過時間:"
+  "compression.fallbackProgress": "一時ファイル経由でエンコード中..."
 }

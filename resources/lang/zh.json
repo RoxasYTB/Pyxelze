@@ -152,6 +152,5 @@
   "compression.encoding": "编码中",
   "compression.encodingFile": "正在编码 {0}...",
   "compression.fallback": "编码（备用）",
-  "compression.fallbackProgress": "通过临时文件编码...",
-  "progress.elapsed": "已用时间:"
+  "compression.fallbackProgress": "通过临时文件编码..."
 }

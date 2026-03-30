@@ -152,6 +152,5 @@
   "compression.encoding": "인코딩",
   "compression.encodingFile": "{0} 인코딩 중...",
   "compression.fallback": "인코딩 (대체)",
-  "compression.fallbackProgress": "임시 파일로 인코딩 중...",
-  "progress.elapsed": "경과 시간:"
+  "compression.fallbackProgress": "임시 파일로 인코딩 중..."
 }
