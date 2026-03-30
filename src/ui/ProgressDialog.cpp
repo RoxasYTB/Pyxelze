@@ -48,7 +48,7 @@ ProgressDialog::ProgressDialog(QWidget* parent, const QString& title, const QStr
             m_displayPercent++;
 
         m_bar->setValue(m_displayPercent);
-        m_label->setText(QStringLiteral("%1 - %2%").arg(m_baseMessage).arg(m_displayPercent));
+        m_label->setText(m_baseMessage);
 
         auto elapsedMs = m_elapsed.elapsed();
         m_statsLabel->setText(QStringLiteral("%1 %2").arg(L::get("progress.elapsed"), formatDuration(elapsedMs)));

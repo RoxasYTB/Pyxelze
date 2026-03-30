@@ -112,7 +112,7 @@ jobs:
 
       - name: Download roxify_native universal from roxify release
         run: |
-          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.12.3/roxify_native-universal-apple-darwin"
+          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.12.4/roxify_native-universal-apple-darwin"
           echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
           if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
@@ -249,7 +249,7 @@ jobs:
             ## Pyxelze v${{ env.VERSION }}
 
             ### Nouveautés
-            - Roxify 1.12.3 embarqué — compression zstd multithread optimisée (ratio niveau 19 à la vitesse du niveau 3)
+            - Roxify 1.12.4 embarqué — compression zstd multithread optimisée, GPU retiré, optimisations CPU (+18% vitesse)
             - Barres de progression réelles avec pourcentage et temps écoulé traduit
             - Animation fluide de la progression (interpolation toutes les 100ms)
 
