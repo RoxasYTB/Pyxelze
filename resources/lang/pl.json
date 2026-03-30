@@ -152,6 +152,5 @@
   "compression.encoding": "Kodowanie",
   "compression.encodingFile": "Kodowanie {0}...",
   "compression.fallback": "Kodowanie (awaryjne)",
-  "compression.fallbackProgress": "Kodowanie przez plik tymczasowy...",
-  "progress.elapsed": "Czas trwania:"
+  "compression.fallbackProgress": "Kodowanie przez plik tymczasowy..."
 }

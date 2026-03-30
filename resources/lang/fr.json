@@ -163,6 +163,5 @@
   "view.tiles": "Mosaïque",
   "menu.view.viewMode": "Mode d'affichage",
   "col.modified": "Date de modification",
-  "contextmenu.openWith": "Ouvrir avec Pyxelze",
-  "progress.elapsed": "Temps passé :"
+  "contextmenu.openWith": "Ouvrir avec Pyxelze"
 }

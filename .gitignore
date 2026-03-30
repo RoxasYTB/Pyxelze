@@ -16,4 +16,4 @@ node_modules/
 *.AppImage
 test*.png
 build/
-build-*/
+build-debug/

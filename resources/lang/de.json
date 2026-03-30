@@ -152,6 +152,5 @@
   "compression.encoding": "Kodierung",
   "compression.encodingFile": "Kodiere {0}...",
   "compression.fallback": "Kodierung (Umgehung)",
-  "compression.fallbackProgress": "Kodierung über Temporärdatei...",
-  "progress.elapsed": "Vergangene Zeit:"
+  "compression.fallbackProgress": "Kodierung über Temporärdatei..."
 }
