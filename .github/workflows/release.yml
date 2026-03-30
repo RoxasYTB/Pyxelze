@@ -112,7 +112,7 @@ jobs:
 
       - name: Download roxify_native universal from roxify release
         run: |
-          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.12.4/roxify_native-universal-apple-darwin"
+          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.12.5/roxify_native-universal-apple-darwin"
           echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
           if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
@@ -248,21 +248,21 @@ jobs:
           body: |
             ## Pyxelze v${{ env.VERSION }}
 
-            ### Nouveautés
-            - Roxify 1.12.4 embarqué — compression zstd multithread optimisée, GPU retiré, optimisations CPU (+18% vitesse)
-            - Barres de progression réelles avec pourcentage et temps écoulé traduit
+            ### Nouveautes
+            - Roxify 1.12.5 embarque - build macOS Darwin corrige, compression zstd multithread optimisee
+            - Barres de progression reelles avec pourcentage et temps ecoule traduit
             - Animation fluide de la progression (interpolation toutes les 100ms)
 
-            ### Améliorations
-            - Moteur roxify avec `--progress` pour suivi en temps réel de la compression
-            - Compression niveau 12 par défaut avec multithreading zstd
-            - Décodage natif Rust pour les fichiers volumineux (>10 Mo)
+            ### Ameliorations
+            - Moteur roxify avec `--progress` pour suivi en temps reel de la compression
+            - Compression niveau 12 par defaut avec multithreading zstd
+            - Decodage natif Rust pour les fichiers volumineux (>10 Mo)
 
             ### Corrections
-            - Fix du copyright dans le dialogue À propos (2025-2026)
-            - Fix du gel de la progression pendant les opérations longues
+            - Fix du copyright dans le dialogue A propos (2025-2026)
+            - Fix du gel de la progression pendant les operations longues
             - Fix de la barre de progression qui apparaissait comme barre de chargement
-            - Fix du pourcentage dupliqué lors du décodage
+            - Fix du pourcentage duplique lors du decodage
 
             ### Installateurs
             - **Windows** : Setup.exe (InnoSetup, licence multilingue)
