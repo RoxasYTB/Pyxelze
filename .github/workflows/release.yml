@@ -112,7 +112,7 @@ jobs:
 
       - name: Download roxify_native universal from roxify release
         run: |
-          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.12.7/roxify_native-universal-apple-darwin"
+          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.12.9/roxify_native-universal-apple-darwin"
           echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
           if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
@@ -249,20 +249,12 @@ jobs:
             ## Pyxelze v${{ env.VERSION }}
 
             ### Nouveautes
-            - Roxify 1.12.5 embarque - build macOS Darwin corrige, compression zstd multithread optimisee
-            - Barres de progression reelles avec pourcentage et temps ecoule traduit
-            - Animation fluide de la progression (interpolation toutes les 100ms)
-
-            ### Ameliorations
-            - Moteur roxify avec `--progress` pour suivi en temps reel de la compression
-            - Compression niveau 12 par defaut avec multithreading zstd
-            - Decodage natif Rust pour les fichiers volumineux (>10 Mo)
+            - Roxify 1.12.9 embarque (fix MARKER_END dans les 3 derniers pixels)
+            - Nettoyage du code mort dans l'encodeur roxify
+            - Simplification des signatures de fonctions internes
 
             ### Corrections
-            - Fix du copyright dans le dialogue A propos (2025-2026)
-            - Fix du gel de la progression pendant les operations longues
-            - Fix de la barre de progression qui apparaissait comme barre de chargement
-            - Fix du pourcentage duplique lors du decodage
+            - Fix du marqueur de fin d'image (MARKER_END) place correctement dans les 3 derniers pixels de chaque image encodee
 
             ### Installateurs
             - **Windows** : Setup.exe (InnoSetup, licence multilingue)
