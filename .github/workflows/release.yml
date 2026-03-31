@@ -112,7 +112,7 @@ jobs:
 
       - name: Download roxify_native universal from roxify release
         run: |
-          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.12.10/roxify_native-universal-apple-darwin"
+          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.12.11/roxify_native-universal-apple-darwin"
           echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
           if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
@@ -249,7 +249,7 @@ jobs:
             ## Pyxelze v${{ env.VERSION }}
 
             ### Nouveautes
-            - Roxify 1.12.10 embarque (fix MARKER_END dans les 3 derniers pixels, encodeurs Rust ET TypeScript)
+            - Roxify 1.12.11 embarque (fix MARKER_END dans tous les encodeurs : Rust in-memory, streaming, et TypeScript)
             - Nettoyage du code mort dans l'encodeur roxify
             - Simplification des signatures de fonctions internes
 
