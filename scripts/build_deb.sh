@@ -47,6 +47,7 @@ else
 fi
 
 cp packaging/debian/control "${PKG_DIR}/DEBIAN/control"
+sed -i 's/\r$//' "${PKG_DIR}/DEBIAN/control"
 cp packaging/debian/postinst "${PKG_DIR}/DEBIAN/postinst"
 chmod 755 "${PKG_DIR}/DEBIAN/postinst"
 
