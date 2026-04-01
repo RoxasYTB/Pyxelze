@@ -249,11 +249,14 @@ jobs:
             ## Pyxelze v${{ env.VERSION }}
 
             ### Nouveautes
+            - Système de licence hors ligne avec vérification locale (algo Luhn personnalisé salé + double clé)
+            - Activation par clé collée dans l'application, sans dépendance réseau
             - Roxify 1.12.11 embarque (fix MARKER_END dans tous les encodeurs : Rust in-memory, streaming, et TypeScript)
             - Nettoyage du code mort dans l'encodeur roxify
             - Simplification des signatures de fonctions internes
 
             ### Corrections
+            - Persistance locale de la licence après réinstallation
             - Fix du marqueur de fin d'image (MARKER_END) place correctement dans les 3 derniers pixels de chaque image encodee
 
             ### Installateurs
