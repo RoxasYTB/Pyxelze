@@ -61,7 +61,7 @@ fi
 
 INSTALLED_SIZE=$(du -sk "${PKG_DIR}/usr" | cut -f1)
 sed -i "s/^Version:.*/Version: ${VERSION}/" "${PKG_DIR}/DEBIAN/control"
-sed -i "s/^Architecture:.*/Architecture: amd64\nInstalled-Size: ${INSTALLED_SIZE}/" "${PKG_DIR}/DEBIAN/control"
+sed -i "/^Architecture:.*/a Installed-Size: ${INSTALLED_SIZE}" "${PKG_DIR}/DEBIAN/control"
 
 dpkg-deb --root-owner-group --build "${PKG_DIR}" "${BUILD_DIR}/${DEB_NAME}.deb"
 
