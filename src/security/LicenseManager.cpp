@@ -3,14 +3,21 @@
 #include "LicenseAlgorithm.h"
 #include "localization/Localization.h"
 #include "platform/PlatformService.h"
+#include "ui/IconProvider.h"
+#include "ui/ThemeManager.h"
 
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
-#include <QInputDialog>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QVBoxLayout>
 
 namespace {
 const QString kLicensePreferenceKey = QStringLiteral("license/key");
@@ -111,19 +118,88 @@ bool LicenseManager::ensureActivated(QWidget* parent) {
     QString currentInput;
 
     while (true) {
-        bool ok = false;
-        const QString entered = QInputDialog::getText(
-            parent,
-            L::get(QStringLiteral("license.title")),
-            L::get(QStringLiteral("license.prompt")),
-            QLineEdit::Normal,
-            currentInput,
-            &ok
-        ).trimmed();
+        QDialog dlg(parent);
+        dlg.setWindowTitle(L::get(QStringLiteral("license.title")));
+        dlg.setFixedSize(460, 280);
+        ThemeManager::applyToWidget(&dlg);
 
-        if (!ok) {
+        auto accent = ThemeManager::accentColor();
+        auto dim = ThemeManager::dimText();
+        auto fg = ThemeManager::windowFore();
+
+        auto* root = new QVBoxLayout(&dlg);
+        root->setContentsMargins(32, 28, 32, 24);
+        root->setSpacing(0);
+
+        auto* header = new QHBoxLayout;
+        header->setSpacing(16);
+        auto* iconLbl = new QLabel;
+        iconLbl->setPixmap(IconProvider::appIcon().pixmap(48, 48));
+        iconLbl->setFixedSize(48, 48);
+        header->addWidget(iconLbl);
+
+        auto* titleCol = new QVBoxLayout;
+        titleCol->setSpacing(4);
+        auto* titleLbl = new QLabel(QStringLiteral("Pyxelze"));
+        titleLbl->setStyleSheet(QStringLiteral("font-size: 20pt; font-weight: bold; color: %1;").arg(accent.name()));
+        titleCol->addWidget(titleLbl);
+        auto* subtitleLbl = new QLabel(L::get(QStringLiteral("license.title")));
+        subtitleLbl->setStyleSheet(QStringLiteral("font-size: 10pt; color: %1;").arg(dim.name()));
+        titleCol->addWidget(subtitleLbl);
+        header->addLayout(titleCol);
+        header->addStretch();
+        root->addLayout(header);
+
+        root->addSpacing(24);
+
+        auto* promptLbl = new QLabel(L::get(QStringLiteral("license.prompt")));
+        promptLbl->setStyleSheet(QStringLiteral("font-size: 10pt; color: %1; margin-bottom: 8px;").arg(fg.name()));
+        root->addWidget(promptLbl);
+
+        root->addSpacing(8);
+
+        auto* input = new QLineEdit;
+        input->setPlaceholderText(QStringLiteral("PYX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"));
+        input->setText(currentInput);
+        input->setStyleSheet(QStringLiteral(
+            "QLineEdit {"
+            "  font-size: 12pt; font-family: 'Consolas', 'Courier New', monospace;"
+            "  padding: 10px 14px;"
+            "  border: 2px solid %1;"
+            "  border-radius: 8px;"
+            "  background: %2;"
+            "  color: %3;"
+            "}"
+            "QLineEdit:focus { border-color: %4; }"
+        ).arg(ThemeManager::borderColor().name(),
+              ThemeManager::controlBack().name(),
+              fg.name(),
+              accent.name()));
+        root->addWidget(input);
+
+        root->addSpacing(24);
+
+        auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        auto* okBtn = buttons->button(QDialogButtonBox::Ok);
+        okBtn->setText(L::get(QStringLiteral("license.title")));
+        okBtn->setStyleSheet(QStringLiteral(
+            "QPushButton {"
+            "  background: %1; color: white; font-weight: bold;"
+            "  padding: 8px 24px; border-radius: 6px; font-size: 10pt;"
+            "}"
+            "QPushButton:hover { opacity: 0.9; }"
+        ).arg(accent.name()));
+        QObject::connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+        QObject::connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+        root->addWidget(buttons);
+
+        input->setFocus();
+
+        if (dlg.exec() != QDialog::Accepted) {
             return false;
         }
+
+        const QString entered = input->text().trimmed();
 
         if (LicenseAlgorithm::isValid(entered)) {
             persistLicenseEverywhere(entered);
