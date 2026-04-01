@@ -9,3 +9,6 @@
 /*.zip export-ignore
 *.exe export-ignore
 *.pdb export-ignore
+
+packaging/debian/* text eol=lf
+scripts/*.sh text eol=lf
