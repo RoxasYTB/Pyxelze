@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Pyxelze VERSION 1.3.3 LANGUAGES CXX)
+project(Pyxelze VERSION 1.3.4 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -42,6 +42,10 @@ set(SOURCES
     src/localization/Localization.cpp
     src/security/PassphraseManager.h
     src/security/PassphraseManager.cpp
+    src/security/LicenseAlgorithm.h
+    src/security/LicenseAlgorithm.cpp
+    src/security/LicenseManager.h
+    src/security/LicenseManager.cpp
     src/platform/PlatformService.h
     src/platform/PlatformService.cpp
     src/ui/ThemeManager.h

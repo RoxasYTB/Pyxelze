@@ -7,6 +7,7 @@
 #include "localization/Localization.h"
 #include "archive/ExtractionService.h"
 #include "archive/CompressionService.h"
+#include "security/LicenseManager.h"
 #include "ui/MainWindow.h"
 
 static int runExtractHere(const QString& filePath) {
@@ -51,6 +52,12 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    L::init();
+
+    if (!LicenseManager::ensureActivated(nullptr)) {
+        return 0;
+    }
+
     if (!action.isEmpty() && !fileToOpen.isEmpty()) {
         if (action == QStringLiteral("--extract-here"))
             return runExtractHere(fileToOpen);
@@ -59,8 +66,6 @@ int main(int argc, char* argv[]) {
         if (action == QStringLiteral("--encode"))
             return runEncode(fileToOpen);
     }
-
-    L::init();
 
     MainWindow w(fileToOpen);
     w.show();
