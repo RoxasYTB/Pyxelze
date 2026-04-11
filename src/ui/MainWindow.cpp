@@ -173,7 +173,7 @@ void MainWindow::buildAddressBar() {
 
     auto* container = new QWidget;
     auto* containerLayout = new QHBoxLayout(container);
-    containerLayout->setContentsMargins(4, 1, 4, 1);
+    containerLayout->setContentsMargins(0, 1, 0, 1);
     containerLayout->addWidget(m_addressBar);
 
     auto* centralWrapper = new QWidget;

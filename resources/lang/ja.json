@@ -152,5 +152,9 @@
   "compression.encoding": "エンコード中",
   "compression.encodingFile": "{0}をエンコード中...",
   "compression.fallback": "エンコード（フォールバック）",
-  "compression.fallbackProgress": "一時ファイル経由でエンコード中..."
+  "compression.fallbackProgress": "一時ファイル経由でエンコード中...",
+  "dialog.cancel": "Cancel",
+  "update.restartRequired": "Update installed. The application will restart.",
+  "update.downloading": "Downloading update...",
+  "update.downloadFailed": "Update download failed."
 }

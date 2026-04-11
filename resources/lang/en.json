@@ -166,5 +166,7 @@
   "view.tiles": "Tiles",
   "menu.view.viewMode": "View mode",
   "col.modified": "Date modified",
-  "contextmenu.openWith": "Open with Pyxelze"
+  "contextmenu.openWith": "Open with Pyxelze",
+  "dialog.cancel": "Cancel",
+  "update.restartRequired": "Update installed. The application will restart."
 }
