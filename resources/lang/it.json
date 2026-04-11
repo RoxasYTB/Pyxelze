@@ -152,5 +152,9 @@
   "compression.encoding": "Codifica",
   "compression.encodingFile": "Codifica di {0}...",
   "compression.fallback": "Codifica (alternativa)",
-  "compression.fallbackProgress": "Codifica tramite file temporaneo..."
+  "compression.fallbackProgress": "Codifica tramite file temporaneo...",
+  "dialog.cancel": "Cancel",
+  "update.restartRequired": "Update installed. The application will restart.",
+  "update.downloading": "Downloading update...",
+  "update.downloadFailed": "Update download failed."
 }

@@ -103,11 +103,34 @@ jobs:
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion="${{ env.VERSION }}" packaging\windows\installer.iss
 
-      - name: Upload Windows artifact
+      - name: Create portable ZIP
+        run: |
+          Compress-Archive -Path build\deploy\* -DestinationPath "build\Pyxelze-${{ env.VERSION }}-Portable.zip"
+
+      - name: Create standalone EXE
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion="${{ env.VERSION }}" /DStandalone packaging\windows\installer.iss
+          if (Test-Path "build\Pyxelze-${{ env.VERSION }}-Standalone.exe") {
+            echo "Standalone EXE created"
+          }
+
+      - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           path: build/Pyxelze-${{ env.VERSION }}-Setup.exe
+
+      - name: Upload Windows portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: build/Pyxelze-${{ env.VERSION }}-Portable.zip
+
+      - name: Upload Windows standalone
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-standalone
+          path: build/Pyxelze-${{ env.VERSION }}-Standalone.exe
 
       - name: Cancel workflow on failure
         if: ${{ failure() }}
@@ -135,7 +158,7 @@ jobs:
 
       - name: Download roxify_native universal from roxify release
         run: |
-          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.12.11/roxify_native-universal-apple-darwin"
+          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.13.0/roxify_native-universal-apple-darwin"
           echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
           if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
@@ -283,22 +306,25 @@ jobs:
             ## Pyxelze v${{ env.VERSION }}
 
             ### Nouveautes
-            - Système de licence hors ligne avec vérification locale (algo Luhn personnalisé salé + double clé)
-            - Activation par clé collée dans l'application, sans dépendance réseau
-            - Roxify 1.12.11 embarque (fix MARKER_END dans tous les encodeurs : Rust in-memory, streaming, et TypeScript)
-            - Nettoyage du code mort dans l'encodeur roxify
-            - Simplification des signatures de fonctions internes
+            - Mise à jour directe depuis l'application (téléchargement et installation automatique)
+            - Barre d'adresse pleine largeur
+            - Version portable Windows (ZIP) et standalone (EXE unique)
+            - Optimisations mémoire du compresseur roxify
+            - Compression adaptative améliorée (vitesse maximale selon taille/entropie)
+            - Compatibilité Linux élargie (glibc 2.31+, Debian 11+, Ubuntu 20.04+, Fedora 33+)
 
             ### Corrections
-            - Persistance locale de la licence après réinstallation
-            - Fix du marqueur de fin d'image (MARKER_END) place correctement dans les 3 derniers pixels de chaque image encodee
+            - Espaces inutiles autour de la barre d'adresse supprimés
+            - Fichiers temporaires race-safe pour les conversions WebP/JXL
 
             ### Installateurs
-            - **Windows** : Setup.exe (InnoSetup, licence multilingue)
+            - **Windows** : Setup.exe (InnoSetup), Portable (ZIP), Standalone (EXE)
             - **macOS** : DMG universel (arm64 + x86_64)
             - **Linux** : .deb (amd64) + AppImage (x86_64)
           files: |
             artifacts/linux-packages/pyxelze_${{ env.VERSION }}_amd64.deb
             artifacts/linux-packages/Pyxelze-${{ env.VERSION }}-x86_64.AppImage
             artifacts/windows-installer/Pyxelze-${{ env.VERSION }}-Setup.exe
+            artifacts/windows-portable/Pyxelze-${{ env.VERSION }}-Portable.zip
+            artifacts/windows-standalone/Pyxelze-${{ env.VERSION }}-Standalone.exe
             artifacts/macos-dmg/Pyxelze-${{ env.VERSION }}-macOS.dmg

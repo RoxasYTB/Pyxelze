@@ -17,3 +17,4 @@ node_modules/
 test*.png
 build/
 build-debug/
+build-linux/

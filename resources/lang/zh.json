@@ -152,5 +152,9 @@
   "compression.encoding": "编码中",
   "compression.encodingFile": "正在编码 {0}...",
   "compression.fallback": "编码（备用）",
-  "compression.fallbackProgress": "通过临时文件编码..."
+  "compression.fallbackProgress": "通过临时文件编码...",
+  "dialog.cancel": "Cancel",
+  "update.restartRequired": "Update installed. The application will restart.",
+  "update.downloading": "Downloading update...",
+  "update.downloadFailed": "Update download failed."
 }

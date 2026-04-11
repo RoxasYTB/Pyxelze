@@ -1,10 +1,47 @@
 #define MyAppName "Pyxelze"
 #ifndef MyAppVersion
-#define MyAppVersion "1.3.4"
+#define MyAppVersion "1.3.5"
 #endif
 #define MyAppPublisher "Yohan SANNIER"
 #define MyAppURL "https://github.com/RoxasYTB/Pyxelze"
 #define MyAppExeName "pyxelze.exe"
+
+#ifdef Standalone
+[Setup]
+AppId={{E8A7F3B2-4C1D-4E5F-9A8B-1C2D3E4F5A6C}
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+AppPublisher={#MyAppPublisher}
+DefaultDirName={tmp}\{#MyAppName}
+Uninstallable=no
+CreateAppDir=yes
+OutputDir=..\..\build
+OutputBaseFilename=Pyxelze-{#MyAppVersion}-Standalone
+SetupIconFile=..\..\appIcon.ico
+Compression=lzma2/max
+SolidCompression=yes
+WizardStyle=modern
+ArchitecturesAllowed=x64compatible
+DisableProgramGroupPage=yes
+DisableDirPage=yes
+DisableReadyPage=yes
+DisableFinishedPage=yes
+
+[Files]
+Source: "..\..\build\deploy\pyxelze.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\build\deploy\roxify\roxify_native.exe"; DestDir: "{app}\roxify"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\build\deploy\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\build\deploy\platforms\*"; DestDir: "{app}\platforms"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\styles\*"; DestDir: "{app}\styles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\imageformats\*"; DestDir: "{app}\imageformats"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\iconengines\*"; DestDir: "{app}\iconengines"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\tls\*"; DestDir: "{app}\tls"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\build\deploy\networkinformation\*"; DestDir: "{app}\networkinformation"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+
+[Run]
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait
+
+#else
 
 [Setup]
 AppId={{E8A7F3B2-4C1D-4E5F-9A8B-1C2D3E4F5A6B}
@@ -93,3 +130,5 @@ Root: HKCU; Subkey: "Software\Classes\Directory\shell\Pyxelze\shell\encode\comma
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+#endif
