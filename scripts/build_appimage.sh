@@ -53,7 +53,9 @@ chmod 755 "${APPDIR}/AppRun"
 LINUXDEPLOY="${BUILD_DIR}/linuxdeploy-x86_64.AppImage"
 if [ ! -f "${LINUXDEPLOY}" ]; then
     echo "Downloading linuxdeploy..."
-    curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors -o "${LINUXDEPLOY}" \
+    curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors -o "${LINUXDEPLOY}" \
+        "https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-x86_64.AppImage" \
+    || curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors -o "${LINUXDEPLOY}" \
         "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
     chmod +x "${LINUXDEPLOY}"
 fi
@@ -61,7 +63,9 @@ fi
 PLUGIN="${BUILD_DIR}/linuxdeploy-plugin-qt-x86_64.AppImage"
 if [ ! -f "${PLUGIN}" ]; then
     echo "Downloading Qt plugin..."
-    curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors -o "${PLUGIN}" \
+    curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors -o "${PLUGIN}" \
+        "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20240109-1/linuxdeploy-plugin-qt-x86_64.AppImage" \
+    || curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors -o "${PLUGIN}" \
         "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
     chmod +x "${PLUGIN}"
 fi
