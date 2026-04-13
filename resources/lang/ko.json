@@ -156,5 +156,7 @@
   "dialog.cancel": "Cancel",
   "update.restartRequired": "Update installed. The application will restart.",
   "update.downloading": "Downloading update...",
-  "update.downloadFailed": "Update download failed."
+  "update.downloadFailed": "Update download failed.",
+  "progress.elapsed": "\uacbd\uacfc: {0}",
+  "progress.remaining": "\ub0a8\uc740 \uc2dc\uac04: {0}"
 }
