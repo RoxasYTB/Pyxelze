@@ -156,5 +156,7 @@
   "dialog.cancel": "Cancel",
   "update.restartRequired": "Update installed. The application will restart.",
   "update.downloading": "Downloading update...",
-  "update.downloadFailed": "Update download failed."
+  "update.downloadFailed": "Update download failed.",
+  "progress.elapsed": "Ge\u00e7en: {0}",
+  "progress.remaining": "Kalan: {0}"
 }

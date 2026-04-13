@@ -4,6 +4,11 @@
 #include <QString>
 #include <QStringList>
 #include <QWidget>
+#include <QTimer>
+#include <QElapsedTimer>
+
+class QLabel;
+class QProgressBar;
 
 class ProgressDialog : public QDialog {
     Q_OBJECT
@@ -12,7 +17,19 @@ public:
     static ProcessResult runRoxWithProgress(QWidget* parent, const QString& title, const QString& message, const QStringList& args);
 
 private:
-    class QLabel* m_label;
-    class QProgressBar* m_bar;
+    void updateElapsed();
+    void animateProgress();
+    void applyProgressStyle();
+    static QString formatDuration(qint64 ms);
+
+    QLabel* m_label;
+    QProgressBar* m_bar;
+    QLabel* m_elapsedLabel;
+    QLabel* m_etaLabel;
+    QTimer m_elapsedTimer;
+    QTimer m_animTimer;
+    QElapsedTimer m_clock;
+    int m_realPercent = 0;
+    int m_displayPercent = 0;
     bool m_cancelled = false;
 };

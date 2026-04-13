@@ -168,5 +168,7 @@
   "col.modified": "Date de modification",
   "contextmenu.openWith": "Ouvrir avec Pyxelze",
   "dialog.cancel": "Annuler",
-  "update.restartRequired": "Mise à jour installée. L'application va redémarrer."
+  "update.restartRequired": "Mise à jour installée. L'application va redémarrer.",
+  "progress.elapsed": "Ecoul\u00e9 : {0}",
+  "progress.remaining": "Restant : {0}"
 }

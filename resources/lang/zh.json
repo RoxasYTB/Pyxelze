@@ -156,5 +156,7 @@
   "dialog.cancel": "Cancel",
   "update.restartRequired": "Update installed. The application will restart.",
   "update.downloading": "Downloading update...",
-  "update.downloadFailed": "Update download failed."
+  "update.downloadFailed": "Update download failed.",
+  "progress.elapsed": "\u5df2\u7528\u65f6\u95f4: {0}",
+  "progress.remaining": "\u5269\u4f59\u65f6\u95f4: {0}"
 }
