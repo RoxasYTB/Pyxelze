@@ -158,7 +158,7 @@ jobs:
 
       - name: Download roxify_native universal from roxify release
         run: |
-          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.13.2/roxify_native-universal-apple-darwin"
+          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.13.3/roxify_native-universal-apple-darwin"
           echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
           if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
@@ -306,10 +306,9 @@ jobs:
             ## Pyxelze v${{ env.VERSION }}
 
             ### Nouveautés
-            - Barre de progression en temps réel avec pourcentage, temps écoulé et estimation restante
-            - Animation fluide de la progression (interpolation douce)
-            - Traduction de la progression dans les 13 langues supportées
-            - Mise à jour vers roxify v1.13.2 (progress bar, suppression GPU, benchmarks réels)
+            - Mise à jour vers roxify v1.13.3 (SIMD Adler32, ~25% encodage plus rapide, décodage streaming avec progression, fix crash V8)
+            - Barres de progression plus précises basées sur les données réelles du moteur Rust
+            - Correction du crash de décodage sur les gros fichiers (fix Vec<u8> → Buffer)
 
             ### Installateurs
             - **Windows** : Setup.exe (InnoSetup), Portable (ZIP), Standalone (EXE)
