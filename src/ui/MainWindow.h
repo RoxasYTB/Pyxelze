@@ -2,7 +2,9 @@
 #include "core/VirtualFile.h"
 #include <QMainWindow>
 #include <QList>
+#include <QPersistentModelIndex>
 #include <QString>
+#include <QStringList>
 #include <QPoint>
 
 class QTreeView;
@@ -15,8 +17,10 @@ class QProgressBar;
 class QAction;
 class QActionGroup;
 class QMenu;
+class QProcess;
 class QToolBar;
 class QStackedWidget;
+class QTimer;
 
 enum class ViewMode { Details, List, SmallIcons, MediumIcons, LargeIcons, Tiles };
 
@@ -63,6 +67,12 @@ private:
 
     void updateAddressBar();
     void updateStatusBar();
+    void scheduleDragPrefetch();
+    void maybeStartDragPrefetch();
+    void stopDragPrefetch();
+    void clearDragCache();
+    QString dragCacheDir();
+    void applyDeferredSelection();
 
     void setViewMode(ViewMode mode);
     void showContextMenu(const QPoint& pos);
@@ -90,5 +100,12 @@ private:
     Qt::SortOrder m_sortOrder = Qt::AscendingOrder;
     bool m_isDraggingFromSelf = false;
     QPoint m_dragStartPos;
+    QString m_dragCacheDir;
+    QStringList m_dragPrefetchFiles;
+    QProcess* m_dragPrefetchProcess = nullptr;
+    QTimer* m_dragPrefetchTimer = nullptr;
+    QAbstractItemView* m_pressedView = nullptr;
+    QPersistentModelIndex m_pressedIndex;
+    bool m_deferSelectionOnRelease = false;
     ViewMode m_viewMode = ViewMode::Details;
 };

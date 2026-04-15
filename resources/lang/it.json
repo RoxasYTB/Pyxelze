@@ -158,5 +158,17 @@
   "update.downloading": "Downloading update...",
   "update.downloadFailed": "Update download failed.",
   "progress.elapsed": "Trascorso: {0}",
-  "progress.remaining": "Rimanente: {0}"
+  "progress.remaining": "Rimanente: {0}",
+  "progress.currentStep": "Fase corrente: {0}",
+  "progress.step.parsing_png": "Analisi PNG",
+  "progress.step.reading_header": "Lettura intestazione",
+  "progress.step.decrypting": "Decrittazione",
+  "progress.step.decompressing": "Decompressione",
+  "progress.step.extracting": "Estrazione file",
+  "progress.step.finishing": "Finalizzazione",
+  "progress.step.compressing": "Compressione file",
+  "progress.step.writing_png": "Scrittura PNG",
+  "progress.step.encoding": "Codifica",
+  "progress.step.done": "Completato",
+  "info.encryptionUnknown": "Sconosciuta"
 }

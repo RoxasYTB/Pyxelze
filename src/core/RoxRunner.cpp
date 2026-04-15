@@ -29,6 +29,8 @@ static void resolve() {
 
     if (tryPath(base + QStringLiteral("/roxify/") + bin)) return;
     if (tryPath(base + QStringLiteral("/") + bin)) return;
+    if (tryPath(base + QStringLiteral("/../../roxify/target/release/") + bin)) return;
+    if (tryPath(base + QStringLiteral("/../roxify/target/release/") + bin)) return;
 
 #ifndef Q_OS_WIN
 #ifdef Q_OS_MAC

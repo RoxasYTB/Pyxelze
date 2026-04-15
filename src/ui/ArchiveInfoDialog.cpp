@@ -1,8 +1,6 @@
 #include "ArchiveInfoDialog.h"
 #include "ThemeManager.h"
 #include "IconProvider.h"
-#include "core/ProcessHelper.h"
-#include "core/RoxRunner.h"
 #include "helpers/SizeFormatter.h"
 #include "localization/Localization.h"
 #include <QVBoxLayout>
@@ -25,7 +23,7 @@ static QLabel* boldLabel(const QString& text) {
     return l;
 }
 
-ArchiveInfoDialog::ArchiveInfoDialog(QWidget* parent, const QString& archivePath, const QList<VirtualFile>& allFiles)
+ArchiveInfoDialog::ArchiveInfoDialog(QWidget* parent, const QString& archivePath, const QList<VirtualFile>& allFiles, const QString& encryptionText)
     : QDialog(parent) {
     QFileInfo fi(archivePath);
     int totalFiles = 0, totalFolders = 0;
@@ -34,11 +32,6 @@ ArchiveInfoDialog::ArchiveInfoDialog(QWidget* parent, const QString& archivePath
         if (f.isFolder) ++totalFolders;
         else { ++totalFiles; totalSize += f.size; }
     }
-
-    bool hasPass = false;
-    auto r = ProcessHelper::runRox(QStringList{QStringLiteral("havepassphrase"), archivePath}, 5000);
-    if (r.exitCode == 0 && r.stdOut.contains(QStringLiteral("Passphrase detected")))
-        hasPass = true;
 
     setWindowTitle(L::get("info.title").replace(QStringLiteral("{0}"), fi.fileName()));
     setFixedSize(520, 480);
@@ -88,7 +81,7 @@ ArchiveInfoDialog::ArchiveInfoDialog(QWidget* parent, const QString& archivePath
 
     addRow(L::get("info.files"), QString::number(totalFiles));
     addRow(L::get("info.folders"), QString::number(totalFolders));
-    addRow(L::get("info.encryption"), hasPass ? L::get("info.encryptionYes") : L::get("info.encryptionNo"));
+    addRow(L::get("info.encryption"), encryptionText);
 
     layout->addLayout(grid);
 

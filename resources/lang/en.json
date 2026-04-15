@@ -170,5 +170,17 @@
   "dialog.cancel": "Cancel",
   "update.restartRequired": "Update installed. The application will restart.",
   "progress.elapsed": "Elapsed: {0}",
-  "progress.remaining": "Remaining: {0}"
+  "progress.remaining": "Remaining: {0}",
+  "progress.currentStep": "Current step: {0}",
+  "progress.step.parsing_png": "Parsing PNG",
+  "progress.step.reading_header": "Reading header",
+  "progress.step.decrypting": "Decrypting",
+  "progress.step.decompressing": "Decompressing",
+  "progress.step.extracting": "Extracting files",
+  "progress.step.finishing": "Finishing",
+  "progress.step.compressing": "Compressing files",
+  "progress.step.writing_png": "Writing PNG",
+  "progress.step.encoding": "Encoding",
+  "progress.step.done": "Done",
+  "info.encryptionUnknown": "Unknown"
 }

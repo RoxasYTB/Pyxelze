@@ -158,5 +158,17 @@
   "update.downloading": "Downloading update...",
   "update.downloadFailed": "Update download failed.",
   "progress.elapsed": "Up\u0142yn\u0119\u0142o: {0}",
-  "progress.remaining": "Pozosta\u0142o: {0}"
+  "progress.remaining": "Pozosta\u0142o: {0}",
+  "progress.currentStep": "Bie\u017c\u0105cy etap: {0}",
+  "progress.step.parsing_png": "Analizowanie PNG",
+  "progress.step.reading_header": "Odczyt nag\u0142\u00f3wka",
+  "progress.step.decrypting": "Odszyfrowywanie",
+  "progress.step.decompressing": "Rozpakowywanie",
+  "progress.step.extracting": "Wyodr\u0119bnianie plik\u00f3w",
+  "progress.step.finishing": "Ko\u0144czenie",
+  "progress.step.compressing": "Kompresowanie plik\u00f3w",
+  "progress.step.writing_png": "Zapisywanie PNG",
+  "progress.step.encoding": "Kodowanie",
+  "progress.step.done": "Gotowe",
+  "info.encryptionUnknown": "Nieznane"
 }
