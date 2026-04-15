@@ -7,6 +7,10 @@ permissions:
   contents: write
   actions: write
 
+env:
+  VERSION: 1.3.9
+  ROXIFY_VERSION: 1.13.5
+
 jobs:
   build-linux:
     runs-on: ubuntu-22.04
@@ -21,10 +25,13 @@ jobs:
             libgl-dev libvulkan-dev \
             libfuse2 file desktop-file-utils
 
-      - name: Install roxify
+      - name: Download roxify
         run: |
-          sudo npm install -g roxify
-          ROXIFY_PATH="$(sudo npm root -g)/roxify/dist/roxify_native"
+          mkdir -p /tmp/roxify_bin
+          ROXIFY_PATH="/tmp/roxify_bin/roxify_native"
+          ROXIFY_URL="https://github.com/RoxasYTB/roxify/releases/download/v${ROXIFY_VERSION}/roxify_native-x86_64-unknown-linux-gnu"
+          curl -fSL -o "${ROXIFY_PATH}" "${ROXIFY_URL}"
+          chmod +x "${ROXIFY_PATH}"
           echo "ROXIFY_NATIVE=${ROXIFY_PATH}" >> $GITHUB_ENV
 
       - name: Extract version
@@ -70,11 +77,13 @@ jobs:
           target: desktop
           arch: win64_msvc2022_64
 
-      - name: Install roxify
+      - name: Download roxify
         run: |
-          npm install -g roxify
-          $npmRoot = npm root -g
-          $roxPath = Join-Path $npmRoot "roxify\dist\roxify_native.exe"
+          $roxDir = Join-Path $env:RUNNER_TEMP "roxify_bin"
+          New-Item -ItemType Directory -Force -Path $roxDir | Out-Null
+          $roxPath = Join-Path $roxDir "roxify_native.exe"
+          $roxUrl = "https://github.com/RoxasYTB/roxify/releases/download/v${{ env.ROXIFY_VERSION }}/roxify_native-x86_64-pc-windows-msvc.exe"
+          Invoke-WebRequest -Uri $roxUrl -OutFile $roxPath
           echo "ROXIFY_PATH=$roxPath" >> $env:GITHUB_ENV
 
       - name: Extract version
@@ -158,7 +167,7 @@ jobs:
 
       - name: Download roxify_native universal from roxify release
         run: |
-          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.13.4/roxify_native-universal-apple-darwin"
+          ROXIFY_URL="https://github.com/RoxasYTB/roxify/releases/download/v${ROXIFY_VERSION}/roxify_native-universal-apple-darwin"
           echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
           if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
@@ -166,12 +175,8 @@ jobs:
             echo "ROXIFY_NATIVE=/tmp/roxify_bin/roxify_native" >> $GITHUB_ENV
             echo "Downloaded universal binary from GitHub release"
           else
-            echo "Universal binary not yet available, building from npm..."
-            npm install -g roxify
-            NPM_ROOT=$(npm root -g)
-            if [ -f "${NPM_ROOT}/roxify/dist/roxify_native" ]; then
-              echo "ROXIFY_NATIVE=${NPM_ROOT}/roxify/dist/roxify_native" >> $GITHUB_ENV
-            fi
+            echo "Universal binary not available for Roxify v${ROXIFY_VERSION}"
+            exit 1
           fi
 
       - name: Extract version
@@ -305,12 +310,15 @@ jobs:
           body: |
             ## Pyxelze v${{ env.VERSION }}
 
-            ### Nouveautés
-            - Intègre Roxify v1.13.4 avec packing de dossiers sélectif et encode nettement plus rapide sur arborescences à nombreux petits fichiers, y compris sur systèmes de fichiers lents
-            - Extraction sélective côté UI pour ouverture, multi-sélection, glisser-déposer et copie locale sans repasser par une extraction complète d'archive
-            - Barre de progression basée sur étapes réelles du moteur Rust avec libellés localisés pour lecture d'en-tête, déchiffrement, décompression, extraction, compression et écriture PNG
-            - Logs debug d'encodage et décodage avec temps exact du moteur Roxify pour faciliter diagnostics terrain
-            - Résolution du binaire Roxify sibling en build debug pour tester immédiatement version locale sans publication manuelle
+            ### Correctifs
+            - Intègre Roxify v${{ env.ROXIFY_VERSION }} avec correction des PNG géants: `IDAT` chunkés, header payload 64 bits, compatibilité lecture v1/v2
+            - Corrige extraction de très grosses archives PNG sans fallback destructeur en mémoire; décodage streaming validé sur `Portal 2` jusqu'à 3 731 fichiers extraits
+            - Conserve mémoire bornée côté moteur grâce à écriture séquentielle sur disque et hints cache Linux pendant décompression
+            - Met à jour boîte About avec version Pyxelze 1.3.9, build stamp courant et version exacte du moteur Roxify embarqué
+
+            ### Améliorations
+            - Release build désormais épinglée sur Roxify v${{ env.ROXIFY_VERSION }} via assets GitHub pour Linux, Windows et macOS
+            - Chaîne de release homogène: même moteur Roxify sur tous les paquets produits
 
             ### Installateurs
             - **Windows** : Setup.exe (InnoSetup), Portable (ZIP), Standalone (EXE)
