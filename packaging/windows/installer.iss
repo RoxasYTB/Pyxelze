@@ -1,6 +1,6 @@
 #define MyAppName "Pyxelze"
 #ifndef MyAppVersion
-#define MyAppVersion "1.3.5"
+#define MyAppVersion "1.3.9"
 #endif
 #define MyAppPublisher "Yohan SANNIER"
 #define MyAppURL "https://github.com/RoxasYTB/Pyxelze"
