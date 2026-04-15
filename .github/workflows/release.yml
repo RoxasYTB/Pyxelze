@@ -158,7 +158,7 @@ jobs:
 
       - name: Download roxify_native universal from roxify release
         run: |
-          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.13.3/roxify_native-universal-apple-darwin"
+          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/download/v1.13.4/roxify_native-universal-apple-darwin"
           echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
           if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
@@ -306,9 +306,11 @@ jobs:
             ## Pyxelze v${{ env.VERSION }}
 
             ### Nouveautés
-            - Mise à jour vers roxify v1.13.3 (SIMD Adler32, ~25% encodage plus rapide, décodage streaming avec progression, fix crash V8)
-            - Barres de progression plus précises basées sur les données réelles du moteur Rust
-            - Correction du crash de décodage sur les gros fichiers (fix Vec<u8> → Buffer)
+            - Intègre Roxify v1.13.4 avec packing de dossiers sélectif et encode nettement plus rapide sur arborescences à nombreux petits fichiers, y compris sur systèmes de fichiers lents
+            - Extraction sélective côté UI pour ouverture, multi-sélection, glisser-déposer et copie locale sans repasser par une extraction complète d'archive
+            - Barre de progression basée sur étapes réelles du moteur Rust avec libellés localisés pour lecture d'en-tête, déchiffrement, décompression, extraction, compression et écriture PNG
+            - Logs debug d'encodage et décodage avec temps exact du moteur Roxify pour faciliter diagnostics terrain
+            - Résolution du binaire Roxify sibling en build debug pour tester immédiatement version locale sans publication manuelle
 
             ### Installateurs
             - **Windows** : Setup.exe (InnoSetup), Portable (ZIP), Standalone (EXE)

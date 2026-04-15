@@ -158,5 +158,17 @@
   "update.downloading": "Downloading update...",
   "update.downloadFailed": "Update download failed.",
   "progress.elapsed": "\uacbd\uacfc: {0}",
-  "progress.remaining": "\ub0a8\uc740 \uc2dc\uac04: {0}"
+  "progress.remaining": "\ub0a8\uc740 \uc2dc\uac04: {0}",
+  "progress.currentStep": "\ud604\uc7ac \ub2e8\uacc4: {0}",
+  "progress.step.parsing_png": "PNG \ubd84\uc11d \uc911",
+  "progress.step.reading_header": "\ud5e4\ub354 \uc77d\ub294 \uc911",
+  "progress.step.decrypting": "\ubcf5\ud638\ud654 \uc911",
+  "progress.step.decompressing": "\ud480\uc5b4\ub0b4\ub294 \uc911",
+  "progress.step.extracting": "\ud30c\uc77c \ucd94\ucd9c \uc911",
+  "progress.step.finishing": "\ub9c8\ubb34\ub9ac \uc911",
+  "progress.step.compressing": "\ud30c\uc77c \uc555\ucd95 \uc911",
+  "progress.step.writing_png": "PNG \uc4f0\ub294 \uc911",
+  "progress.step.encoding": "\uc778\ucf54\ub529 \uc911",
+  "progress.step.done": "\uc644\ub8cc",
+  "info.encryptionUnknown": "\uc54c \uc218 \uc5c6\uc74c"
 }

@@ -158,5 +158,17 @@
   "update.downloading": "Downloading update...",
   "update.downloadFailed": "Update download failed.",
   "progress.elapsed": "Vergangen: {0}",
-  "progress.remaining": "Verbleibend: {0}"
+  "progress.remaining": "Verbleibend: {0}",
+  "progress.currentStep": "Aktueller Schritt: {0}",
+  "progress.step.parsing_png": "PNG wird analysiert",
+  "progress.step.reading_header": "Header wird gelesen",
+  "progress.step.decrypting": "Entschlüsselung",
+  "progress.step.decompressing": "Dekomprimierung",
+  "progress.step.extracting": "Dateien werden extrahiert",
+  "progress.step.finishing": "Abschluss",
+  "progress.step.compressing": "Dateien werden komprimiert",
+  "progress.step.writing_png": "PNG wird geschrieben",
+  "progress.step.encoding": "Kodierung",
+  "progress.step.done": "Fertig",
+  "info.encryptionUnknown": "Unbekannt"
 }

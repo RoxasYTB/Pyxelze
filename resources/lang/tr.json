@@ -158,5 +158,17 @@
   "update.downloading": "Downloading update...",
   "update.downloadFailed": "Update download failed.",
   "progress.elapsed": "Ge\u00e7en: {0}",
-  "progress.remaining": "Kalan: {0}"
+  "progress.remaining": "Kalan: {0}",
+  "progress.currentStep": "Ge\u00e7erli ad\u0131m: {0}",
+  "progress.step.parsing_png": "PNG ayr\u0131\u015ft\u0131r\u0131l\u0131yor",
+  "progress.step.reading_header": "Ba\u015fl\u0131k okunuyor",
+  "progress.step.decrypting": "\u015eifre \u00e7\u00f6z\u00fcl\u00fcyor",
+  "progress.step.decompressing": "A\u00e7\u0131l\u0131yor",
+  "progress.step.extracting": "Dosyalar \u00e7\u0131kar\u0131l\u0131yor",
+  "progress.step.finishing": "Tamamlan\u0131yor",
+  "progress.step.compressing": "Dosyalar s\u0131k\u0131\u015ft\u0131r\u0131l\u0131yor",
+  "progress.step.writing_png": "PNG yaz\u0131l\u0131yor",
+  "progress.step.encoding": "Kodlan\u0131yor",
+  "progress.step.done": "Tamamland\u0131",
+  "info.encryptionUnknown": "Bilinmiyor"
 }

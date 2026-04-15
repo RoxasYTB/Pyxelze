@@ -47,9 +47,57 @@
 #include <QCloseEvent>
 #include <QDrag>
 #include <QMouseEvent>
+#include <QSet>
 #include <QStackedWidget>
 #include <QActionGroup>
+#include <QTimer>
 #include <QWheelEvent>
+
+namespace {
+struct DragSelectionData {
+    QStringList selectedPaths;
+    QList<bool> selectedIsFolder;
+    QStringList requestedFiles;
+};
+
+QString cachedExtractPath(const QString& baseDir, const QString& internalPath) {
+    auto rel = internalPath;
+    rel.replace('/', QDir::separator());
+    return QDir(baseDir).filePath(rel);
+}
+
+DragSelectionData collectDragSelection(QAbstractItemView* view, QStandardItemModel* model, const QList<VirtualFile>& allFiles) {
+    DragSelectionData data;
+    if (!view || !view->selectionModel() || !model) return data;
+
+    QSet<QString> seenRequested;
+    for (const auto& idx : view->selectionModel()->selectedRows()) {
+        const auto modelIndex = model->index(idx.row(), 0);
+        const auto fullPath = model->data(modelIndex, Qt::UserRole + 2).toString();
+        const auto isFolder = model->data(modelIndex, Qt::UserRole + 3).toBool();
+        if (fullPath.isEmpty()) continue;
+
+        data.selectedPaths.append(fullPath);
+        data.selectedIsFolder.append(isFolder);
+
+        if (!isFolder) {
+            if (!seenRequested.contains(fullPath)) {
+                seenRequested.insert(fullPath);
+                data.requestedFiles.append(fullPath);
+            }
+            continue;
+        }
+
+        for (const auto& file : ExtractionService::getFilesUnder(allFiles, fullPath)) {
+            if (seenRequested.contains(file.fullPath)) continue;
+            seenRequested.insert(file.fullPath);
+            data.requestedFiles.append(file.fullPath);
+        }
+    }
+
+    return data;
+}
+}
 
 MainWindow::MainWindow(const QString& archivePath, QWidget* parent)
     : QMainWindow(parent) {
@@ -230,6 +278,7 @@ void MainWindow::buildFileList() {
     m_listView->setUniformItemSizes(false);
     m_listView->setWrapping(true);
     m_listView->setResizeMode(QListView::Adjust);
+    m_listView->setSelectionRectVisible(true);
     m_listView->setSpacing(2);
     m_listView->viewport()->installEventFilter(this);
 
@@ -241,8 +290,14 @@ void MainWindow::buildFileList() {
     m_viewStack->addWidget(m_listView);
     m_viewStack->setCurrentWidget(m_treeView);
 
-    connect(m_treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] { updateStatusBar(); });
-    connect(m_listView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] { updateStatusBar(); });
+    connect(m_treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] {
+        updateStatusBar();
+        scheduleDragPrefetch();
+    });
+    connect(m_listView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] {
+        updateStatusBar();
+        scheduleDragPrefetch();
+    });
 
     auto* central = centralWidget();
     auto* layout = qobject_cast<QVBoxLayout*>(central->layout());
@@ -276,6 +331,8 @@ void MainWindow::loadArchive(const QString& path) {
     auto prevPath = m_currentPath;
     auto prevTitle = windowTitle();
 
+    clearDragCache();
+
     if (m_isEmptyArchive) cleanupEmptyArchive();
 
     m_currentArchive = path;
@@ -302,26 +359,6 @@ void MainWindow::loadArchive(const QString& path) {
             ErrorDialog::show(this, L::get("dialog.invalidArchive"));
             m_statusProgress->setVisible(false);
             return;
-        }
-
-        auto hr = ProcessHelper::runRox(QStringList{QStringLiteral("havepassphrase"), path}, 5000);
-        if (hr.exitCode == 0 && hr.stdOut.contains(QStringLiteral("Passphrase detected"))) {
-            PassphraseManager::clear();
-            QString errorMsg;
-            while (true) {
-                auto pass = PassphraseDialog::prompt(this, L::get("passphrase.required"), L::get("passphrase.prompt"), errorMsg);
-                if (!pass.has_value()) break;
-                auto tempDir = TempHelper::createTempDir(QStringLiteral("pyxelze_verify"));
-                auto passArgs = PassphraseManager::buildPassphraseArgs(*pass);
-                QStringList vrArgs{QStringLiteral("decompress"), path};
-                vrArgs.append(passArgs);
-                vrArgs.append(tempDir);
-                auto vr = ProcessHelper::runRox(vrArgs, 15000);
-                TempHelper::safeDelete(tempDir);
-                if (vr.exitCode == 0) { PassphraseManager::save(*pass); break; }
-                if (PassphraseManager::isDecryptionFailure(vr.stdOut, vr.stdErr)) { errorMsg = L::get("dialog.wrongPassword"); continue; }
-                break;
-            }
         }
     } else if (r.stdErr == QStringLiteral("Timeout")) {
         m_currentArchive = prevArchive; m_allFiles = prevFiles; m_currentPath = prevPath; setWindowTitle(prevTitle);
@@ -424,7 +461,7 @@ void MainWindow::openFileFromArchive(const VirtualFile& vf) {
     auto tempDir = TempHelper::createTempDir(QStringLiteral("pyxelze_open"));
     auto outputPath = tempDir + QStringLiteral("/") + QFileInfo(vf.fullPath).fileName();
 
-    if (!ExtractionService::extractFileSingle(m_currentArchive, vf.fullPath, outputPath)) {
+    if (!ExtractionService::extractFileSingle(this, m_currentArchive, vf.fullPath, outputPath)) {
         TempHelper::safeDelete(tempDir);
         ErrorDialog::show(this, L::get("dialog.extractFailed"));
         return;
@@ -444,6 +481,7 @@ void MainWindow::newArchive() {
             return;
     }
     cleanupEmptyArchive();
+    clearDragCache();
     m_currentArchive.clear();
     m_allFiles.clear();
     m_currentPath.clear();
@@ -475,7 +513,19 @@ void MainWindow::extractSelected() {
     if (dir.isEmpty()) return;
 
     auto extractTemp = TempHelper::createTempDir(QStringLiteral("pyxelze_sel_extract"));
-    if (!ExtractionService::decompressArchiveToDir(m_currentArchive, extractTemp)) {
+    QStringList requestedFiles;
+    for (const auto& idx : view->selectionModel()->selectedRows()) {
+        auto fullPath = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 2).toString();
+        auto isFolder = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 3).toBool();
+        if (fullPath.isEmpty()) continue;
+        if (!isFolder) {
+            requestedFiles.append(fullPath);
+            continue;
+        }
+        for (const auto& f : ExtractionService::getFilesUnder(m_allFiles, fullPath))
+            requestedFiles.append(f.fullPath);
+    }
+    if (ExtractionService::extractMultipleFiles(this, m_currentArchive, requestedFiles, extractTemp) == 0) {
         ErrorDialog::show(this, L::get("dialog.extractFail"));
         TempHelper::safeDelete(extractTemp);
         return;
@@ -521,7 +571,10 @@ void MainWindow::showArchiveInfo() {
         QMessageBox::information(this, L::get("toolbar.info"), L::get("dialog.noArchiveOpen"));
         return;
     }
-    ArchiveInfoDialog dlg(this, m_currentArchive, m_allFiles);
+    const auto encryptionText = PassphraseManager::cachedPassphrase().isEmpty()
+        ? L::get("info.encryptionUnknown")
+        : L::get("info.encryptionYes");
+    ArchiveInfoDialog dlg(this, m_currentArchive, m_allFiles, encryptionText);
     dlg.exec();
 }
 
@@ -619,6 +672,7 @@ void MainWindow::addFilesToArchive(const QStringList& filePaths) {
         return;
     }
 
+    clearDragCache();
     loadArchive(m_currentArchive);
     QMessageBox::information(this, L::get("dialog.success"), L::get("dialog.addSuccess").replace(QStringLiteral("{0}"), QString::number(valid.size())));
 }
@@ -698,6 +752,7 @@ void MainWindow::rebuildUI() {
 
 void MainWindow::closeEvent(QCloseEvent* e) {
     cleanupEmptyArchive();
+    clearDragCache();
     TempHelper::cleanupAll();
     QMainWindow::closeEvent(e);
 }
@@ -737,6 +792,100 @@ QAbstractItemView* MainWindow::currentView() const {
     if (m_viewStack && m_viewStack->currentWidget() == m_listView)
         return m_listView;
     return m_treeView;
+}
+
+void MainWindow::scheduleDragPrefetch() {
+    if (!m_dragPrefetchTimer) {
+        m_dragPrefetchTimer = new QTimer(this);
+        m_dragPrefetchTimer->setSingleShot(true);
+        connect(m_dragPrefetchTimer, &QTimer::timeout, this, &MainWindow::maybeStartDragPrefetch);
+    }
+
+    m_dragPrefetchTimer->start(120);
+}
+
+void MainWindow::maybeStartDragPrefetch() {
+    if (m_currentArchive.isEmpty() || m_isEmptyArchive) {
+        stopDragPrefetch();
+        return;
+    }
+
+    const auto selection = collectDragSelection(currentView(), m_model, m_allFiles);
+    if (selection.requestedFiles.isEmpty()) {
+        stopDragPrefetch();
+        return;
+    }
+
+    const auto cacheDir = dragCacheDir();
+    const auto missing = ExtractionService::missingFiles(cacheDir, selection.requestedFiles);
+    if (missing.isEmpty()) {
+        stopDragPrefetch();
+        return;
+    }
+
+    if (m_dragPrefetchProcess && m_dragPrefetchProcess->state() != QProcess::NotRunning && m_dragPrefetchFiles == missing)
+        return;
+
+    stopDragPrefetch();
+
+    if (!m_dragPrefetchProcess) {
+        m_dragPrefetchProcess = new QProcess(this);
+        m_dragPrefetchProcess->setProcessChannelMode(QProcess::SeparateChannels);
+        connect(m_dragPrefetchProcess, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, [this] {
+            m_dragPrefetchFiles.clear();
+        });
+    }
+
+    const auto roxPath = RoxRunner::roxPath();
+    const auto args = ExtractionService::buildSelectiveExtractArgs(m_currentArchive, cacheDir, missing);
+    if (roxPath.isEmpty() || args.isEmpty()) return;
+
+    m_dragPrefetchFiles = missing;
+    m_dragPrefetchProcess->start(roxPath, args);
+}
+
+void MainWindow::stopDragPrefetch() {
+    if (m_dragPrefetchTimer) m_dragPrefetchTimer->stop();
+
+    if (m_dragPrefetchProcess && m_dragPrefetchProcess->state() != QProcess::NotRunning) {
+        m_dragPrefetchProcess->kill();
+        m_dragPrefetchProcess->waitForFinished(1000);
+    }
+
+    m_dragPrefetchFiles.clear();
+}
+
+void MainWindow::clearDragCache() {
+    stopDragPrefetch();
+
+    if (!m_dragCacheDir.isEmpty()) {
+        TempHelper::safeDelete(m_dragCacheDir);
+        m_dragCacheDir.clear();
+    }
+}
+
+QString MainWindow::dragCacheDir() {
+    if (m_dragCacheDir.isEmpty())
+        m_dragCacheDir = TempHelper::createTempDir(QStringLiteral("pyxelze_drag_cache"));
+    return m_dragCacheDir;
+}
+
+void MainWindow::applyDeferredSelection() {
+    if (!m_deferSelectionOnRelease || !m_pressedView || !m_pressedIndex.isValid()) {
+        m_deferSelectionOnRelease = false;
+        m_pressedView = nullptr;
+        m_pressedIndex = QPersistentModelIndex();
+        return;
+    }
+
+    if (auto* selectionModel = m_pressedView->selectionModel()) {
+        selectionModel->setCurrentIndex(m_pressedIndex, QItemSelectionModel::NoUpdate);
+        selectionModel->select(m_pressedIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    }
+
+    m_deferSelectionOnRelease = false;
+    m_pressedView = nullptr;
+    m_pressedIndex = QPersistentModelIndex();
 }
 
 void MainWindow::setViewMode(ViewMode mode) {
@@ -805,7 +954,19 @@ void MainWindow::showContextMenu(const QPoint& pos) {
         if (!v->selectionModel()->hasSelection()) return;
         auto destPath = QFileInfo(m_currentArchive).absolutePath();
         auto extractTemp = TempHelper::createTempDir(QStringLiteral("pyxelze_loc_extract"));
-        if (!ExtractionService::decompressArchiveToDir(m_currentArchive, extractTemp)) {
+        QStringList requestedFiles;
+        for (const auto& idx : v->selectionModel()->selectedRows()) {
+            auto fullPath = m_model->data(idx, Qt::UserRole + 2).toString();
+            auto isFolder = m_model->data(idx, Qt::UserRole + 3).toBool();
+            if (fullPath.isEmpty()) continue;
+            if (!isFolder) {
+                requestedFiles.append(fullPath);
+                continue;
+            }
+            for (const auto& f : ExtractionService::getFilesUnder(m_allFiles, fullPath))
+                requestedFiles.append(f.fullPath);
+        }
+        if (ExtractionService::extractMultipleFiles(this, m_currentArchive, requestedFiles, extractTemp) == 0) {
             ErrorDialog::show(this, L::get("dialog.extractFail"));
             TempHelper::safeDelete(extractTemp);
             return;
@@ -823,6 +984,18 @@ void MainWindow::showContextMenu(const QPoint& pos) {
                     QFile::remove(dest);
                     if (QFile::copy(src, dest)) ++ok; else ++fail;
                 } else ++fail;
+            } else {
+                auto folderName = QFileInfo(fullPath).fileName();
+                for (const auto& f : ExtractionService::getFilesUnder(m_allFiles, fullPath)) {
+                    auto rel = f.fullPath.mid(fullPath.length() + 1);
+                    auto dest = destPath + QStringLiteral("/") + folderName + QStringLiteral("/") + rel;
+                    QDir().mkpath(QFileInfo(dest).absolutePath());
+                    auto src = ExtractionService::findExtractedFile(extractTemp, f.fullPath);
+                    if (!src.isEmpty()) {
+                        QFile::remove(dest);
+                        if (QFile::copy(src, dest)) ++ok; else ++fail;
+                    } else ++fail;
+                }
             }
         }
         TempHelper::safeDelete(extractTemp);
@@ -839,46 +1012,45 @@ void MainWindow::startFileDrag() {
     if (!view || !view->selectionModel()->hasSelection()) return;
     if (m_currentArchive.isEmpty()) return;
 
-    QStringList selectedPaths;
-    QList<bool> selectedIsFolder;
-    for (const auto& idx : view->selectionModel()->selectedRows()) {
-        auto fullPath = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 2).toString();
-        auto isFolder = m_model->data(m_model->index(idx.row(), 0), Qt::UserRole + 3).toBool();
-        if (!fullPath.isEmpty()) {
-            selectedPaths.append(fullPath);
-            selectedIsFolder.append(isFolder);
+    const auto selection = collectDragSelection(view, m_model, m_allFiles);
+    if (selection.selectedPaths.isEmpty()) return;
+
+    if (m_dragPrefetchProcess && m_dragPrefetchProcess->state() != QProcess::NotRunning) {
+        m_dragPrefetchProcess->waitForFinished(150);
+        if (m_dragPrefetchProcess->state() != QProcess::NotRunning) {
+            m_dragPrefetchProcess->kill();
+            m_dragPrefetchProcess->waitForFinished(1000);
         }
     }
-    if (selectedPaths.isEmpty()) return;
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    auto tempDir = TempHelper::createTempDir(QStringLiteral("pyxelze_drag"));
-    bool ok = ExtractionService::decompressArchiveToDir(m_currentArchive, tempDir);
+    const auto cacheDir = dragCacheDir();
+    bool ok = true;
+    if (!selection.requestedFiles.isEmpty())
+        ok = ExtractionService::extractMultipleFiles(this, m_currentArchive, selection.requestedFiles, cacheDir) > 0;
+
+    for (int i = 0; i < selection.selectedPaths.size(); ++i) {
+        if (selection.selectedIsFolder[i])
+            QDir().mkpath(cachedExtractPath(cacheDir, selection.selectedPaths[i]));
+    }
     QApplication::restoreOverrideCursor();
 
-    if (!ok) {
-        TempHelper::safeDelete(tempDir);
-        return;
-    }
+    if (!ok) return;
 
     QList<QUrl> urls;
-    for (int i = 0; i < selectedPaths.size(); ++i) {
-        if (!selectedIsFolder[i]) {
-            auto src = ExtractionService::findExtractedFile(tempDir, selectedPaths[i]);
-            if (!src.isEmpty()) urls.append(QUrl::fromLocalFile(src));
-        } else {
-            auto filesUnder = ExtractionService::getFilesUnder(m_allFiles, selectedPaths[i]);
-            for (const auto& f : filesUnder) {
-                auto src = ExtractionService::findExtractedFile(tempDir, f.fullPath);
-                if (!src.isEmpty()) urls.append(QUrl::fromLocalFile(src));
-            }
+    QSet<QString> seenUrls;
+    for (int i = 0; i < selection.selectedPaths.size(); ++i) {
+        const auto& selectedPath = selection.selectedPaths[i];
+        const auto src = selection.selectedIsFolder[i]
+            ? cachedExtractPath(cacheDir, selectedPath)
+            : ExtractionService::findExtractedFile(cacheDir, selectedPath);
+        if (!src.isEmpty() && QFileInfo::exists(src) && !seenUrls.contains(src)) {
+            seenUrls.insert(src);
+            urls.append(QUrl::fromLocalFile(src));
         }
     }
 
-    if (urls.isEmpty()) {
-        TempHelper::safeDelete(tempDir);
-        return;
-    }
+    if (urls.isEmpty()) return;
 
     m_isDraggingFromSelf = true;
     auto* drag = new QDrag(this);
@@ -918,31 +1090,46 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* e) {
             if (me->button() == Qt::LeftButton) {
                 auto* view = (obj == tv) ? static_cast<QAbstractItemView*>(m_treeView) : static_cast<QAbstractItemView*>(m_listView);
                 auto idx = view->indexAt(me->pos());
+                m_dragStartPos = {};
+                m_pressedView = nullptr;
+                m_pressedIndex = QPersistentModelIndex();
+                m_deferSelectionOnRelease = false;
+
                 if (idx.isValid() && view->selectionModel()->isSelected(idx)) {
                     m_dragStartPos = me->pos();
-                    return true;
+                    maybeStartDragPrefetch();
+                    if (me->modifiers() == Qt::NoModifier) {
+                        m_pressedView = view;
+                        m_pressedIndex = idx;
+                        m_deferSelectionOnRelease = true;
+                        return true;
+                    }
                 }
-                m_dragStartPos = {};
             }
         } else if (e->type() == QEvent::MouseMove) {
             auto* me = static_cast<QMouseEvent*>(e);
             if ((me->buttons() & Qt::LeftButton) && !m_dragStartPos.isNull()) {
                 if ((me->pos() - m_dragStartPos).manhattanLength() >= QApplication::startDragDistance()) {
                     m_dragStartPos = {};
+                    m_deferSelectionOnRelease = false;
+                    m_pressedView = nullptr;
+                    m_pressedIndex = QPersistentModelIndex();
                     startFileDrag();
                     return true;
                 }
-                return true;
             }
         } else if (e->type() == QEvent::MouseButtonRelease) {
-            if (!m_dragStartPos.isNull()) {
+            if (m_deferSelectionOnRelease) {
+                auto* me = static_cast<QMouseEvent*>(e);
                 auto* view = (obj == tv) ? static_cast<QAbstractItemView*>(m_treeView) : static_cast<QAbstractItemView*>(m_listView);
-                auto idx = view->indexAt(m_dragStartPos);
-                m_dragStartPos = {};
-                if (idx.isValid()) {
-                    view->selectionModel()->select(idx, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
-                    view->setCurrentIndex(idx);
+                if (view == m_pressedView && view->indexAt(me->pos()) == m_pressedIndex)
+                    applyDeferredSelection();
+                else {
+                    m_deferSelectionOnRelease = false;
+                    m_pressedView = nullptr;
+                    m_pressedIndex = QPersistentModelIndex();
                 }
+                m_dragStartPos = {};
                 return true;
             }
             m_dragStartPos = {};

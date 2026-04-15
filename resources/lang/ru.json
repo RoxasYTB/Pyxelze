@@ -158,5 +158,17 @@
   "update.downloading": "Downloading update...",
   "update.downloadFailed": "Update download failed.",
   "progress.elapsed": "\u041f\u0440\u043e\u0448\u043b\u043e: {0}",
-  "progress.remaining": "\u041e\u0441\u0442\u0430\u043b\u043e\u0441\u044c: {0}"
+  "progress.remaining": "\u041e\u0441\u0442\u0430\u043b\u043e\u0441\u044c: {0}",
+  "progress.currentStep": "\u0422\u0435\u043a\u0443\u0449\u0438\u0439 \u044d\u0442\u0430\u043f: {0}",
+  "progress.step.parsing_png": "\u0410\u043d\u0430\u043b\u0438\u0437 PNG",
+  "progress.step.reading_header": "\u0427\u0442\u0435\u043d\u0438\u0435 \u0437\u0430\u0433\u043e\u043b\u043e\u0432\u043a\u0430",
+  "progress.step.decrypting": "\u0420\u0430\u0441\u0448\u0438\u0444\u0440\u043e\u0432\u043a\u0430",
+  "progress.step.decompressing": "\u0420\u0430\u0441\u043f\u0430\u043a\u043e\u0432\u043a\u0430",
+  "progress.step.extracting": "\u0418\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u0435 \u0444\u0430\u0439\u043b\u043e\u0432",
+  "progress.step.finishing": "\u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0438\u0435",
+  "progress.step.compressing": "\u0421\u0436\u0430\u0442\u0438\u0435 \u0444\u0430\u0439\u043b\u043e\u0432",
+  "progress.step.writing_png": "\u0417\u0430\u043f\u0438\u0441\u044c PNG",
+  "progress.step.encoding": "\u041a\u043e\u0434\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435",
+  "progress.step.done": "\u0413\u043e\u0442\u043e\u0432\u043e",
+  "info.encryptionUnknown": "\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u043e"
 }

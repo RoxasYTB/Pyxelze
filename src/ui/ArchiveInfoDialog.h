@@ -7,5 +7,5 @@
 class ArchiveInfoDialog : public QDialog {
     Q_OBJECT
 public:
-    ArchiveInfoDialog(QWidget* parent, const QString& archivePath, const QList<VirtualFile>& allFiles);
+    ArchiveInfoDialog(QWidget* parent, const QString& archivePath, const QList<VirtualFile>& allFiles, const QString& encryptionText);
 };

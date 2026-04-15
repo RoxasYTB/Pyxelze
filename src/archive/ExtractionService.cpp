@@ -11,6 +11,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QSet>
 #include <QUuid>
 
 static bool isAccessDenied(const QString& err) {
@@ -44,6 +47,78 @@ static QStringList buildDecompressArgsWithPass(const QString& archivePath, const
     args.append(outputDir);
     args.append(extraArgs);
     return args;
+}
+
+static QStringList buildFilesArgs(const QStringList& internalPaths) {
+    QJsonArray files;
+    QSet<QString> seen;
+    for (const auto& path : internalPaths) {
+        auto normalized = path.trimmed();
+        if (normalized.isEmpty() || seen.contains(normalized)) continue;
+        seen.insert(normalized);
+        files.append(normalized);
+    }
+    return {QStringLiteral("--files"), QString::fromUtf8(QJsonDocument(files).toJson(QJsonDocument::Compact))};
+}
+
+static QString extractedOutputPath(const QString& outputDir, const QString& internalPath) {
+    auto rel = internalPath;
+    rel.replace('/', QDir::separator());
+    return QDir(outputDir).filePath(rel);
+}
+
+static QStringList missingInternalPaths(const QString& outputDir, const QStringList& internalPaths) {
+    QStringList missing;
+    QSet<QString> seen;
+    for (const auto& path : internalPaths) {
+        auto normalized = path.trimmed();
+        if (normalized.isEmpty() || seen.contains(normalized)) continue;
+        seen.insert(normalized);
+        if (!QFileInfo::exists(extractedOutputPath(outputDir, normalized)))
+            missing.append(normalized);
+    }
+    return missing;
+}
+
+static bool extractRequestedToDir(QWidget* parent, const QString& archivePath, const QStringList& internalPaths, const QString& outputDir) {
+    if (archivePath.isEmpty() || internalPaths.isEmpty()) return false;
+
+    QDir().mkpath(outputDir);
+    const auto missingPaths = missingInternalPaths(outputDir, internalPaths);
+    if (missingPaths.isEmpty()) return true;
+    const auto extraArgs = buildFilesArgs(missingPaths);
+
+    auto runWithPass = [&](const QString& passphrase) {
+        auto args = passphrase.isEmpty()
+            ? buildDecompressArgs(archivePath, outputDir, extraArgs)
+            : buildDecompressArgsWithPass(archivePath, outputDir, passphrase, extraArgs);
+        return ProcessHelper::runRox(args);
+    };
+
+    auto cached = PassphraseManager::cachedPassphrase();
+    auto r = runWithPass(cached);
+    if (r.exitCode == 0 && ProcessHelper::directoryHasEntries(outputDir)) {
+        if (!cached.isEmpty()) PassphraseManager::save(cached);
+        return true;
+    }
+    if (!PassphraseManager::needsPassphrase(r.stdOut, r.stdErr) || parent == nullptr) {
+        return false;
+    }
+
+    QString errorMsg;
+    while (true) {
+        auto pass = PassphraseDialog::prompt(parent, L::get("passphrase.required"), L::get("passphrase.prompt"), errorMsg);
+        if (!pass.has_value()) return false;
+        r = runWithPass(*pass);
+        if (r.exitCode == 0 && ProcessHelper::directoryHasEntries(outputDir)) {
+            PassphraseManager::save(*pass);
+            return true;
+        }
+        if (!PassphraseManager::isDecryptionFailure(r.stdOut, r.stdErr)) {
+            return false;
+        }
+        errorMsg = L::get("dialog.wrongPassword");
+    }
 }
 
 static bool runPassphraseRetryLoop(QWidget* parent, const QString& archivePath, const QString& outputDir) {
@@ -168,26 +243,14 @@ bool ExtractionService::extractWithProgress(QWidget* parent, const QString& arch
     return false;
 }
 
-bool ExtractionService::extractFileSingle(const QString& archivePath, const QString& internalPath, const QString& outputPath) {
+bool ExtractionService::extractFileSingle(QWidget* parent, const QString& archivePath, const QString& internalPath, const QString& outputPath) {
     Logger::logDnd(QStringLiteral("ExtractFileSingle: %1 -> %2").arg(internalPath, outputPath));
     if (archivePath.isEmpty()) return false;
 
     auto tempOut = TempHelper::createTempDir(QStringLiteral("pyxelze_extract"));
     auto cleanup = qScopeGuard([&]{ TempHelper::safeDelete(tempOut); });
 
-    auto cached = PassphraseManager::cachedPassphrase();
-    QStringList filesArg{QStringLiteral("--files"), internalPath};
-    auto args = cached.isEmpty()
-        ? buildDecompressArgs(archivePath, tempOut, filesArg)
-        : buildDecompressArgsWithPass(archivePath, tempOut, cached, filesArg);
-
-    auto r = ProcessHelper::runRox(args);
-    if (r.exitCode != 0 || !ProcessHelper::directoryHasEntries(tempOut)) {
-        auto fallbackArgs = cached.isEmpty()
-            ? buildDecompressArgs(archivePath, tempOut)
-            : buildDecompressArgsWithPass(archivePath, tempOut, cached);
-        ProcessHelper::runRox(fallbackArgs);
-    }
+    if (!extractRequestedToDir(parent, archivePath, {internalPath}, tempOut)) return false;
 
     auto sourceFull = findExtractedFile(tempOut, internalPath);
     if (sourceFull.isEmpty()) return false;
@@ -197,12 +260,12 @@ bool ExtractionService::extractFileSingle(const QString& archivePath, const QStr
     return QFile::copy(sourceFull, outputPath);
 }
 
-int ExtractionService::extractMultipleFiles(const QString& archivePath, const QStringList& internalPaths, const QString& tempOut) {
+int ExtractionService::extractMultipleFiles(QWidget* parent, const QString& archivePath, const QStringList& internalPaths, const QString& tempOut) {
     Logger::logDnd(QStringLiteral("ExtractMultipleFiles: %1 files -> %2").arg(internalPaths.size()).arg(tempOut));
     if (archivePath.isEmpty()) return 0;
 
     QDir().mkpath(tempOut);
-    if (!decompressArchiveToDir(archivePath, tempOut)) return 0;
+    if (!extractRequestedToDir(parent, archivePath, internalPaths, tempOut)) return 0;
 
     int found = 0;
     for (const auto& p : internalPaths) {
@@ -229,9 +292,7 @@ bool ExtractionService::decompressArchiveToDir(const QString& archivePath, const
 }
 
 QString ExtractionService::findExtractedFile(const QString& tempOut, const QString& internalPath) {
-    auto sourceRel = internalPath;
-    sourceRel.replace('/', QDir::separator());
-    auto sourceFull = tempOut + QDir::separator() + sourceRel;
+    auto sourceFull = extractedOutputPath(tempOut, internalPath);
     if (QFile::exists(sourceFull)) return sourceFull;
 
     QDir dir(tempOut);
@@ -255,4 +316,19 @@ QList<VirtualFile> ExtractionService::getFilesUnder(const QList<VirtualFile>& al
             result.append(f);
     }
     return result;
+}
+
+QStringList ExtractionService::buildSelectiveExtractArgs(const QString& archivePath, const QString& outputDir, const QStringList& internalPaths) {
+    if (archivePath.isEmpty()) return {};
+    const auto extraArgs = buildFilesArgs(internalPaths);
+    if (extraArgs.isEmpty()) return {};
+
+    const auto cached = PassphraseManager::cachedPassphrase();
+    return cached.isEmpty()
+        ? buildDecompressArgs(archivePath, outputDir, extraArgs)
+        : buildDecompressArgsWithPass(archivePath, outputDir, cached, extraArgs);
+}
+
+QStringList ExtractionService::missingFiles(const QString& outputDir, const QStringList& internalPaths) {
+    return missingInternalPaths(outputDir, internalPaths);
 }
