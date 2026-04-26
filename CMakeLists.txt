@@ -77,6 +77,28 @@ qt_add_executable(pyxelze ${SOURCES})
 target_include_directories(pyxelze PRIVATE src)
 target_link_libraries(pyxelze PRIVATE Qt6::Widgets Qt6::Network Qt6::Svg Qt6::Concurrent)
 
+# Release optimizations
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+if(MSVC)
+    target_compile_options(pyxelze PRIVATE
+        $<$<CONFIG:Release>:/O2 /GL /Gy /DNDEBUG>
+    )
+    target_link_options(pyxelze PRIVATE
+        $<$<CONFIG:Release>:/LTCG /OPT:REF /OPT:ICF>
+    )
+else()
+    target_compile_options(pyxelze PRIVATE
+        $<$<CONFIG:Release>:-O3 -DNDEBUG>
+    )
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT _ipo_supported OUTPUT _ipo_output)
+    if(_ipo_supported)
+        set_target_properties(pyxelze PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+    endif()
+endif()
+
 if(WIN32)
     set_target_properties(pyxelze PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
