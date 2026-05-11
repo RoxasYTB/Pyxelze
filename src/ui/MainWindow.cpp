@@ -109,6 +109,14 @@ MainWindow::MainWindow(const QString& archivePath, QWidget* parent)
 
     ThemeManager::init();
 
+    m_tempCleanupTimer = new QTimer(this);
+    m_tempCleanupTimer->setSingleShot(false);
+    m_tempCleanupTimer->setInterval(30000); // 30 seconds
+    connect(m_tempCleanupTimer, &QTimer::timeout, this, [this]() {
+        cleanupTempDirs();
+    });
+    m_tempCleanupTimer->start();
+
     buildMenuBar();
     buildToolbar();
     buildAddressBar();
@@ -468,10 +476,8 @@ void MainWindow::openFileFromArchive(const VirtualFile& vf) {
     }
     PlatformService::openFile(outputPath);
 
-    // Cleanup temp directory after 5 seconds to allow external app to open the file
-    QTimer::singleShot(5000, this, [tempDir]() {
-        TempHelper::safeDelete(tempDir);
-    });
+    // Add to pending cleanup list - will be deleted after 30 seconds
+    m_pendingTempDirs.append(tempDir);
 }
 
 void MainWindow::sortByColumn(int col, Qt::SortOrder order) {
@@ -586,6 +592,15 @@ void MainWindow::showArchiveInfo() {
 void MainWindow::showAboutDialog() {
     AboutDialog dlg(this);
     dlg.exec();
+}
+
+void MainWindow::cleanupTempDirs() {
+    if (m_pendingTempDirs.isEmpty()) return;
+
+    for (const auto& dir : m_pendingTempDirs) {
+        TempHelper::safeDelete(dir);
+    }
+    m_pendingTempDirs.clear();
 }
 
 void MainWindow::addFilesToArchive(const QStringList& filePaths) {

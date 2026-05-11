@@ -61,6 +61,8 @@ private:
     void showArchiveInfo();
     void showAboutDialog();
 
+    void cleanupTempDirs();
+
     void addFilesToArchive(const QStringList& filePaths);
     void createEmptyArchive();
     void cleanupEmptyArchive();
@@ -77,8 +79,6 @@ private:
     void setViewMode(ViewMode mode);
     void showContextMenu(const QPoint& pos);
     QAbstractItemView* currentView() const;
-
-    void cleanupTempDir(const QString& tempDir);
 
     QTreeView* m_treeView = nullptr;
     QListView* m_listView = nullptr;
@@ -106,8 +106,10 @@ private:
     QStringList m_dragPrefetchFiles;
     QProcess* m_dragPrefetchProcess = nullptr;
     QTimer* m_dragPrefetchTimer = nullptr;
+    QTimer* m_tempCleanupTimer = nullptr;
     QAbstractItemView* m_pressedView = nullptr;
     QPersistentModelIndex m_pressedIndex;
     bool m_deferSelectionOnRelease = false;
     ViewMode m_viewMode = ViewMode::Details;
+    QStringList m_pendingTempDirs;
 };
