@@ -8,8 +8,8 @@ permissions:
   actions: write
 
 env:
-  VERSION: 1.4.0
-  ROXIFY_VERSION: 1.13.6
+  VERSION: 1.4.1
+  ROXIFY_VERSION: 1.14.2
 
 jobs:
   build-linux:
