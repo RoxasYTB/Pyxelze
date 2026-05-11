@@ -116,13 +116,6 @@ jobs:
         run: |
           Compress-Archive -Path build\deploy\* -DestinationPath "build\Pyxelze-${{ env.VERSION }}-Portable.zip"
 
-      - name: Create standalone EXE
-        run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion="${{ env.VERSION }}" /DStandalone packaging\windows\installer.iss
-          if (Test-Path "build\Pyxelze-${{ env.VERSION }}-Standalone.exe") {
-            echo "Standalone EXE created"
-          }
-
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
@@ -134,12 +127,6 @@ jobs:
         with:
           name: windows-portable
           path: build/Pyxelze-${{ env.VERSION }}-Portable.zip
-
-      - name: Upload Windows standalone
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-standalone
-          path: build/Pyxelze-${{ env.VERSION }}-Standalone.exe
 
       - name: Cancel workflow on failure
         if: ${{ failure() }}
@@ -321,7 +308,7 @@ jobs:
             - Chaîne de release homogène: même moteur Roxify sur tous les paquets produits
 
             ### Installateurs
-            - **Windows** : Setup.exe (InnoSetup), Portable (ZIP), Standalone (EXE)
+            - **Windows** : Setup.exe (InnoSetup), Portable (ZIP)
             - **macOS** : DMG universel (arm64 + x86_64)
             - **Linux** : .deb (amd64) + AppImage (x86_64)
           files: |
@@ -329,5 +316,4 @@ jobs:
             artifacts/linux-packages/Pyxelze-${{ env.VERSION }}-x86_64.AppImage
             artifacts/windows-installer/Pyxelze-${{ env.VERSION }}-Setup.exe
             artifacts/windows-portable/Pyxelze-${{ env.VERSION }}-Portable.zip
-            artifacts/windows-standalone/Pyxelze-${{ env.VERSION }}-Standalone.exe
             artifacts/macos-dmg/Pyxelze-${{ env.VERSION }}-macOS.dmg
