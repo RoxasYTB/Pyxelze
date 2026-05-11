@@ -78,6 +78,8 @@ private:
     void showContextMenu(const QPoint& pos);
     QAbstractItemView* currentView() const;
 
+    void cleanupTempDir(const QString& tempDir);
+
     QTreeView* m_treeView = nullptr;
     QListView* m_listView = nullptr;
     QStackedWidget* m_viewStack = nullptr;

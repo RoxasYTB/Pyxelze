@@ -467,6 +467,11 @@ void MainWindow::openFileFromArchive(const VirtualFile& vf) {
         return;
     }
     PlatformService::openFile(outputPath);
+
+    // Cleanup temp directory after 5 seconds to allow external app to open the file
+    QTimer::singleShot(5000, this, [tempDir]() {
+        TempHelper::safeDelete(tempDir);
+    });
 }
 
 void MainWindow::sortByColumn(int col, Qt::SortOrder order) {
