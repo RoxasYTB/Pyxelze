@@ -15,6 +15,62 @@
 #include <QJsonDocument>
 #include <QSet>
 #include <QUuid>
+// memory detection
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+#ifdef Q_OS_MAC
+#include <mach/mach.h>
+#include <mach/mach_host.h>
+#endif
+
+static quint64 getAvailableMemoryBytes() {
+#ifdef Q_OS_LINUX
+    QFile f("/proc/meminfo");
+    if (f.open(QIODevice::ReadOnly)) {
+        const auto data = QString::fromUtf8(f.readAll());
+        QRegularExpression re("MemAvailable:\\s+(\\d+) kB");
+        auto m = re.match(data);
+        if (m.hasMatch()) {
+            bool ok = false;
+            const quint64 kb = m.captured(1).toULongLong(&ok);
+            if (ok) return kb * 1024ULL;
+        }
+    }
+#endif
+#ifdef Q_OS_WIN
+    MEMORYSTATUSEX st;
+    st.dwLength = sizeof(st);
+    if (GlobalMemoryStatusEx(&st)) return static_cast<quint64>(st.ullAvailPhys);
+#endif
+#ifdef Q_OS_MAC
+    mach_port_t host = mach_host_self();
+    vm_size_t page_size = 0;
+    host_page_size(host, &page_size);
+    vm_statistics64_data_t vmstat;
+    mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
+    if (host_statistics64(host, HOST_VM_INFO64, reinterpret_cast<host_info64_t>(&vmstat), &count) == KERN_SUCCESS) {
+        const quint64 free_count = static_cast<quint64>(vmstat.free_count) + static_cast<quint64>(vmstat.inactive_count);
+        return free_count * static_cast<quint64>(page_size);
+    }
+#endif
+    return 0;
+}
+
+static QStringList ramBudgetArgList() {
+    const quint64 reservedFree = 4ULL * 1024ULL * 1024ULL * 1024ULL; // keep 4GB free
+    quint64 avail = getAvailableMemoryBytes();
+    quint64 budgetMb = 256; // default conservative
+    if (avail > reservedFree) {
+        quint64 candidate = (avail - reservedFree) / (1024ULL * 1024ULL);
+        // cap candidate
+        const quint64 hardCapMb = 3ULL * 1024ULL; // 3GB
+        if (candidate > hardCapMb) candidate = hardCapMb;
+        if (candidate < 64) candidate = 64;
+        budgetMb = candidate;
+    }
+    return { QStringLiteral("--ram-budget-mb"), QString::number(static_cast<qulonglong>(budgetMb)) };
+}
 
 static bool isAccessDenied(const QString& err) {
     return err.contains(QStringLiteral("access denied"), Qt::CaseInsensitive)
@@ -37,6 +93,7 @@ static bool canWriteTo(const QString& dir) {
 static QStringList buildDecompressArgs(const QString& archivePath, const QString& outputDir, const QStringList& extraArgs = {}) {
     QStringList args{QStringLiteral("decompress"), archivePath, outputDir};
     args.append(extraArgs);
+    args.append(ramBudgetArgList());
     return args;
 }
 
@@ -46,6 +103,7 @@ static QStringList buildDecompressArgsWithPass(const QString& archivePath, const
         args.append(PassphraseManager::buildPassphraseArgs(passphrase));
     args.append(outputDir);
     args.append(extraArgs);
+    args.append(ramBudgetArgList());
     return args;
 }
 

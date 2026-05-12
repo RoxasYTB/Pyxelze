@@ -334,6 +334,7 @@ void MainWindow::openArchiveDialog() {
 }
 
 void MainWindow::loadArchive(const QString& path) {
+    Logger::log(QStringLiteral("LoadArchive: %1").arg(path));
     auto prevArchive = m_currentArchive;
     auto prevFiles = m_allFiles;
     auto prevPath = m_currentPath;
@@ -354,6 +355,10 @@ void MainWindow::loadArchive(const QString& path) {
     QApplication::processEvents();
 
     auto r = ProcessHelper::runRox(QStringList{QStringLiteral("list"), path}, 120000);
+    Logger::log(QStringLiteral("LoadArchiveResult: exit=%1 stdout=%2 stderr=%3")
+        .arg(r.exitCode)
+        .arg(r.stdOut.size())
+        .arg(r.stdErr.size()));
 
     if (r.exitCode == 0 && !r.stdOut.trimmed().isEmpty()) {
         m_allFiles = ArchiveParser::parse(r.stdOut);
@@ -838,6 +843,16 @@ void MainWindow::maybeStartDragPrefetch() {
 
     const auto cacheDir = dragCacheDir();
     const auto missing = ExtractionService::missingFiles(cacheDir, selection.requestedFiles);
+    Logger::log(QStringLiteral("DragPrefetch: selected=%1 requested=%2 missing=%3")
+        .arg(selection.selectedPaths.size())
+        .arg(selection.requestedFiles.size())
+        .arg(missing.size()));
+    if (missing.size() <= 1) {
+        Logger::log(QStringLiteral("DragPrefetch: skipped single-file selection"));
+        stopDragPrefetch();
+        return;
+    }
+
     if (missing.isEmpty()) {
         stopDragPrefetch();
         return;
@@ -851,6 +866,8 @@ void MainWindow::maybeStartDragPrefetch() {
     if (!m_dragPrefetchProcess) {
         m_dragPrefetchProcess = new QProcess(this);
         m_dragPrefetchProcess->setProcessChannelMode(QProcess::SeparateChannels);
+        m_dragPrefetchProcess->setStandardOutputFile(QProcess::nullDevice());
+        m_dragPrefetchProcess->setStandardErrorFile(QProcess::nullDevice());
         connect(m_dragPrefetchProcess, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this, [this] {
             m_dragPrefetchFiles.clear();
         });
@@ -1034,6 +1051,10 @@ void MainWindow::startFileDrag() {
 
     const auto selection = collectDragSelection(view, m_model, m_allFiles);
     if (selection.selectedPaths.isEmpty()) return;
+    Logger::log(QStringLiteral("StartFileDrag: selected=%1 requested=%2 folders=%3")
+        .arg(selection.selectedPaths.size())
+        .arg(selection.requestedFiles.size())
+        .arg(std::count(selection.selectedIsFolder.begin(), selection.selectedIsFolder.end(), true)));
 
     if (m_dragPrefetchProcess && m_dragPrefetchProcess->state() != QProcess::NotRunning) {
         m_dragPrefetchProcess->waitForFinished(150);
