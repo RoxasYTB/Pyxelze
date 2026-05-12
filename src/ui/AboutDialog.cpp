@@ -62,7 +62,7 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent) {
         ++row;
     };
 
-    const QString expectedRox = QStringLiteral("1.14.4");
+    const QString expectedRox = QStringLiteral("1.14.6");
     auto roxVer = ProcessHelper::runRox(QStringList{QStringLiteral("--version")}, 5000);
     QString detectedRox;
     if (roxVer.exitCode == 0 && !roxVer.stdOut.trimmed().isEmpty())
@@ -73,7 +73,7 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent) {
         roxVerStr = detectedRox;
         if (detectedRox != expectedRox) roxVerStr += QStringLiteral(" (expected %1)").arg(expectedRox);
     } else {
-        roxVerStr = QStringLiteral("%1 (expected %2)").arg(L::get("about.notAvailable"), expectedRox);
+        roxVerStr = QStringLiteral("%1").arg(L::get("about.notAvailable"));
     }
 
     addRow(L::get("about.appVersion"), QString::fromLatin1(AppConstants::Version));
