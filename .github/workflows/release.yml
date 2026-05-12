@@ -151,6 +151,17 @@ jobs:
           VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
+      - name: Create .icns file for macOS
+        run: |
+          # Create missing .icns file from iconset
+          if [ ! -f "resources/icons/pyxelze.icns" ] && [ -d "resources/icons/pyxelze.iconset" ]; then
+            echo "Creating .icns file from iconset..."
+            iconutil -c icns "resources/icons/pyxelze.iconset" -o "resources/icons/pyxelze.icns"
+            echo "✅ Created resources/icons/pyxelze.icns"
+          else
+            echo "ℹ️ .icns file already exists or iconset not found"
+          fi
+
       - name: Build universal binary
         run: |
           ROXIFY_OPT=""
