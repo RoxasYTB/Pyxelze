@@ -62,7 +62,7 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent) {
         ++row;
     };
 
-    const QString expectedRox = QStringLiteral("1.14.6");
+    const QString expectedRox = QStringLiteral("1.14.7");
     auto roxVer = ProcessHelper::runRox(QStringList{QStringLiteral("--version")}, 5000);
     QString detectedRox;
     if (roxVer.exitCode == 0 && !roxVer.stdOut.trimmed().isEmpty())
