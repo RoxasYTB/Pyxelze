@@ -308,7 +308,10 @@ bool ExtractionService::extractFileSingle(QWidget* parent, const QString& archiv
     auto tempOut = TempHelper::createTempDir(QStringLiteral("pyxelze_extract"));
     auto cleanup = qScopeGuard([&]{ TempHelper::safeDelete(tempOut); });
 
-    if (!extractRequestedToDir(parent, archivePath, {internalPath}, tempOut)) return false;
+    if (!extractRequestedToDir(parent, archivePath, {internalPath}, tempOut)) {
+        if (!extractViaTempDir(parent, archivePath, tempOut))
+            return false;
+    }
 
     auto sourceFull = findExtractedFile(tempOut, internalPath);
     if (sourceFull.isEmpty()) return false;
@@ -323,7 +326,9 @@ int ExtractionService::extractMultipleFiles(QWidget* parent, const QString& arch
     if (archivePath.isEmpty()) return 0;
 
     QDir().mkpath(tempOut);
-    if (!extractRequestedToDir(parent, archivePath, internalPaths, tempOut)) return 0;
+    if (!extractRequestedToDir(parent, archivePath, internalPaths, tempOut)) {
+        if (!extractViaTempDir(parent, archivePath, tempOut)) return 0;
+    }
 
     int found = 0;
     for (const auto& p : internalPaths) {
