@@ -183,6 +183,7 @@
   "progress.step.compressing": "Compression des fichiers",
   "progress.step.writing_png": "Écriture du PNG",
   "progress.step.encoding": "Encodage",
+  "progress.step.streaming_fallback": "Échec du décodage streaming, repli",
   "progress.step.done": "Terminé",
   "info.encryptionUnknown": "Inconnue"
 }

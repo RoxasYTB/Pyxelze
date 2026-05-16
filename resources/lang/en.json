@@ -183,6 +183,7 @@
   "progress.step.compressing": "Compressing files",
   "progress.step.writing_png": "Writing PNG",
   "progress.step.encoding": "Encoding",
+  "progress.step.streaming_fallback": "Streaming decode failed, falling back",
   "progress.step.done": "Done",
   "info.encryptionUnknown": "Unknown"
 }

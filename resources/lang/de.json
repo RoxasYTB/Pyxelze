@@ -171,6 +171,7 @@
   "progress.step.compressing": "Dateien werden komprimiert",
   "progress.step.writing_png": "PNG wird geschrieben",
   "progress.step.encoding": "Kodierung",
+  "progress.step.streaming_fallback": "Streaming-Dekodierung fehlgeschlagen, Rückfall",
   "progress.step.done": "Fertig",
   "info.encryptionUnknown": "Unbekannt"
 }

@@ -171,6 +171,7 @@
   "progress.step.compressing": "Kompresowanie plik\u00f3w",
   "progress.step.writing_png": "Zapisywanie PNG",
   "progress.step.encoding": "Kodowanie",
+  "progress.step.streaming_fallback": "Dekodowanie strumieniowe nie powiodło się, wycofanie",
   "progress.step.done": "Gotowe",
   "info.encryptionUnknown": "Nieznane"
 }

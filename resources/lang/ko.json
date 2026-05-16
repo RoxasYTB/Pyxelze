@@ -171,6 +171,7 @@
   "progress.step.compressing": "\ud30c\uc77c \uc555\ucd95 \uc911",
   "progress.step.writing_png": "PNG \uc4f0\ub294 \uc911",
   "progress.step.encoding": "\uc778\ucf54\ub529 \uc911",
+  "progress.step.streaming_fallback": "스트리밍 디코드 실패, 폴백",
   "progress.step.done": "\uc644\ub8cc",
   "info.encryptionUnknown": "\uc54c \uc218 \uc5c6\uc74c"
 }
