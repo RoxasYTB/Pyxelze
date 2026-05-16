@@ -9,7 +9,7 @@ permissions:
 
 env:
   VERSION: 1.4.4
-  ROXIFY_VERSION: 1.16.11
+  ROXIFY_VERSION: 1.16.13
 
 jobs:
   build-linux:
