@@ -64,10 +64,13 @@ AboutDialog::AboutDialog(QWidget* parent) : QDialog(parent) {
 
     auto roxVer = ProcessHelper::runRox(QStringList{QStringLiteral("--version")}, 5000);
     QString roxVerStr;
-    if (roxVer.exitCode == 0 && !roxVer.stdOut.trimmed().isEmpty())
+    if (roxVer.exitCode == 0 && !roxVer.stdOut.trimmed().isEmpty()) {
         roxVerStr = roxVer.stdOut.trimmed();
-    else
+        if (roxVerStr.startsWith(QStringLiteral("roxify_native ")))
+            roxVerStr = roxVerStr.mid(QStringLiteral("roxify_native ").length());
+    } else {
         roxVerStr = QStringLiteral("%1").arg(L::get("about.notAvailable"));
+    }
 
     addRow(L::get("about.appVersion"), QString::fromLatin1(AppConstants::Version));
     addRow(L::get("about.build"), QString::fromLatin1(AppConstants::BuildStamp));
