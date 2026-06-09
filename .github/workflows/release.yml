@@ -8,7 +8,7 @@ permissions:
   actions: write
 
 env:
-  VERSION: 1.4.4
+  VERSION: 1.4.5
   ROXIFY_VERSION: 1.16.13
 
 jobs:
@@ -278,14 +278,9 @@ jobs:
           body: |
             ## Pyxelze v${{ env.VERSION }}
 
-            ### Améliorations
-            - Intègre Roxify v${{ env.ROXIFY_VERSION }} : encode Windows à parité Linux (~5s pour 1.6GB)
-            - Compression zstd multithreadée sans limite de threads
-            - RAM unifiée cross-platform, suppression des limites Windows
-
             ### Correctifs
-            - Fix du scan de fichiers (jwalk → walkdir) qui perdait silencieusement des fichiers
-            - Décodage parallèle avec mmap pour les gros fichiers
+            - Traductions complétées dans toutes les langues (13 langues) : ajout des clés manquantes (license, contextmenu register/unregister, view modes, colonne modifié, openWith)
+            - Nettoyage des permissions de fichiers
 
             ### Installateurs
             - **Windows** : Setup.exe (InnoSetup), Portable (ZIP)
