@@ -8,8 +8,8 @@ permissions:
   actions: write
 
 env:
-  VERSION: 1.4.5
-  ROXIFY_VERSION: 1.16.13
+  VERSION: 1.4.6
+  ROXIFY_VERSION: 1.16.15
 
 jobs:
   build-linux:
@@ -278,9 +278,9 @@ jobs:
           body: |
             ## Pyxelze v${{ env.VERSION }}
 
-            ### Correctifs
-            - Traductions complétées dans toutes les langues (13 langues) : ajout des clés manquantes (license, contextmenu register/unregister, view modes, colonne modifié, openWith)
-            - Nettoyage des permissions de fichiers
+            ### Évolutions
+            - Mise à jour du moteur Roxify vers la version 1.16.15 (compression adaptative zstd, LDM, wlog=30, pipeline streaming amélioré)
+            - 17% de compression en mieux sur les gros jeux de données
 
             ### Installateurs
             - **Windows** : Setup.exe (InnoSetup), Portable (ZIP)
