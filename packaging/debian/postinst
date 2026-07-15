@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+if [ ! -x /usr/bin/pyxelze ]; then
+    exit 0
+fi
+
+xdg-mime default pyxelze.desktop image/png 2>/dev/null || true
+update-desktop-database /usr/share/applications 2>/dev/null || true
+gtk-update-icon-cache /usr/share/icons/hicolor 2>/dev/null || true

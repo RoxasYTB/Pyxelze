@@ -1,0 +1,294 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  VERSION: 1.4.6
+  ROXIFY_VERSION: 1.16.15
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake \
+            qt6-base-dev libqt6svg6-dev \
+            libgl-dev libvulkan-dev \
+            libfuse2 file desktop-file-utils
+
+      - name: Download roxify
+        run: |
+          mkdir -p /tmp/roxify_bin
+          ROXIFY_PATH="/tmp/roxify_bin/roxify_native"
+          ROXIFY_URL="https://github.com/RoxasYTB/roxify/releases/download/v${ROXIFY_VERSION}/roxify_native-x86_64-unknown-linux-gnu"
+          curl -fSL -o "${ROXIFY_PATH}" "${ROXIFY_URL}"
+          chmod +x "${ROXIFY_PATH}"
+          echo "ROXIFY_NATIVE=${ROXIFY_PATH}" >> $GITHUB_ENV
+
+      - name: Extract version
+        run: |
+          VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oP '\d+\.\d+\.\d+')
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Build .deb
+        run: ROXIFY_NATIVE="${ROXIFY_NATIVE}" bash scripts/build_deb.sh
+
+      - name: Build AppImage
+        run: ROXIFY_NATIVE="${ROXIFY_NATIVE}" bash scripts/build_appimage.sh
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: |
+            build/pyxelze_${{ env.VERSION }}_amd64.deb
+            build/Pyxelze-${{ env.VERSION }}-x86_64.AppImage
+
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+
+      - name: Download roxify
+        run: |
+          $roxDir = Join-Path $env:RUNNER_TEMP "roxify_bin"
+          New-Item -ItemType Directory -Force -Path $roxDir | Out-Null
+          $roxPath = Join-Path $roxDir "roxify_native.exe"
+          $roxUrl = "https://github.com/RoxasYTB/roxify/releases/download/v${{ env.ROXIFY_VERSION }}/roxify_native-x86_64-pc-windows-msvc.exe"
+          Invoke-WebRequest -Uri $roxUrl -OutFile $roxPath
+          echo "ROXIFY_PATH=$roxPath" >> $env:GITHUB_ENV
+
+      - name: Extract version
+        run: |
+          $content = Get-Content CMakeLists.txt -Raw
+          $content -match 'VERSION\s+(\d+\.\d+\.\d+)'
+          echo "VERSION=$($matches[1])" >> $env:GITHUB_ENV
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DROXIFY_NATIVE="$env:ROXIFY_PATH"
+          cmake --build build --config Release
+
+      - name: Deploy Qt
+        run: |
+          mkdir build\deploy
+          copy build\Release\pyxelze.exe build\deploy\pyxelze.exe
+          windeployqt build\deploy\pyxelze.exe
+          if (Test-Path build\Release\roxify) {
+            Copy-Item -Recurse build\Release\roxify build\deploy\roxify
+          } elseif (Test-Path build\roxify) {
+            Copy-Item -Recurse build\roxify build\deploy\roxify
+          }
+
+      - name: Build installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion="${{ env.VERSION }}" packaging\windows\installer.iss
+
+      - name: Create portable ZIP
+        run: |
+          Compress-Archive -Path build\deploy\* -DestinationPath "build\Pyxelze-${{ env.VERSION }}-Portable.zip"
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: build/Pyxelze-${{ env.VERSION }}-Setup.exe
+
+      - name: Upload Windows portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: build/Pyxelze-${{ env.VERSION }}-Portable.zip
+
+
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt6 (universal)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: mac
+          target: desktop
+          arch: clang_64
+
+      - name: Download roxify_native universal from roxify release
+        run: |
+          ROXIFY_URL="https://github.com/RoxasYTB/roxify/releases/download/v${ROXIFY_VERSION}/roxify_native-universal-apple-darwin"
+          echo "Downloading ${ROXIFY_URL}..."
+          mkdir -p /tmp/roxify_bin
+          if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
+            chmod +x /tmp/roxify_bin/roxify_native
+            echo "ROXIFY_NATIVE=/tmp/roxify_bin/roxify_native" >> $GITHUB_ENV
+            echo "Downloaded universal binary from GitHub release"
+          else
+            echo "Universal binary not available for Roxify v${ROXIFY_VERSION}"
+            exit 1
+          fi
+
+      - name: Extract version
+        run: |
+          VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Create .icns file for macOS
+        run: |
+          # Create missing .icns file from iconset
+          if [ ! -f "resources/icons/pyxelze.icns" ] && [ -d "resources/icons/pyxelze.iconset" ]; then
+            echo "Creating .icns file from iconset..."
+            iconutil -c icns "resources/icons/pyxelze.iconset" -o "resources/icons/pyxelze.icns"
+            echo "✅ Created resources/icons/pyxelze.icns"
+          else
+            echo "ℹ️ .icns file already exists or iconset not found"
+          fi
+
+      - name: Build universal binary
+        run: |
+          ROXIFY_OPT=""
+          if [ -n "${ROXIFY_NATIVE:-}" ]; then
+            ROXIFY_OPT="-DROXIFY_NATIVE=${ROXIFY_NATIVE}"
+          fi
+          cmake -S . -B build-macos \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" \
+            ${ROXIFY_OPT}
+          cmake --build build-macos --config Release --parallel
+
+      - name: Bundle roxify
+        run: |
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          ROX_DEST="$APP_PATH/Contents/MacOS/roxify/roxify_native"
+          if [ ! -f "$ROX_DEST" ] && [ -n "${ROXIFY_NATIVE:-}" ] && [ -f "${ROXIFY_NATIVE}" ]; then
+            mkdir -p "$APP_PATH/Contents/MacOS/roxify"
+            cp "${ROXIFY_NATIVE}" "$ROX_DEST"
+            chmod 755 "$ROX_DEST"
+          fi
+
+      - name: Deploy Qt frameworks
+        run: |
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          macdeployqt "$APP_PATH"
+
+      - name: Verify universal binary
+        run: |
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          echo "Architectures:"
+          lipo -info "$APP_PATH/Contents/MacOS/pyxelze" || lipo -info "$APP_PATH/Contents/MacOS/Pyxelze"
+          file "$APP_PATH/Contents/MacOS/pyxelze" || file "$APP_PATH/Contents/MacOS/Pyxelze"
+
+      - name: Create styled DMG
+        run: |
+          brew install create-dmg
+
+          APP_PATH="build-macos/pyxelze.app"
+          [ ! -d "$APP_PATH" ] && APP_PATH="build-macos/Pyxelze.app"
+          DMG_PATH="build-macos/Pyxelze-${VERSION}-macOS.dmg"
+
+          # Generate background image
+          if [ -f "scripts/create_dmg_background.py" ]; then
+            pip3 install Pillow --break-system-packages 2>/dev/null || pip3 install Pillow
+            python3 scripts/create_dmg_background.py 2>/dev/null || true
+          fi
+
+          BG_ARGS=""
+          if [ -f "resources/dmg_background.png" ]; then
+            BG_ARGS="--background resources/dmg_background.png"
+          fi
+
+          create-dmg \
+            --volname "Pyxelze" \
+            --window-pos 200 120 \
+            --window-size 660 400 \
+            --icon-size 80 \
+            --icon "pyxelze.app" 180 200 \
+            $BG_ARGS \
+            --hide-extension "pyxelze.app" \
+            --app-drop-link 480 200 \
+            --no-internet-enable \
+            "$DMG_PATH" \
+            "$APP_PATH" \
+            || true
+
+          # Fallback if create-dmg failed
+          if [ ! -f "$DMG_PATH" ]; then
+            echo "create-dmg failed, falling back to hdiutil"
+            DMG_STAGING="build-macos/dmg_staging"
+            rm -rf "$DMG_STAGING"
+            mkdir -p "$DMG_STAGING"
+            cp -R "$APP_PATH" "$DMG_STAGING/"
+            ln -s /Applications "$DMG_STAGING/Applications"
+            hdiutil create -volname "Pyxelze" -srcfolder "$DMG_STAGING" \
+              -ov -format UDZO "$DMG_PATH"
+          fi
+          echo "DMG created: $DMG_PATH"
+          ls -lh "$DMG_PATH"
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: build-macos/Pyxelze-${{ env.VERSION }}-macOS.dmg
+
+
+  release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version
+        run: |
+          VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oP '\d+\.\d+\.\d+')
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Pyxelze v${{ env.VERSION }}
+          body: |
+            ## Pyxelze v${{ env.VERSION }}
+
+            ### Évolutions
+            - Mise à jour du moteur Roxify vers la version 1.16.15 (compression adaptative zstd, LDM, wlog=30, pipeline streaming amélioré)
+            - 17% de compression en mieux sur les gros jeux de données
+
+            ### Installateurs
+            - **Windows** : Setup.exe (InnoSetup), Portable (ZIP)
+            - **macOS** : DMG universel (arm64 + x86_64)
+            - **Linux** : .deb (amd64) + AppImage (x86_64)
+          files: |
+            artifacts/linux-packages/pyxelze_${{ env.VERSION }}_amd64.deb
+            artifacts/linux-packages/Pyxelze-${{ env.VERSION }}-x86_64.AppImage
+            artifacts/windows-installer/Pyxelze-${{ env.VERSION }}-Setup.exe
+            artifacts/windows-portable/Pyxelze-${{ env.VERSION }}-Portable.zip
+            artifacts/macos-dmg/Pyxelze-${{ env.VERSION }}-macOS.dmg
