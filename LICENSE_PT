@@ -1,0 +1,62 @@
+Licença Proprietária de Código Aberto Pyxelze (RPOSL) Versão 1.0
+
+Copyright (c) 2025-2026 Yohan SANNIER (RoxasYTB). Todos os direitos reservados.
+
+Termos e Condições
+
+1. Definições
+   "Software" refere-se ao Pyxelze, incluindo todo o código-fonte, documentação,
+   binários, instaladores e ficheiros associados neste repositório.
+   "Autor" refere-se a Yohan SANNIER (RoxasYTB), o único detentor dos direitos
+   de autor.
+   "Uso comercial" significa qualquer utilização orientada para vantagem comercial
+   ou compensação monetária.
+
+2. Permissões
+   Sujeito às condições abaixo, é-lhe concedida uma licença não exclusiva,
+   mundial e isenta de royalties para:
+   a) Visualizar, ler e estudar o código-fonte.
+   b) Utilizar o Software para fins pessoais, educacionais ou de investigação.
+   c) Criar fork e modificar o Software para uso pessoal não comercial.
+   d) Distribuir cópias não modificadas para fins não comerciais, desde que esta
+   licença seja incluída na íntegra.
+   e) Contribuir com melhorias para o repositório original através de pull
+   requests.
+
+3. Restrições
+   a) Uso comercial proibido — Não pode utilizar, vender, sublicenciar,
+   redistribuir ou explorar de qualquer forma o Software ou trabalhos
+   derivados para fins comerciais sem autorização prévia por escrito do Autor.
+   b) Rebranding proibido — Não pode renomear, alterar a marca ou apresentar
+   uma versão modificada do Software como seu próprio produto para
+   distribuição.
+   c) Produtos concorrentes — Não pode utilizar o Software, no todo ou em
+   parte, para criar um produto ou serviço concorrente.
+   d) Direitos comerciais exclusivos — Todos os direitos comerciais são
+   reservados exclusivamente ao Autor. Nenhum terceiro pode comercializar
+   este Software ou os seus derivados.
+
+4. Contribuições
+   Ao submeter uma contribuição (pull request, patch ou outra) a este projeto,
+   concorda em ceder todos os direitos de propriedade intelectual da sua
+   contribuição ao Autor e concede ao Autor uma licença irrevogável, perpétua
+   e mundial para utilizar, modificar e distribuir a sua contribuição sob
+   quaisquer termos.
+
+5. Isenção de Responsabilidade
+   O Software é fornecido "tal como está", sem garantias de qualquer tipo,
+   expressas ou implícitas, incluindo, mas não se limitando a, garantias de
+   comercialização, adequação a um fim específico e não violação. Em caso
+   algum o Autor será responsável por quaisquer reclamações, danos ou outra
+   responsabilidade, seja em ação contratual, extracontratual ou outra,
+   decorrente de ou relacionada com o Software ou a sua utilização.
+
+6. Rescisão
+   Esta licença é automaticamente rescindida em caso de violação de qualquer
+   um dos seus termos. Após a rescisão, deve destruir todas as cópias do
+   Software em sua posse.
+
+7. Lei Aplicável
+   Esta licença é regida e interpretada de acordo com as leis de França.
+
+Para consultas sobre licenciamento comercial: yohan.sannier@aperture-sciences.com
