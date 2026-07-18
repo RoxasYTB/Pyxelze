@@ -8,7 +8,7 @@ permissions:
   actions: write
 
 env:
-  VERSION: 1.4.6
+  VERSION: 1.4.7
   ROXIFY_VERSION: 1.16.15
 
 jobs:
