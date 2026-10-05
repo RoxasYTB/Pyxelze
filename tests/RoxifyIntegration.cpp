@@ -63,8 +63,14 @@ int main(int argc, char** argv) {
             }
             require(actual.size() == files.size(), QStringLiteral("File list count mismatch"));
             for (auto it = files.cbegin(); it != files.cend(); ++it) {
-                require(actual.contains(it.key()) && actual.value(it.key()) == it.value().size(),
-                        QStringLiteral("Incorrect list entry: %1").arg(it.key()));
+#ifdef Q_OS_MAC
+                // QFile writes decomposed UTF-8 file names on macOS.
+                const auto archivePath = QString::fromUtf8(QFile::encodeName(it.key()));
+#else
+                const auto archivePath = it.key();
+#endif
+                require(actual.contains(archivePath) && actual.value(archivePath) == it.value().size(),
+                        QStringLiteral("Incorrect list entry: %1").arg(archivePath));
             }
             const auto out = temporary.path() + '/' + suffix;
             run(QStringList{QStringLiteral("decompress"), archive, out,
