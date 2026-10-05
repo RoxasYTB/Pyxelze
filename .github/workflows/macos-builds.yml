@@ -12,10 +12,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14
+          - runner: macos-15
             arch: x86_64
             suffix: x86_64
-          - runner: macos-14
+          - runner: macos-15
             arch: arm64
             suffix: arm64
     runs-on: ${{ matrix.runner }}
@@ -33,11 +33,8 @@ jobs:
       - name: Download roxify_native from roxify release
         run: |
           RUST_TARGET=${{ matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
-          ROXIFY_URL="https://github.com/roxasytb/roxify/releases/latest/download/roxify_native-${RUST_TARGET}"
-          echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
-          curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL"
-          chmod +x /tmp/roxify_bin/roxify_native
+          python3 scripts/download_roxify.py --asset "roxify_native-${RUST_TARGET}" --output /tmp/roxify_bin/roxify_native
           echo "ROXIFY_NATIVE=/tmp/roxify_bin/roxify_native" >> $GITHUB_ENV
 
       - name: Extract version
@@ -53,10 +50,14 @@ jobs:
           fi
           cmake -S . -B build-macos \
             -DCMAKE_BUILD_TYPE=Release \
+            -DPYXELZE_BUILD_TESTS=ON \
             -DCMAKE_OSX_ARCHITECTURES="${{ matrix.arch }}" \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="15.0" \
             ${ROXIFY_OPT}
           cmake --build build-macos --config Release --parallel
+
+      - name: Test bundled Roxify
+        run: ctest --test-dir build-macos -C Release --output-on-failure
 
       - name: Bundle roxify
         run: |

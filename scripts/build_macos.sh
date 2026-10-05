@@ -44,7 +44,7 @@ MACOS_ARCH="${MACOS_ARCH:-arm64;x86_64}"
 cmake -S . -B "${BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_OSX_ARCHITECTURES="${MACOS_ARCH}" \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET="15.0" \
     ${ROXIFY_OPT}
 cmake --build "${BUILD_DIR}" --config Release --parallel
 

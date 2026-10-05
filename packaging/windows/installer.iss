@@ -1,6 +1,6 @@
 #define MyAppName "Pyxelze"
 #ifndef MyAppVersion
-#define MyAppVersion "1.3.9"
+#define MyAppVersion "1.4.8"
 #endif
 #define MyAppPublisher "Yohan SANNIER"
 #define MyAppURL "https://github.com/RoxasYTB/Pyxelze"
@@ -29,7 +29,7 @@ DisableFinishedPage=yes
 
 [Files]
 Source: "..\..\build\deploy\pyxelze.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\build\deploy\roxify\roxify_native.exe"; DestDir: "{app}\roxify"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\build\deploy\roxify\roxify_native.exe"; DestDir: "{app}\roxify"; Flags: ignoreversion
 Source: "..\..\build\deploy\*.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\..\build\deploy\platforms\*"; DestDir: "{app}\platforms"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "..\..\build\deploy\styles\*"; DestDir: "{app}\styles"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
@@ -81,7 +81,7 @@ Name: "associatepng"; Description: "Associate with .png files (steganography arc
 
 [Files]
 Source: "..\..\build\deploy\pyxelze.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\build\deploy\roxify\roxify_native.exe"; DestDir: "{app}\roxify"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\build\deploy\roxify\roxify_native.exe"; DestDir: "{app}\roxify"; Flags: ignoreversion
 Source: "..\..\appIcon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\LICENSE_FR"; DestDir: "{app}"; Flags: ignoreversion

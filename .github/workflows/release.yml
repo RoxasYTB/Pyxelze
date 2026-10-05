@@ -8,8 +8,7 @@ permissions:
   actions: write
 
 env:
-  VERSION: 1.4.7
-  ROXIFY_VERSION: 1.16.15
+  VERSION: 1.4.8
 
 jobs:
   build-linux:
@@ -29,9 +28,7 @@ jobs:
         run: |
           mkdir -p /tmp/roxify_bin
           ROXIFY_PATH="/tmp/roxify_bin/roxify_native"
-          ROXIFY_URL="https://github.com/RoxasYTB/roxify/releases/download/v${ROXIFY_VERSION}/roxify_native-x86_64-unknown-linux-gnu"
-          curl -fSL -o "${ROXIFY_PATH}" "${ROXIFY_URL}"
-          chmod +x "${ROXIFY_PATH}"
+          python3 scripts/download_roxify.py --asset roxify_native-x86_64-unknown-linux-gnu --output "${ROXIFY_PATH}"
           echo "ROXIFY_NATIVE=${ROXIFY_PATH}" >> $GITHUB_ENV
 
       - name: Extract version
@@ -39,8 +36,14 @@ jobs:
           VERSION=$(grep 'project(Pyxelze VERSION' CMakeLists.txt | grep -oP '\d+\.\d+\.\d+')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
+      - name: Configure integration tests
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPYXELZE_BUILD_TESTS=ON -DROXIFY_NATIVE="${ROXIFY_NATIVE}"
+
       - name: Build .deb
         run: ROXIFY_NATIVE="${ROXIFY_NATIVE}" bash scripts/build_deb.sh
+
+      - name: Test bundled Roxify
+        run: ctest --test-dir build --output-on-failure
 
       - name: Build AppImage
         run: ROXIFY_NATIVE="${ROXIFY_NATIVE}" bash scripts/build_appimage.sh
@@ -72,8 +75,8 @@ jobs:
           $roxDir = Join-Path $env:RUNNER_TEMP "roxify_bin"
           New-Item -ItemType Directory -Force -Path $roxDir | Out-Null
           $roxPath = Join-Path $roxDir "roxify_native.exe"
-          $roxUrl = "https://github.com/RoxasYTB/roxify/releases/download/v${{ env.ROXIFY_VERSION }}/roxify_native-x86_64-pc-windows-msvc.exe"
-          Invoke-WebRequest -Uri $roxUrl -OutFile $roxPath
+          python scripts/download_roxify.py --asset roxify_native-x86_64-pc-windows-msvc.exe --output "$roxPath"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           echo "ROXIFY_PATH=$roxPath" >> $env:GITHUB_ENV
 
       - name: Extract version
@@ -84,8 +87,11 @@ jobs:
 
       - name: Build
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DROXIFY_NATIVE="$env:ROXIFY_PATH"
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DPYXELZE_BUILD_TESTS=ON -DROXIFY_NATIVE="$env:ROXIFY_PATH"
           cmake --build build --config Release
+
+      - name: Test bundled Roxify
+        run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Deploy Qt
         run: |
@@ -120,7 +126,7 @@ jobs:
 
 
   build-macos:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
@@ -134,17 +140,9 @@ jobs:
 
       - name: Download roxify_native universal from roxify release
         run: |
-          ROXIFY_URL="https://github.com/RoxasYTB/roxify/releases/download/v${ROXIFY_VERSION}/roxify_native-universal-apple-darwin"
-          echo "Downloading ${ROXIFY_URL}..."
           mkdir -p /tmp/roxify_bin
-          if curl -fSL -o /tmp/roxify_bin/roxify_native "$ROXIFY_URL" 2>/dev/null; then
-            chmod +x /tmp/roxify_bin/roxify_native
-            echo "ROXIFY_NATIVE=/tmp/roxify_bin/roxify_native" >> $GITHUB_ENV
-            echo "Downloaded universal binary from GitHub release"
-          else
-            echo "Universal binary not available for Roxify v${ROXIFY_VERSION}"
-            exit 1
-          fi
+          python3 scripts/download_roxify.py --asset roxify_native-universal-apple-darwin --output /tmp/roxify_bin/roxify_native
+          echo "ROXIFY_NATIVE=/tmp/roxify_bin/roxify_native" >> $GITHUB_ENV
 
       - name: Extract version
         run: |
@@ -170,10 +168,14 @@ jobs:
           fi
           cmake -S . -B build-macos \
             -DCMAKE_BUILD_TYPE=Release \
+            -DPYXELZE_BUILD_TESTS=ON \
             -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET="11.0" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="15.0" \
             ${ROXIFY_OPT}
           cmake --build build-macos --config Release --parallel
+
+      - name: Test bundled Roxify
+        run: ctest --test-dir build-macos -C Release --output-on-failure
 
       - name: Bundle roxify
         run: |
@@ -279,12 +281,13 @@ jobs:
             ## Pyxelze v${{ env.VERSION }}
 
             ### Évolutions
-            - Mise à jour du moteur Roxify vers la version 1.16.15 (compression adaptative zstd, LDM, wlog=30, pipeline streaming amélioré)
-            - 17% de compression en mieux sur les gros jeux de données
+            - Moteur Roxify 1.16.18 : réduction des copies mémoire et compression des métadonnées et du remplissage PNG
+            - Compatibilité avec les archives existantes conservée
+            - Tests de création, de liste et d'extraction des archives, avec et sans mot de passe, avant publication
 
             ### Installateurs
             - **Windows** : Setup.exe (InnoSetup), Portable (ZIP)
-            - **macOS** : DMG universel (arm64 + x86_64)
+            - **macOS 15 ou plus récent** : DMG universel (arm64 + x86_64)
             - **Linux** : .deb (amd64) + AppImage (x86_64)
           files: |
             artifacts/linux-packages/pyxelze_${{ env.VERSION }}_amd64.deb

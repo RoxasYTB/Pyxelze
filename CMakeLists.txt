@@ -1,17 +1,17 @@
 cmake_minimum_required(VERSION 3.20)
-project(Pyxelze VERSION 1.4.7 LANGUAGES CXX)
+project(Pyxelze VERSION 1.4.8 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-# macOS: deployment target 11.0 (Big Sur minimum)
+# Match the minimum macOS version of the bundled Roxify release.
 if(APPLE)
     if(NOT CMAKE_OSX_ARCHITECTURES)
         set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "macOS architectures")
     endif()
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum macOS version")
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network Svg Concurrent)
@@ -159,3 +159,28 @@ install(TARGETS pyxelze
     RUNTIME DESTINATION bin
     BUNDLE DESTINATION .
 )
+
+option(PYXELZE_BUILD_TESTS "Build Roxify integration tests" OFF)
+if(PYXELZE_BUILD_TESTS)
+    if(NOT ROXIFY_NATIVE OR NOT EXISTS "${ROXIFY_NATIVE}")
+        message(FATAL_ERROR "Roxify integration tests require ROXIFY_NATIVE")
+    endif()
+    enable_testing()
+    file(STRINGS "${CMAKE_SOURCE_DIR}/roxify-version.txt" ROXIFY_VERSION LIMIT_COUNT 1)
+    qt_add_executable(roxify_integration
+        tests/RoxifyIntegration.cpp
+        src/core/RoxRunner.cpp
+        src/core/ProcessHelper.cpp
+        src/core/Logger.cpp
+        src/archive/ArchiveParser.cpp
+    )
+    target_include_directories(roxify_integration PRIVATE src)
+    target_link_libraries(roxify_integration PRIVATE Qt6::Widgets)
+    target_compile_definitions(roxify_integration PRIVATE ROXIFY_EXPECTED_VERSION="${ROXIFY_VERSION}")
+    add_custom_command(TARGET roxify_integration POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:roxify_integration>/roxify"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ROXIFY_NATIVE}" "$<TARGET_FILE_DIR:roxify_integration>/roxify/${_rox_bin}"
+    )
+    add_test(NAME roxify_roundtrip COMMAND roxify_integration)
+    set_tests_properties(roxify_roundtrip PROPERTIES TIMEOUT 120)
+endif()
