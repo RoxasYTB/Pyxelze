@@ -25,6 +25,8 @@ jobs:
             libfuse2 file desktop-file-utils
 
       - name: Download roxify
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p /tmp/roxify_bin
           ROXIFY_PATH="/tmp/roxify_bin/roxify_native"
@@ -71,6 +73,8 @@ jobs:
           arch: win64_msvc2022_64
 
       - name: Download roxify
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           $roxDir = Join-Path $env:RUNNER_TEMP "roxify_bin"
           New-Item -ItemType Directory -Force -Path $roxDir | Out-Null
@@ -139,6 +143,8 @@ jobs:
           arch: clang_64
 
       - name: Download roxify_native universal from roxify release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p /tmp/roxify_bin
           python3 scripts/download_roxify.py --asset roxify_native-universal-apple-darwin --output /tmp/roxify_bin/roxify_native

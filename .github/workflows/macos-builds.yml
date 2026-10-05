@@ -31,6 +31,8 @@ jobs:
           arch: clang_64
 
       - name: Download roxify_native from roxify release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           RUST_TARGET=${{ matrix.arch == 'arm64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
           mkdir -p /tmp/roxify_bin

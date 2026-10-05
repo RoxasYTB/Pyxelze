@@ -11,10 +11,14 @@ from urllib.request import Request, urlopen
 
 
 def release_for_version(version):
+    headers = {"User-Agent": "Pyxelze", "Accept": "application/vnd.github+json"}
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     for tag in (f"v{version}", version):
         request = Request(
             f"https://api.github.com/repos/RoxasYTB/roxify/releases/tags/{tag}",
-            headers={"User-Agent": "Pyxelze", "Accept": "application/vnd.github+json"},
+            headers=headers,
         )
         try:
             with urlopen(request, timeout=60) as response:
