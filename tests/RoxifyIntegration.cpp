@@ -9,6 +9,8 @@
 #include <QMap>
 #include <QTemporaryDir>
 #include <QTextStream>
+#include <QThread>
+#include <QTimer>
 #include <stdexcept>
 
 static void require(bool condition, const QString& message) {
@@ -16,8 +18,11 @@ static void require(bool condition, const QString& message) {
 }
 
 static ProcessResult run(const QStringList& args) {
+    QTextStream(stdout) << "Running " << args.first()
+        << (args.contains(QStringLiteral("--files")) ? " (selected files)" : "")
+        << (args.contains(QStringLiteral("--passphrase")) ? " (encrypted)" : "") << Qt::endl;
     const auto result = ProcessHelper::runRox(args, 60000);
-    require(result.exitCode == 0, result.stdErr + result.stdOut);
+    require(result.exitCode == 0, args.first() + QStringLiteral(": ") + result.stdErr + result.stdOut);
     return result;
 }
 
@@ -29,7 +34,22 @@ static QByteArray read(const QString& path) {
 
 int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
+    if (app.arguments().contains(QStringLiteral("--process-helper-child"))) {
+        QThread::msleep(100);
+        QTextStream(stdout) << "child output\n";
+        QTextStream(stderr) << "child error\n";
+        return 7;
+    }
     try {
+        QTimer::singleShot(0, [] {
+            QThread::msleep(200);
+            QCoreApplication::processEvents();
+        });
+        const auto completed = ProcessHelper::runProcess(app.applicationFilePath(),
+            {QStringLiteral("--process-helper-child")}, 1000);
+        require(completed.exitCode == 7 && completed.stdOut == QStringLiteral("child output\n")
+                && completed.stdErr == QStringLiteral("child error\n"),
+                QStringLiteral("Process completion during event handling was lost: %1").arg(completed.stdErr));
         require(RoxRunner::isAvailable(), QStringLiteral("Bundled Roxify not found"));
         const auto version = run({QStringLiteral("--version")}).stdOut.trimmed();
         require(version == QStringLiteral("roxify_native " ROXIFY_EXPECTED_VERSION), version);

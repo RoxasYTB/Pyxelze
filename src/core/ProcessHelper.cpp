@@ -110,8 +110,9 @@ ProcessResult ProcessHelper::runProcess(const QString& program, const QStringLis
     }
     const qsizetype MAX_BUF = static_cast<qsizetype>(qMin<quint64>(maxTotalBuf / 2ULL,  ((quint64)INT_MAX)));
 
-    while (!proc.waitForFinished(50)) {
+    while (proc.state() != QProcess::NotRunning && !proc.waitForFinished(50)) {
         QApplication::processEvents();
+        if (proc.state() == QProcess::NotRunning) break;
 
         auto o = proc.readAllStandardOutput();
         if (!o.isEmpty()) {
