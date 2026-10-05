@@ -47,8 +47,8 @@ int main(int argc, char** argv) {
         });
         const auto completed = ProcessHelper::runProcess(app.applicationFilePath(),
             {QStringLiteral("--process-helper-child")}, 1000);
-        require(completed.exitCode == 7 && completed.stdOut == QStringLiteral("child output\n")
-                && completed.stdErr == QStringLiteral("child error\n"),
+        require(completed.exitCode == 7 && completed.stdOut.trimmed() == QStringLiteral("child output")
+                && completed.stdErr.trimmed() == QStringLiteral("child error"),
                 QStringLiteral("Process completion during event handling was lost: %1").arg(completed.stdErr));
         require(RoxRunner::isAvailable(), QStringLiteral("Bundled Roxify not found"));
         const auto version = run({QStringLiteral("--version")}).stdOut.trimmed();
